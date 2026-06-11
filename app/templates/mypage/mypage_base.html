@@ -1,0 +1,56 @@
+{% extends "_header.html" %}
+{% block title %}{% block mp_title %}마이페이지 - 티켓플로우{% endblock %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mypage.css') }}">
+{% endblock %}
+
+{% block extra_styles %}{% block extra_styles2 %}{% endblock %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <h1 class="page-title">{% block page_title %}마이페이지{% endblock %}</h1>
+    </div>
+</div>
+<div class="layout">
+    <aside>
+        <nav class="side-nav">
+            <a href="/mypage/benefits" class="{% if active_menu == 'benefits' %}active{% endif %}">
+                마이페이지
+                <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="/mypage/tickets" class="{% if active_menu == 'tickets' %}active{% endif %}">
+                티켓 예매 내역
+                <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="/mypage/wishlist" class="{% if active_menu == 'wishlist' %}active{% endif %}">
+                위시리스트
+                <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="/mypage/coupons" class="{% if active_menu == 'coupons' %}active{% endif %}">
+                쿠폰함
+                <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="/mypage/profile" class="{% if active_menu == 'profile' %}active{% endif %}">
+                회원정보 수정
+                <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
+            </a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        {% block main %}{% endblock %}
+    </main>
+</div>
+{% include '_footer.html' %}
+{% endblock %}

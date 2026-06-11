@@ -1,0 +1,52 @@
+#seatMap{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    width:max-content;
+    margin:50px auto;
+}
+
+.row{
+    display:flex;
+    gap:6px;
+}
+
+.seat{
+    width:28px;
+    height:28px;
+    background:#599468;
+    border-radius:4px;
+    cursor:pointer;
+}
+
+.seat.selected{
+    background:#4a90e2;
+}
+
+.empty{
+    width:28px;
+    height:28px;
+    visibility:hidden;
+}
+
+.seat.reserved{
+    background:#666a73;
+}
+.stage{
+    width:300px;
+    height:60px;
+
+    margin:30px auto;
+
+    background:#444;
+    color:white;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-size:24px;
+    font-weight:bold;
+
+    border-radius:10px;
+}

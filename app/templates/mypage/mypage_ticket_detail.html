@@ -1,0 +1,124 @@
+{% extends "mypage_base.html" %}
+{% set active_menu = 'tickets' %}
+{% block title %}예매 확인/취소 - 티켓플로우{% endblock %}
+{% block page_title %}예매 확인/취소{% endblock %}
+
+{% block extra_styles2 %}
+.detail-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:24px; }
+
+.booking-header { display:flex; align-items:stretch; }
+.booking-poster { width:120px; flex-shrink:0; overflow:hidden; }
+.booking-poster img { width:100%; height:100%; object-fit:cover; display:block; }
+.booking-poster-placeholder { width:100%; height:100%; background:linear-gradient(135deg,#3B6FFF22,#7C3AED22); display:flex; align-items:center; justify-content:center; }
+.booking-info-table { flex:1; border-collapse:collapse; }
+.booking-info-table td { padding:14px 18px; font-size:14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.booking-info-table td:first-child { color:var(--text-sub); font-weight:500; background:#F8F9FB; width:130px; border-right:1px solid var(--border); }
+.booking-info-table tr:last-child td { border-bottom:none; }
+.booking-info-table .val-highlight { color:var(--text-main); font-weight:600; }
+
+.pay-table { width:100%; border-collapse:collapse; }
+.pay-table td { padding:14px 18px; font-size:14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.pay-table td:first-child { color:var(--text-sub); font-weight:500; background:#F8F9FB; width:130px; border-right:1px solid var(--border); }
+.pay-table tr:last-child td { border-bottom:none; }
+.pay-table .label-cell { background:#F8F9FB; color:var(--text-sub); font-weight:500; border-right:1px solid var(--border); }
+.amount { color:#E53E3E; font-weight:700; font-size:16px; }
+
+.cancel-notice { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:24px; }
+.cancel-deadline { font-size:15px; font-weight:600; margin-bottom:12px; }
+.cancel-deadline span { color:#E53E3E; }
+.cancel-fee-title { font-size:14px; font-weight:700; color:#E53E3E; margin-bottom:8px; }
+.cancel-fee-desc { font-size:13px; color:var(--text-sub); line-height:1.7; }
+.cancel-fee-desc li { margin-left:16px; }
+.btn-cancel { display:block; width:100%; padding:16px; background:#E53E3E; color:white; border:none; border-radius:var(--radius-sm); font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; transition:background 0.2s; margin-top:16px; }
+.btn-cancel:hover { background:#C53030; }
+{% endblock %}
+
+{% block main %}
+<a href="/mypage/tickets" class="back-link">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6"/>
+    </svg>
+    예매 내역으로 돌아가기
+</a>
+
+<div class="section-title">예매 내역</div>
+<div class="detail-card">
+    <div class="booking-header">
+        <div class="booking-poster">
+            <div class="booking-poster-placeholder">
+                <svg width="36" height="36" fill="none" stroke="#3B6FFF" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path d="M3 9l1-2h16l1 2M3 15l1 2h16l1-2M9 9v6M15 9v6"/>
+                </svg>
+            </div>
+        </div>
+        <table class="booking-info-table">
+            <tr>
+                <td>공연명</td>
+                <td colspan="3" class="val-highlight">{{ ticket.title if ticket.title is defined else ticket.show_name }}</td>
+            </tr>
+            <tr>
+                <td>예매 번호</td>
+                <td class="val-highlight">{{ ticket.booking_no }}</td>
+                <td style="color:var(--text-sub);font-weight:500;background:#F8F9FB;width:130px;border-left:1px solid var(--border);border-right:1px solid var(--border);">예매자</td>
+                <td>{{ ticket.buyer }}</td>
+            </tr>
+            <tr>
+                <td>관람일</td>
+                <td colspan="3">{{ ticket.date }}</td>
+            </tr>
+            <tr>
+                <td>공연장 / 좌석</td>
+                <td colspan="3">{{ ticket.venue }} / {{ ticket.seat }}</td>
+            </tr>
+            <tr>
+                <td>티켓매수</td>
+                <td class="val-highlight">{{ ticket.count }}매</td>
+                <td style="color:var(--text-sub);font-weight:500;background:#F8F9FB;border-left:1px solid var(--border);border-right:1px solid var(--border);">티켓수령방법</td>
+                <td>{{ ticket.delivery }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="section-title">결제내역</div>
+<div class="detail-card">
+    <table class="pay-table">
+        <tr>
+            <td class="label-cell">예매일</td>
+            <td>{{ ticket.order_date }}</td>
+            <td class="label-cell" style="border-left:1px solid var(--border);">예매상태</td>
+            <td><strong>{{ ticket.status }}</strong></td>
+        </tr>
+        <tr>
+            <td class="label-cell">총결제금액</td>
+            <td colspan="3"><span class="amount">{{ ticket.total_price }}원</span></td>
+        </tr>
+        <tr>
+            <td class="label-cell">결제수단</td>
+            <td colspan="3">{{ ticket.pay_method }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section-title">예매취소 안내</div>
+<div class="cancel-notice">
+    <div class="cancel-deadline">취소 마감시간: <span>{{ ticket.cancel_deadline }} 까지</span></div>
+    <div class="cancel-fee-title">&lt;취소수수료안내&gt;</div>
+    <div class="cancel-fee-desc">
+        취소 일자에 따라서 취소수수료가 발생합니다.<br>
+        <ul>
+            <li>단, 예매 발권 전 12시 이전 취소시에는 취소수수료 없음(취소기한내에한함)</li>
+        </ul>
+    </div>
+    <button class="btn-cancel" onclick="confirmCancel()">예매 취소</button>
+</div>
+
+<script>
+function confirmCancel() {
+    if (confirm('정말로 예매를 취소하시겠습니까?')) {
+        alert('예매가 취소되었습니다.');
+        location.href = '/mypage/tickets';
+    }
+}
+</script>
+{% endblock %}

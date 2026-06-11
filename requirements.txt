@@ -1,0 +1,12 @@
+Flask==3.1.3
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-Login
+Flask-SocketIO
+flask-mail
+Jinja2
+PyMySQL
+cryptography
+elasticsearch==8.17.0
+python-dotenv
+requests

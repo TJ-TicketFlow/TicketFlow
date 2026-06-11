@@ -1,0 +1,86 @@
+my_app/
+├── app/
+│   ├── __init__.py                  # Flask 앱 팩토리
+│   │
+│   ├── models/                      # Entity (DB 테이블 매핑)
+│   │   ├── __init__.py
+│   │   └── user.py                  # User Entity (SQLAlchemy ORM)
+│   │
+│   ├── schemas/                     # DTO (요청/응답 직렬화)
+│   │   ├── __init__.py
+│   │   └── user_schema.py           # 회원가입요청DTO, 회원가입응답DTO
+│   │
+│   ├── vo/                          # VO (값 객체)
+│   │   ├── __init__.py
+│   │   ├── email_vo.py              # Email VO
+│   │   └── password_vo.py           # Password VO
+│   │
+│   ├── repositories/                # Repository (DB 접근 계층)
+│   │   ├── __init__.py
+│   │   └── user_repository.py
+│   │
+│   ├── services/                    # Service (비즈니스 로직)
+│   │   ├── __init__.py
+│   │   └── user_service.py
+│   │
+│   ├── controllers/                 # Controller (라우팅)
+│   │   ├── __init__.py
+│   │   └── user_controller.py
+│   │
+│   └── core/
+│       ├── database.py              # SQLAlchemy db 객체
+│       └── exceptions.py
+│
+├── config.py                        # 환경 설정 (DB URL 등)
+├── requirements.txt
+└── run.py                           # 앱 실행 진입점
+
+
+
+
+models  = DB 테이블 그 자체
+ - DB 테이블이랑 1:1 매핑되는 클래스
+ - SQLAlchemy 이것을 보고 SQL을 자체적으로 생성
+ - user테이블 → User 클래스
+ - DB에 저장 조회할 때 사용
+
+schemas = 데이터를 주고 받는 역할 (=dto)
+ - 외부(사용자,프론트)와 데이터를 주고받을 때 사용하는 객체 틀
+ - 요청 들어올 때 → 검증(이 필드에 데이터 필수로 제대로 잘 들어갔는지 등)
+ - 요청 나갈   때 → 비밀번호 같은 거 제외하고, 회원가입 된 사항 확인
+ - 실제 DB 구조랑 달라도 된다.
+
+vo      = 값 검증/ 가공 역할
+ - 값 하나에 규칙을 붙인 것
+ - 이메일이면 @ 이 있는지 검증
+ - 비밀번호 암호화, 이메일 임시 비밀번호 인증번호 주고 받기
+
+① 사용자가 { email, password } 전송
+        ↓
+② schemas/  → 자바에서 RegisterRequestDTO
+   "email 형식 맞아? password 있어?" 체크
+        ↓
+③ vo/       → 자바에서 EmailVO, PasswordVO
+   이메일 세부 검증, 비밀번호 해시화
+        ↓
+④ models/   →  User Entity 생성
+   DB에 넣을 형태로 변환
+        ↓
+⑤ DB 저장
+        ↓
+⑥ schemas/  →  RegisterResponseDTO
+   id, email만 골라서 응답 (password 제외)
+        ↓
+⑦ 사용자에게 결과 반환
+
+
+
+
+
+
+
+
+
+
+
+

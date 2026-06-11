@@ -1,0 +1,20 @@
+{% extends "mypage_base.html" %}
+{% set active_menu = 'wishlist' %}
+{% block title %}위시리스트 - 티켓플로우{% endblock %}
+{% block page_title %}위시리스트{% endblock %}
+
+{% block extra_styles2 %}
+.empty-state { padding:80px 20px; }
+.btn-explore { display:inline-block; padding:12px 24px; background:var(--primary); color:white; border-radius:var(--radius-sm); font-size:14px; font-weight:600; text-decoration:none; transition:background 0.2s; }
+.btn-explore:hover { background:var(--primary-dark); }
+{% endblock %}
+
+{% block main %}
+<div class="empty-state">
+    <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+    <p>관심 있는 공연을 위시리스트에 추가해보세요!</p>
+    <a href="/" class="btn-explore">공연 둘러보기</a>
+</div>
+{% endblock %}
