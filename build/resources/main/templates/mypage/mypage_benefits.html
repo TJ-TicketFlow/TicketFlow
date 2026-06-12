@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마이페이지 - 티켓플로우</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: header}"></th:block>
+
+<div class="page-header">
+    <div class="page-header-inner">
+        <h1 class="page-title">마이페이지</h1>
+    </div>
+</div>
+
+<div class="layout">
+    <aside>
+        <nav class="side-nav">
+            <a th:href="@{/mypage/benefits}" class="active">마이페이지 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/tickets}">티켓 예매 내역 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/wishlist}">위시리스트 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/coupons}">쿠폰함 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/profile}">회원정보 수정 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+        </nav>
+    </aside>
+    <main class="main-content">
+
+        <!-- 히어로 섹션 -->
+        <div class="mypage-hero">
+            <div class="hero-greeting"><span th:text="${user['name']}">회원</span>님<br>안녕하세요!</div>
+
+            <div class="hero-divider"></div>
+
+            <div class="hero-stat">
+                <div class="hero-stat-label">등급</div>
+                <div class="grade-block">
+                    <th:block th:if="${user['membership'] == 'premium'}">
+                        <img th:src="@{/images/cpupon-premium.png}" alt="Premium" class="membership-icon">
+                        <div class="grade-name premium">Premium</div>
+                        <a th:href="@{/mypage/membership}" class="btn-mem-link">멤버십 혜택 보러가기 ›</a>
+                    </th:block>
+                    <th:block th:if="${user['membership'] == 'basic'}">
+                        <img th:src="@{/images/cpupon-basic.png}" alt="Basic" class="membership-icon">
+                        <div class="grade-name basic">Basic</div>
+                        <a th:href="@{/mypage/membership}" class="btn-mem-link">멤버십 혜택 보러가기 ›</a>
+                    </th:block>
+                    <th:block th:if="${user['membership'] == null or user['membership'] == ''}">
+                        <img th:src="@{/images/cpupon-basic.png}" alt="없음" class="membership-icon" style="opacity:0.3;">
+                        <div class="grade-name none">없음</div>
+                        <a th:href="@{/mypage/membership}" class="btn-mem-link">가입하러가기 ›</a>
+                    </th:block>
+                </div>
+            </div>
+
+            <div class="hero-divider"></div>
+
+            <div class="hero-stat">
+                <div class="hero-stat-label">쿠폰</div>
+                <div class="coupon-count">
+                    <span th:text="${#lists.size(user['coupons'])}">0</span><span>장</span>
+                </div>
+            </div>
+
+            <div class="hero-divider"></div>
+
+            <div class="hero-stat">
+                <div class="hero-stat-label">멤버십 기간</div>
+                <th:block th:if="${user['membership_start'] != null and user['membership_end'] != null}">
+                    <div class="period-text">
+                        <span th:text="${user['membership_start']}"></span><br>~<br><span th:text="${user['membership_end']}"></span>
+                    </div>
+                </th:block>
+                <th:block th:if="${user['membership_start'] == null or user['membership_end'] == null}">
+                    <div class="period-text" style="color:var(--text-muted);">-</div>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- 퀵 링크 -->
+        <div class="quick-grid">
+            <a th:href="@{/mypage/tickets}" class="quick-card">
+                <div class="q-num" th:text="${tickets != null ? #lists.size(tickets) : 0}">0</div>
+                <div class="q-label">예매 내역</div>
+            </a>
+            <a th:href="@{/mypage/coupons}" class="quick-card">
+                <div class="q-num" th:text="${#lists.size(user['coupons'])}">0</div>
+                <div class="q-label">보유 쿠폰</div>
+            </a>
+            <a th:href="@{/mypage/wishlist}" class="quick-card">
+                <div class="q-num">0</div>
+                <div class="q-label">위시리스트</div>
+            </a>
+        </div>
+
+        <!-- 최근 예매 내역 -->
+        <div class="section-title">최근 예매 내역</div>
+        <div class="recent-tickets">
+            <table class="recent-ticket-table">
+                <thead>
+                <tr>
+                    <th>예매번호</th>
+                    <th>공연명</th>
+                    <th>관람일시</th>
+                    <th>매수</th>
+                    <th>예매상태</th>
+                </tr>
+                </thead>
+                <tbody>
+                <th:block th:if="${tickets != null and !tickets.isEmpty()}">
+                    <tr th:each="ticket, iter : ${tickets}"
+                        th:if="${iter.index < 3}"
+                        th:data-url="@{/mypage/tickets/} + ${ticket['booking_no']}"
+                        onclick="location.href=this.dataset.url">
+                        <td th:text="${ticket['booking_no']}"></td>
+                        <td class="rt-name" th:text="${ticket['show_name']}"></td>
+                        <td th:text="${ticket['date']}"></td>
+                        <td th:text="${ticket['count']}"></td>
+                        <td>
+                            <span class="rt-status"
+                                  th:classappend="${ticket['status'] == '취소'} ? 'status-cancel' : 'status-booked'"
+                                  th:text="${ticket['status']}"></span>
+                        </td>
+                    </tr>
+                </th:block>
+                <th:block th:if="${tickets == null or tickets.isEmpty()}">
+                    <tr onclick="location.href='/mypage/tickets/123456789'">
+                        <td>123456789</td>
+                        <td class="rt-name">해리포터와 죽음의 성물</td>
+                        <td>2026.05.16</td>
+                        <td>2</td>
+                        <td><span class="rt-status status-booked">예매완료</span></td>
+                    </tr>
+                </th:block>
+                </tbody>
+            </table>
+            <a th:href="@{/mypage/tickets}" class="see-all">전체 예매 내역 보기 →</a>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{fragments/footer :: footer}"></th:block>
+</body>
+</html>

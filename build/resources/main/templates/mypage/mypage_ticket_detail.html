@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예매 확인/취소 - 티켓플로우</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: header}"></th:block>
+
+<div class="page-header">
+    <div class="page-header-inner">
+        <h1 class="page-title">예매 확인/취소</h1>
+    </div>
+</div>
+
+<div class="layout">
+    <aside>
+        <nav class="side-nav">
+            <a th:href="@{/mypage/benefits}">마이페이지 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/tickets}" class="active">티켓 예매 내역 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/wishlist}">위시리스트 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/coupons}">쿠폰함 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/profile}">회원정보 수정 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        <a th:href="@{/mypage/tickets}" class="back-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            예매 내역으로 돌아가기
+        </a>
+
+        <div class="section-title">예매 내역</div>
+        <div class="detail-card">
+            <div class="booking-header">
+                <div class="booking-poster">
+                    <div class="booking-poster-placeholder">
+                        <svg width="36" height="36" fill="none" stroke="#3B6FFF" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path d="M3 9l1-2h16l1 2M3 15l1 2h16l1-2M9 9v6M15 9v6"/>
+                        </svg>
+                    </div>
+                </div>
+                <table class="booking-info-table">
+                    <tr>
+                        <td>공연명</td>
+                        <td colspan="3" class="val-highlight" th:text="${ticket['title'] ?: ticket['show_name']}"></td>
+                    </tr>
+                    <tr>
+                        <td>예매 번호</td>
+                        <td class="val-highlight" th:text="${ticket['booking_no']}"></td>
+                        <td class="label-cell">예매자</td>
+                        <td th:text="${ticket['buyer']}"></td>
+                    </tr>
+                    <tr>
+                        <td>관람일</td>
+                        <td colspan="3" th:text="${ticket['date']}"></td>
+                    </tr>
+                    <tr>
+                        <td>공연장 / 좌석</td>
+                        <td colspan="3"><span th:text="${ticket['venue']}"></span> / <span th:text="${ticket['seat']}"></span></td>
+                    </tr>
+                    <tr>
+                        <td>티켓매수</td>
+                        <td class="val-highlight"><span th:text="${ticket['count']}"></span>매</td>
+                        <td class="label-cell">티켓수령방법</td>
+                        <td th:text="${ticket['delivery']}"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="section-title">결제내역</div>
+        <div class="detail-card">
+            <table class="pay-table">
+                <tr>
+                    <td class="label-cell">예매일</td>
+                    <td th:text="${ticket['order_date']}"></td>
+                    <td class="label-cell" style="border-left:1px solid var(--border);">예매상태</td>
+                    <td><strong th:text="${ticket['status']}"></strong></td>
+                </tr>
+                <tr>
+                    <td class="label-cell">총결제금액</td>
+                    <td colspan="3"><span class="amount" th:text="${ticket['total_price']} + '원'"></span></td>
+                </tr>
+                <tr>
+                    <td class="label-cell">결제수단</td>
+                    <td colspan="3" th:text="${ticket['pay_method']}"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section-title">예매취소 안내</div>
+        <div class="cancel-notice">
+            <div class="cancel-deadline">취소 마감시간: <span th:text="${ticket['cancel_deadline']} + ' 까지'"></span></div>
+            <div class="cancel-fee-title">&lt;취소수수료안내&gt;</div>
+            <div class="cancel-fee-desc">
+                취소 일자에 따라서 취소수수료가 발생합니다.<br>
+                <ul>
+                    <li>단, 예매 발권 전 12시 이전 취소시에는 취소수수료 없음(취소기한내에한함)</li>
+                </ul>
+            </div>
+            <button class="btn-cancel" onclick="confirmCancel()">예매 취소</button>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{fragments/footer :: footer}"></th:block>
+
+<script>
+function confirmCancel() {
+    if (confirm('정말로 예매를 취소하시겠습니까?')) {
+        alert('예매가 취소되었습니다.');
+        location.href = '/mypage/tickets';
+    }
+}
+</script>
+</body>
+</html>

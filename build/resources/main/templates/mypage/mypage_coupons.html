@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쿠폰함 - 티켓플로우</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: header}"></th:block>
+
+<div class="page-header">
+    <div class="page-header-inner">
+        <h1 class="page-title">쿠폰함</h1>
+    </div>
+</div>
+
+<div class="layout">
+    <aside>
+        <nav class="side-nav">
+            <a th:href="@{/mypage/benefits}">마이페이지 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/tickets}">티켓 예매 내역 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/wishlist}">위시리스트 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/coupons}" class="active">쿠폰함 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+            <a th:href="@{/mypage/profile}">회원정보 수정 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        <div class="coupon-header">사용 가능 쿠폰 (<span th:text="${#lists.size(user['coupons'])}">0</span>장)</div>
+
+        <th:block th:if="${user['coupons'] != null and !#lists.isEmpty(user['coupons'])}">
+            <div class="coupon-list">
+                <div class="coupon-item"
+                     th:each="coupon : ${user['coupons']}"
+                     th:classappend="${coupon['days_left'] == 0} ? ' expired'">
+                    <div class="coupon-body">
+                        <div class="coupon-type" th:text="${coupon['type']}"></div>
+                        <div class="coupon-discount">
+                            <span th:text="${coupon['discount']}"></span><span>% 할인</span>
+                        </div>
+                        <div class="coupon-expire">
+                            2026.05.01 ~ <span th:text="${coupon['expire']}"></span>
+                            <th:block th:if="${coupon['days_left'] > 0}">
+                                (<span class="days" th:text="${coupon['days_left']} + '일 남음'"></span>)
+                            </th:block>
+                            <th:block th:if="${coupon['days_left'] == 0}">
+                                (<span style="color:#E53E3E;font-weight:600;">기간 만료</span>)
+                            </th:block>
+                        </div>
+                    </div>
+                    <th:block th:if="${coupon['days_left'] > 0}">
+                        <button class="coupon-btn available">사용가능</button>
+                    </th:block>
+                    <th:block th:if="${coupon['days_left'] == 0}">
+                        <button class="coupon-btn unavailable" disabled>사용완료</button>
+                    </th:block>
+                </div>
+            </div>
+        </th:block>
+
+        <th:block th:if="${user['coupons'] == null or #lists.isEmpty(user['coupons'])}">
+            <div class="empty-state">
+                <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path d="M20 12v10H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+                    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
+                <p>사용 가능한 쿠폰이 없습니다.</p>
+            </div>
+        </th:block>
+    </main>
+</div>
+
+<th:block th:replace="~{fragments/footer :: footer}"></th:block>
+</body>
+</html>
