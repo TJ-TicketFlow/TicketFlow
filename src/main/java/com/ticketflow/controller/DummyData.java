@@ -2,7 +2,7 @@ package com.ticketflow.controller;
 
 import java.util.*;
 
-public class DummyData {
+public class   DummyData {
     public static final Map<String, Object> DUMMY_USER = new HashMap<>();
     public static final List<Map<String, Object>> DUMMY_TICKETS = new ArrayList<>();
 

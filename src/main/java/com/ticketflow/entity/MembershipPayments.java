@@ -36,6 +36,9 @@ public class MembershipPayments {
     @Column(name = "membership_history_date", nullable = false)
     private LocalDateTime membershipHistoryDate;
 
+    @Column(name = "webhook_event_id", length = 100, unique = true)
+    private String webhookEventId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "membership_id", nullable = false)
     private Membership membership;

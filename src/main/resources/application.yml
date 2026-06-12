@@ -14,10 +14,14 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
+  sql:
+    init:
+      mode: always
 
   thymeleaf:
     prefix: classpath:/templates/
@@ -49,3 +53,8 @@ logging:
   level:
     org.hibernate.SQL: debug
     com.ticketflow: debug
+
+
+lemonsqueezy:
+  api-key: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NGQ1OWNlZi1kYmI4LTRlYTUtYjE3OC1kMjU0MGZjZDY5MTkiLCJqdGkiOiI1ZGM3ZmEyNjk4YjA4N2I2YzFjMjM4YzA2YWNmZjNlNjQ4M2MyNzgxYjYzNGZhNWM4NGQ4ZDA4N2E1NTBkMjU3ZWRlNzA2YTIzY2NhMzVhNCIsImlhdCI6MTc4MDU2MzIxNi4zNjMwOCwibmJmIjoxNzgwNTYzMjE2LjM2MzA4MywiZXhwIjoxNzk2MzQyNDAwLjAyODg5NSwic3ViIjoiNzA5NDU4MiIsInNjb3BlcyI6W119.HsljbLDGFjsRwVZMYg62TAkWDllD5qd-xpF8iA5hs1k4PAOoEY_-4TaRNuTVDkia2ltM9yVmBEc54H2u6khQMkELusc0gk55DaqD3aVwXbRmRBdYBicIHoTX3aNCeYyfL6cbGWBOq8eQIA8UchEr-WkO9oWXCc5t6yFRgWviLsmv93NycOP_nPNka7tKBYxT16uTcFXWGU2zUMZ9pp11-2QqVNT-PtzxvcrMLZROlcSsC42T4KHFv27wM2nnCcixX1-LZyx7vjlnVaMNP49Gub586PeclR3cJ0ZSRPlpTwILivjhqLcwgCJgdHUl5ZzAtOXNWfAkVBC7zUy_b8aq7qVF7OVDv97BbObUPMmoVZeUfI9SjOtqiHElVZWLF4XGjsQQ-j81bz7QqkhwdNEV8ixF8DWyHyE7Vc1R5y1NyTa8KbGxasKkyOdQBcSSJMgjK9k5kS7wH__vK4p-bQImR3rP0CkC5m_fyPr4mjWod5OUJBNuJW7P3bh3I1Dmx05WeaxKUxc_G2vwkstrnMxYWMTnLETSvZCl2JmFBK69mXJgqSXVSnh-ubwe8KZXnqce3xdYXR185GZfZdB9shz00cKsaG-F8vkvfcKrSN3NiQq3WdPD92GDjwDeAevfGEqMyZqOph2sL1JJjZ4s6hhdnNtEDGs7qtbeSmmoBiSoAL8
+  store-id: "381473"

@@ -16,9 +16,8 @@ import java.util.List;
 public class Concert {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "concert_id")
-    private Long concertId;
+    @Column(name = "concert_id", length = 50, nullable = false)
+    private String concertId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hall_id", nullable = false)

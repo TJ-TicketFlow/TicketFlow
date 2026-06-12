@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,10 +14,15 @@ import java.util.Map;
 @RequestMapping("/api")
 public class PayController {
 
-    private final String LS_API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."; // 실제 환경변수나 application.yml에서 가져오는 것을 권장합니다.
-    private final String LS_STORE_ID = "374082";
+    @Value("${lemonsqueezy.api-key}")
+    private String LS_API_KEY ;
+    @Value("${lemonsqueezy.store-id}")
+    private String LS_STORE_ID;
 
-    @PostMapping("/create-checkout")
+    // ==========================================================
+    // 1. PAYMENT (결제 / 레몬스퀴지 연동)
+    // ==========================================================
+    @PostMapping("/payment/create-checkout")
     public ResponseEntity<?> createCheckout(@RequestBody Map<String, String> data,
                                             HttpSession session, HttpServletRequest request) {
 
@@ -38,7 +44,6 @@ public class PayController {
             headers.set("Accept", "application/vnd.api+json");
             headers.setBearerAuth(LS_API_KEY);
 
-            // LemonSqueezy API 요청 Payload 구성
             Map<String, Object> body = new HashMap<>();
             Map<String, Object> dataNode = new HashMap<>();
             dataNode.put("type", "checkouts");
@@ -82,4 +87,67 @@ public class PayController {
                     .body(Map.of("error", "네트워크 오류: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/payment/webhook")
+    public ResponseEntity<?> handlePaymentWebhook(){
+        return ResponseEntity.ok(Map.of("message", "webhook"));
+    }
+
+
+    @GetMapping("/payment/history")
+    public ResponseEntity<?> getPaymentHistory() {
+        return ResponseEntity.ok(Map.of("message", "결제 내역 조회"));
+    }
+
+    @PostMapping("/payment/refund")
+    public ResponseEntity<?> refundPayment() {
+        return ResponseEntity.ok(Map.of("message", "환불 처리"));
+    }
+
+    // ==========================================================
+    // 2. MEMBERSHIP (멤버십 상태 관리)
+    // ==========================================================
+    @GetMapping("/membership/status")
+    public ResponseEntity<?> getMembershipStatus(HttpSession session) {
+        return ResponseEntity.ok(Map.of("message", "내 멤버십 상태"));
+    }
+
+    @GetMapping("/membership/detail")
+    public ResponseEntity<?> getMembershipDetail() {
+        return ResponseEntity.ok(Map.of("message", "멤버십 상세 조회"));
+    }
+
+    @PostMapping("/membership/check")
+    public ResponseEntity<?> checkMembership() {
+        return ResponseEntity.ok(Map.of("message", "멤버십 유효성 체크"));
+    }
+
+    @PostMapping("/membership/cancel")
+    public ResponseEntity<?> cancelMembership() {
+        return ResponseEntity.ok(Map.of("message", "멤버십 해지"));
+    }
+
+    @PostMapping("/membership/reactivate")
+    public ResponseEntity<?> reactivateMembership() {
+        return ResponseEntity.ok(Map.of("message", "멤버십 재활성화"));
+    }
+
+    // ==========================================================
+    // 3. COUPON (쿠폰 기능)
+    // ==========================================================
+    @PostMapping("/coupon/issue")
+    public ResponseEntity<?> issueCoupon() {
+        return ResponseEntity.ok(Map.of("message", "쿠폰 발급"));
+    }
+
+    @GetMapping("/coupon/list")
+    public ResponseEntity<?> getCouponList() {
+        return ResponseEntity.ok(Map.of("message", "쿠폰 목록 조회"));
+    }
+
+    @PostMapping("/coupon/validate")
+    public ResponseEntity<?> validateCoupon() {
+        return ResponseEntity.ok(Map.of("message", "쿠폰 유효성 검증"));
+    }
 }
+
