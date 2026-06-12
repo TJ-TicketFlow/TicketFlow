@@ -56,7 +56,7 @@ body {
     height: 72px;
 }
 .nav-logo { text-decoration: none; flex-shrink: 0; display: flex; align-items: center; }
-.logo-img { height: 100px; object-fit: contain; }
+.logo-img { height: 44px; object-fit: contain; }
 
 .search-bar {
     flex: 1; max-width: 480px;
