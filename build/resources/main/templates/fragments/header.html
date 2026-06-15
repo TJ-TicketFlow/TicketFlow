@@ -62,6 +62,7 @@
     <div class="category-bar">
         <div class="category-inner">
             <a th:href="@{/concert/}" class="cat-item" th:classappend="${genre == null} ? 'active'">전체</a>
+            <a th:href="@{/ranking}" class="cat-item" th:classappend="${currentMenu == 'ranking'} ? 'active'">랭킹</a>
             <a th:href="@{/concert/?genre=jazz}" class="cat-item" th:classappend="${genre == 'jazz'} ? 'active'">재즈/팝</a>
             <a th:href="@{/concert/?genre=ballad}" class="cat-item" th:classappend="${genre == 'ballad'} ? 'active'">발라드/R&amp;B</a>
             <a th:href="@{/concert/?genre=rock}" class="cat-item" th:classappend="${genre == 'rock'} ? 'active'">록/메탈</a>
