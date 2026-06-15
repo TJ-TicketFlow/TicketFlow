@@ -16,7 +16,7 @@ import java.util.List;
 public class Concert {
 
     @Id
-    @Column(name = "concert_id", length = 50, nullable = false)
+    @Column(name = "concert_id", length = 100, nullable = false)
     private String concertId;
 
     @ManyToOne(fetch = FetchType.LAZY)
