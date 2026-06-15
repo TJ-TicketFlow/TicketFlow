@@ -15,7 +15,7 @@ import java.util.List;
 public class Hall {
 
     @Id
-    // SQL에서 직접 1번을 넣기 위해 @GeneratedValue를 제거하거나
+    // SQL에서 직접 1번을 넣기 위해 @GeneratedValue를 제거하거나 
     // 직접 할당이 가능하도록 설정해야 합니다.
     @Column(name = "hall_id")
     private Long hallId;
