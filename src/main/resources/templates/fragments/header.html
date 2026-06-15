@@ -12,7 +12,7 @@
 <body>
 <nav class="navbar">
     <div class="navbar-inner">
-        <a th:href="@{/}" class="nav-logo">
+        <a th:href="@{/concert/}" class="nav-logo">
             <img th:src="@{/images/header-logo.png}" alt="티켓플로우" class="logo-img">
         </a>
         <form th:action="@{/search}" method="get" class="search-bar" role="search">
@@ -61,13 +61,13 @@
     </div>
     <div class="category-bar">
         <div class="category-inner">
-            <a th:href="@{/}" class="cat-item" th:classappend="${genre == null} ? 'active'">전체</a>
-            <a th:href="@{/?genre=jazz}" class="cat-item" th:classappend="${genre == 'jazz'} ? 'active'">재즈/팝</a>
-            <a th:href="@{/?genre=ballad}" class="cat-item" th:classappend="${genre == 'ballad'} ? 'active'">발라드/R&amp;B</a>
-            <a th:href="@{/?genre=rock}" class="cat-item" th:classappend="${genre == 'rock'} ? 'active'">록/메탈</a>
-            <a th:href="@{/?genre=indie}" class="cat-item" th:classappend="${genre == 'indie'} ? 'active'">인디/어쿠스틱</a>
-            <a th:href="@{/?genre=hiphop}" class="cat-item" th:classappend="${genre == 'hiphop'} ? 'active'">힙합/랩</a>
-            <a th:href="@{/?genre=etc}" class="cat-item" th:classappend="${genre == 'etc'} ? 'active'">기타 대중음악</a>
+            <a th:href="@{/concert/}" class="cat-item" th:classappend="${genre == null} ? 'active'">전체</a>
+            <a th:href="@{/concert/?genre=jazz}" class="cat-item" th:classappend="${genre == 'jazz'} ? 'active'">재즈/팝</a>
+            <a th:href="@{/concert/?genre=ballad}" class="cat-item" th:classappend="${genre == 'ballad'} ? 'active'">발라드/R&amp;B</a>
+            <a th:href="@{/concert/?genre=rock}" class="cat-item" th:classappend="${genre == 'rock'} ? 'active'">록/메탈</a>
+            <a th:href="@{/concert/?genre=indie}" class="cat-item" th:classappend="${genre == 'indie'} ? 'active'">인디/어쿠스틱</a>
+            <a th:href="@{/concert/?genre=hiphop}" class="cat-item" th:classappend="${genre == 'hiphop'} ? 'active'">힙합/랩</a>
+            <a th:href="@{/concert/?genre=etc}" class="cat-item" th:classappend="${genre == 'etc'} ? 'active'">기타 대중음악</a>
         </div>
     </div>
 </nav>

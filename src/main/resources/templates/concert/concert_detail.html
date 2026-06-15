@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>공연 상세 정보 | 티켓플로우</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="container">
+    <div class="detail-top-section" style="display: flex; gap: 40px;">
+        <div class="info-left">
+            <img th:src="${concert.concertPosterUrl}" alt="포스터">
+            <div class="concert-specs">
+                <p>장소: <span th:text="${concert.hall.hallName}"></span></p>
+                <p>공연기간: <span th:text="${dateRange}"></span></p>
+                <p>공연시간: <span th:text="${concert.concertRuntime} + '분'"></span></p>
+                <p>관람연령: <span th:text="${concert.concertAgeLimit}"></span></p>
+                <p>가격: <span th:text="${concert.concertPriceInfo}"></span></p>
+
+                <div class="wish-section" style="margin-top: 20px;">
+                    <img id="wishIcon"
+                         src="/images/notfavicon.png"
+                         alt="찜하기"
+                         style="cursor:pointer; width: 40px;"
+                         th:attr="data-concert-id=${concert.concertId}"
+                         onclick="toggleWish(this.getAttribute('data-concert-id'))">
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-right">
+            <h3>관람일</h3>
+            <div id="calendar"></div>
+
+            <h3>회차</h3>
+            <div class="session-box" th:text="${concert.concertTime}">18:00</div>
+
+            <form th:action="@{/concert/seatmap}" method="get">
+                <input type="hidden" name="concertId" th:value="${concert.concertId}">
+                <button type="submit" class="btn-booking">예매하기</button>
+            </form>
+        </div>
+    </div>
+
+    <section class="stats-section" style="width: 400px; margin: 20px;">
+        <h3>예매자 성별 분포</h3>
+        <canvas id="genderDonutChart"></canvas>
+
+        <h3>연령별 예매자 수</h3>
+        <canvas id="ageBarChart"></canvas>
+    </section>
+
+    <section class="info-images">
+        <img th:src="${concert.concertInfoImages}" alt="공연 상세 안내">
+    </section>
+</main>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script th:src="@{/js/chart.js}"></script>
+
+<script>
+    // 좋아요(찜하기) 토글 함수
+    function toggleWish(concertId) {
+        const icon = document.getElementById('wishIcon');
+        const isLiked = icon.src.includes('favicon.png');
+
+        fetch(`/concert/${concertId}/like`, {
+            method: isLiked ? 'DELETE' : 'POST'
+        })
+            .then(response => {
+                if (response.ok) {
+                    icon.src = isLiked ? '/images/notfavicon.png' : '/images/favicon.png';
+                } else if (response.status === 401) {
+                    alert('로그인이 필요합니다.');
+                } else {
+                    alert('요청에 실패했습니다.');
+                }
+            });
+    }
+</script>
+
+</body>
+</html>

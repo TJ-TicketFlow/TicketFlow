@@ -23,7 +23,7 @@ public class Concert {
     @JoinColumn(name = "hall_id", nullable = false)
     private Hall hall;
 
-    @Column(name = "concert_name", length = 50, nullable = false)
+    @Column(name = "concert_name", length = 100, nullable = false)
     private String concertName;
 
     @Column(name = "concert_start_date", nullable = false)
