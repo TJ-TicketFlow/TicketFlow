@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>TicketFlow - 공연 예매</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<header th:replace="~{fragments/header :: header}"></header>
+
+<main class="main-wrap">
+    <div class="main-inner">
+        <section class="concert-section">
+            <h2 class="section-heading">진행 예정 공연</h2>
+            <div class="concert-grid">
+                <article class="concert-card" th:each="concert : ${concertList}">
+                    <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
+                        <div class="poster-wrap">
+                            <img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img">
+                        </div>
+                        <div class="concert-info">
+                            <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
+                            <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
+                            <p class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</p>
+                            <p class="concert-hall" th:text="${concert.hall.hallName}">공연장</p>
+                        </div>
+                    </a>
+                </article>
+            </div>
+        </section>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/footer :: footer}"></footer>
+
+</body>
+</html>
