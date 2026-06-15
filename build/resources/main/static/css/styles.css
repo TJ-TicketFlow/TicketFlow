@@ -1,0 +1,988 @@
+/* ═══════════════════════════════════════════════════════════
+   styles.css — TicketFlow 통합 스타일시트
+   ═══════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════
+   1. CSS Variables & Reset
+══════════════════════════════════════ */
+:root {
+    --primary:        #3B6FFF;
+    --primary-dark:   #2952D9;
+    --primary-light:  #EEF2FF;
+    --text-main:      #1A1A2E;
+    --text-sub:       #6B7280;
+    --text-muted:     #9CA3AF;
+    --border:         #E5E7EB;
+    --bg:             #F8F9FB;
+    --white:          #FFFFFF;
+    --premium:        #7C3AED;
+    --premium-light:  #F3EEFF;
+    --shadow-md:      0 4px 24px rgba(0,0,0,0.08);
+    --radius:         12px;
+    --radius-sm:      8px;
+    --success:        #10B981;
+    --error:          #EF4444;
+    --warning:        #F59E0B;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ══════════════════════════════════════
+   2. NAVBAR
+══════════════════════════════════════ */
+.navbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.navbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 0 40px;
+    height: 72px;
+}
+.nav-logo { text-decoration: none; flex-shrink: 0; display: flex; align-items: center; }
+.logo-img { height: 44px; object-fit: contain; }
+
+.search-bar {
+    flex: 1; max-width: 480px;
+    display: flex; align-items: center; gap: 10px;
+    /*background: var(--bg);*/ border: 1.5px solid var(--border);
+    border-radius: 28px; padding: 10px 20px; transition: border-color 0.2s;
+}
+.search-bar:focus-within { border-color: var(--primary); }
+.search-bar input {
+    border: none; background: none; outline: none;
+    font-size: 14px; color: var(--text-main); width: 100%; font-family: inherit;
+}
+.search-bar input::placeholder { color: var(--text-muted); }
+
+.nav-actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.nav-divider { width: 1px; height: 14px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+.nav-link {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 14px; color: var(--text-sub); text-decoration: none;
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    transition: all 0.2s; white-space: nowrap; font-weight: 500;
+}
+.nav-link:hover { background: var(--bg); color: var(--primary); }
+
+/* ══════════════════════════════════════
+   3. CATEGORY BAR
+══════════════════════════════════════ */
+.category-bar { border-top: 1px solid var(--border); background: var(--white); }
+.category-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 40px;
+    overflow-x: auto; scrollbar-width: none;
+}
+.category-inner::-webkit-scrollbar { display: none; }
+.cat-item {
+    padding: 14px 24px; font-size: 14px; font-weight: 500;
+    color: var(--text-sub); text-decoration: none; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.cat-item:hover, .cat-item.active { color: var(--primary); border-bottom-color: var(--primary); }
+.cat-sep {
+    color: var(--border); font-size: 16px;
+    user-select: none; padding: 14px 0; line-height: 1;
+}
+
+/* ══════════════════════════════════════
+   4. FOOTER
+══════════════════════════════════════ */
+.site-footer { background: var(--white); border-top: 1px solid var(--border); margin-top: auto; }
+.footer-top { max-width: 1200px; margin: 0 auto; padding: 18px 40px; border-bottom: 1px solid var(--border); }
+.footer-links-row { display: flex; align-items: center; gap: 12px; }
+.footer-links-row a { font-size: 13px; color: var(--text-sub); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+.footer-links-row a:hover { color: var(--primary); }
+.footer-sep { color: var(--border); font-size: 13px; }
+.footer-body { max-width: 1200px; margin: 0 auto; padding: 36px 40px 40px; display: flex; align-items: center; gap: 40px; }
+.footer-left { flex-shrink: 0; }
+.footer-logo-img { object-fit: contain; height: 100px; }
+.footer-info { flex: 1; font-size: 13px; color: var(--text-sub); line-height: 2; }
+.footer-info p { margin: 0; }
+.footer-cs { margin-top: 10px !important; }
+.footer-copy { color: var(--text-muted); font-size: 12px; margin-top: 4px !important; }
+.footer-right { flex-shrink: 0; margin-left: auto; }
+.social-icons { display: flex; align-items: center; gap: 12px; }
+.social-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center;
+    color: var(--text-sub); text-decoration: none; transition: all 0.2s;
+}
+.social-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* ══════════════════════════════════════
+   5. MAIN / CONCERT LIST
+══════════════════════════════════════ */
+.main-wrap { flex: 1; }
+.main-inner { max-width: 1200px; margin: 0 auto; padding: 40px; }
+.concert-section { margin-bottom: 48px; }
+.section-heading { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: var(--text-main); }
+
+.concert-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 24px;
+}
+.concert-card {
+    background: var(--white); border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border); transition: box-shadow 0.2s, transform 0.2s;
+}
+.concert-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.concert-card a { text-decoration: none; color: inherit; display: block; }
+.poster-wrap { aspect-ratio: 3/4; overflow: hidden; background: var(--bg); }
+.poster-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+.concert-card:hover .poster-img { transform: scale(1.03); }
+.concert-info { padding: 14px; }
+.concert-genre { font-size: 11px; color: var(--primary); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; }
+.concert-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; line-height: 1.4; }
+.concert-date { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+.concert-hall { font-size: 12px; color: var(--text-muted); }
+
+/* ══════════════════════════════════════
+   6. CONCERT DETAIL
+══════════════════════════════════════ */
+.detail-wrap { max-width: 1200px; margin: 0 auto; padding: 40px; }
+.detail-grid { display: grid; grid-template-columns: 280px 1fr; gap: 48px; }
+.detail-poster { width: 100%; border-radius: var(--radius); box-shadow: var(--shadow-md); }
+.detail-title { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+.detail-badge {
+    display: inline-block; font-size: 12px; padding: 4px 10px; border-radius: 20px;
+    background: var(--primary-light); color: var(--primary); font-weight: 600; margin-bottom: 16px;
+}
+.detail-meta { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; font-size: 14px; color: var(--text-sub); }
+.detail-meta span { display: flex; align-items: center; gap: 8px; }
+.detail-actions { display: flex; gap: 12px; }
+.btn-primary {
+    background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 14px 32px; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-outline {
+    background: var(--white); color: var(--text-sub); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 24px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-wishlist.active { color: var(--error); border-color: var(--error); }
+
+/* ══════════════════════════════════════
+   7. AUTH 공통 (회원가입 등)
+══════════════════════════════════════ */
+.auth-wrap {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 60px 20px;
+}
+.auth-box {
+    width: 100%;
+    max-width: 560px;
+}
+.auth-title { font-size: 24px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
+.auth-sub { font-size: 14px; color: var(--text-sub); margin-bottom: 32px; }
+
+.form-group { margin-bottom: 20px; }
+.form-group > label {
+    display: block; font-size: 14px; font-weight: 600;
+    color: var(--text-main); margin-bottom: 8px;
+}
+.form-group input, .form-group select {
+    width: 100%; padding: 12px 16px; font-size: 14px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--white); color: var(--text-main); font-family: inherit;
+    transition: border-color 0.2s; outline: none;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+.form-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.form-error { font-size: 12px; color: var(--error); margin-top: 6px; }
+
+/* 인풋 행 (아이콘 + 입력 + 버튼) */
+.input-row {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    padding: 0 14px;
+    height: 48px;
+    transition: border-color 0.2s;
+    gap: 8px;
+}
+.input-row:focus-within { border-color: var(--primary); }
+.input-row input {
+    flex: 1; min-width: 0;
+    border: none; outline: none;
+    font-size: 14px; color: var(--text-main);
+    font-family: inherit; background: transparent;
+}
+.input-row input::placeholder { color: var(--text-muted); }
+.input-row .icon { color: var(--text-muted); flex-shrink: 0; }
+
+/* suffix 버튼 (중복확인, 이메일인증, 우편번호) */
+.suffix-btn {
+    background: none;
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+}
+.suffix-btn:hover { background: var(--primary); color: var(--white); }
+.suffix-btn.verified {
+    border-color: var(--success);
+    color: var(--success);
+    cursor: default;
+}
+.suffix-btn.verified:hover { background: none; color: var(--success); }
+
+/* 눈 아이콘 버튼 */
+.pw-eye {
+    background: none; border: none; cursor: pointer;
+    padding: 0; display: flex; align-items: center;
+    color: var(--text-muted); flex-shrink: 0;
+}
+.pw-eye:hover { color: var(--text-sub); }
+
+/* 필드 상태 메시지 */
+.field-msg {
+    font-size: 12px; margin-top: 6px;
+    display: none;
+}
+.field-msg.show { display: block; }
+.field-msg.ok  { color: var(--success); }
+.field-msg.err { color: var(--error); }
+
+/* 성별 */
+.gender-row {
+    display: flex; gap: 28px; align-items: center; padding: 10px 2px;
+}
+.gender-row label {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; font-size: 14px; color: var(--text-main); font-weight: 400;
+}
+.gender-row input[type="radio"] {
+    width: 18px; height: 18px;
+    accent-color: var(--primary); cursor: pointer;
+}
+
+/* 주소 */
+.addr-input {
+    width: 100%; height: 48px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 16px; font-size: 14px;
+    font-family: inherit; color: var(--text-main);
+    outline: none; box-sizing: border-box;
+    transition: border-color 0.2s;
+    background: var(--white);
+}
+.addr-input:focus { border-color: var(--primary); }
+.addr-input[readonly] { background: var(--bg); color: var(--text-sub); }
+
+/* 전화번호 */
+.phone-row {
+    display: flex; align-items: center; gap: 8px;
+}
+.phone-fixed {
+    width: 72px; height: 48px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-main); background: var(--bg);
+    flex-shrink: 0;
+}
+.phone-input {
+    flex: 1; height: 48px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 12px;
+    text-align: center;
+    font-size: 14px; font-family: inherit;
+    outline: none; transition: border-color 0.2s;
+    min-width: 0;
+}
+.phone-input:focus { border-color: var(--primary); }
+.phone-sep { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
+
+/* 인증 타이머 */
+.verify-timer {
+    font-size: 13px; color: var(--error);
+    font-weight: 600; flex-shrink: 0;
+}
+
+/* 가입 버튼 */
+.btn-auth {
+    width: 100%; height: 52px;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s; font-family: inherit;
+}
+.btn-auth:hover { background: var(--primary-dark); }
+
+.auth-links { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-sub); }
+.auth-links a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+.divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text-muted); font-size: 13px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── 토스트 ── */
+.toast-wrap {
+    position: fixed; top: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+}
+.toast {
+    background: var(--text-main); color: var(--white);
+    font-size: 14px; font-weight: 500;
+    padding: 12px 20px; border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    opacity: 0; transform: translateY(-8px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    display: flex; align-items: center; gap: 8px;
+    white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: var(--success); }
+.toast.error   { background: var(--error); }
+.toast.info    { background: var(--primary); }
+
+/* ── 모달 ── */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 5000;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+    background: var(--white); border-radius: var(--radius);
+    padding: 32px 28px 24px; width: 380px; max-width: 92vw;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.16); position: relative;
+}
+.modal-title {
+    font-size: 17px; font-weight: 700;
+    color: var(--text-main); margin-bottom: 12px;
+}
+.modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 4px;
+    display: flex; align-items: center;
+}
+.modal-close:hover { color: var(--text-main); }
+.modal-hint {
+    font-size: 13px; color: var(--text-sub);
+    margin-bottom: 16px; line-height: 1.6;
+}
+.modal-hint.ok  { color: var(--success); }
+.modal-hint.err { color: var(--error); }
+.modal-input-row {
+    display: flex; align-items: center;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 14px; height: 48px; gap: 8px;
+    margin-bottom: 8px; transition: border-color 0.2s;
+}
+.modal-input-row:focus-within { border-color: var(--primary); }
+.modal-input-row input {
+    flex: 1; border: none; outline: none;
+    font-size: 14px; font-family: inherit;
+    color: var(--text-main); background: transparent;
+}
+.modal-input-row input::placeholder { color: var(--text-muted); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.modal-btn {
+    padding: 10px 22px; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+}
+.modal-btn-cancel {
+    background: var(--bg); border: 1.5px solid var(--border); color: var(--text-sub);
+}
+.modal-btn-cancel:hover { border-color: var(--text-sub); }
+.modal-btn-ok {
+    background: var(--primary); border: none; color: white;
+}
+.modal-btn-ok:hover { background: var(--primary-dark); }
+
+/* ══════════════════════════════════════
+   8. MYPAGE
+══════════════════════════════════════ */
+.page-header { background: var(--white); border-bottom: 1px solid var(--border); }
+.page-header-inner { max-width: 1200px; margin: 0 auto; padding: 36px 40px 0; }
+.page-title { font-size: 26px; font-weight: 700; margin-bottom: 28px; }
+
+.layout {
+    max-width: 1200px; margin: 0 auto; padding: 36px 40px;
+    display: grid; grid-template-columns: 240px 1fr; gap: 32px;
+}
+aside {
+    position: sticky;
+    top: 36px;
+    align-self: start;
+    height: fit-content;
+}
+.side-nav {
+    width: 240px; background: var(--white);
+    border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden;
+}
+.side-nav a {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; box-sizing: border-box;
+    padding: 17px 22px; font-size: 14px; font-weight: 500;
+    color: var(--text-main); text-decoration: none;
+    border-bottom: 1px solid var(--border); transition: all 0.2s;
+}
+.side-nav a:last-child { border-bottom: none; }
+.side-nav a:hover, .side-nav a.active { background: var(--primary-light); color: var(--primary); }
+.side-nav a .chevron { color: var(--text-muted); }
+.main-content { min-width: 0; width: 100%; box-sizing: border-box; }
+.section-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+
+.benefits-card, .membership-banner {
+    background: var(--white); border-radius: var(--radius); border: 1px solid var(--border);
+    padding: 28px; margin-bottom: 20px;
+}
+.user-summary { display: flex; align-items: center; gap: 16px; }
+.avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+    color: var(--primary); font-size: 22px; font-weight: 700; flex-shrink: 0;
+}
+.user-name { font-size: 18px; font-weight: 700; }
+.user-grade { font-size: 13px; color: var(--text-sub); margin-top: 2px; }
+.stats-row { display: flex; gap: 32px; margin-top: 20px; }
+.stat-item { text-align: center; }
+.stat-num { font-size: 22px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+
+/* 프로필 편집 */
+.profile-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+.profile-section-header { padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 700; }
+.profile-section-body { padding: 24px; }
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
+.field input { width: 100%; padding: 13px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; color: var(--text-main); background: var(--white); outline: none; transition: border-color 0.2s; }
+.field input:focus { border-color: var(--primary); }
+.field input::placeholder { color: var(--text-muted); }
+.field input:read-only { background: var(--bg); color: var(--text-sub); cursor: default; }
+.form-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
+.btn-withdraw { background: none; border: none; font-size: 14px; font-weight: 600; color: #EF4444; cursor: pointer; font-family: inherit; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.btn-withdraw:hover { color: #DC2626; }
+.action-right { display: flex; gap: 12px; }
+.btn-cancel { padding: 11px 28px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--white); font-size: 14px; font-weight: 600; color: var(--text-sub); cursor: pointer; font-family: inherit; transition: all 0.2s; }
+.btn-cancel:hover { border-color: var(--text-sub); color: var(--text-main); }
+.btn-save { padding: 11px 28px; border: none; border-radius: var(--radius-sm); background: var(--primary); font-size: 14px; font-weight: 700; color: white; cursor: pointer; font-family: inherit; transition: all 0.2s; box-shadow: 0 2px 8px rgba(59,111,255,0.3); }
+.btn-save:hover { background: var(--primary-dark); }
+
+/* mypage_tickets */
+.filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-btn { padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 500; cursor: pointer; background: var(--white); color: var(--text-sub); font-family: inherit; transition: all 0.2s; }
+.filter-btn.active, .filter-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.date-filter { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; flex-wrap: wrap; position: relative; }
+.date-filter label { font-size: 13px; font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+.date-sep { font-size: 13px; color: var(--text-muted); }
+.btn-date-search { padding: 8px 18px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.2s; }
+.btn-date-search:hover { background: var(--primary-dark); }
+.btn-date-reset { padding: 8px 14px; background: var(--bg); color: var(--text-sub); border: 1.5px solid var(--border); border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.ticket-table-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.ticket-table { width: 100%; border-collapse: collapse; }
+.ticket-table thead tr { background: #F3F6FF; }
+.ticket-table th { padding: 14px 16px; font-size: 13px; font-weight: 600; color: var(--text-sub); text-align: center; border-bottom: 1.5px solid var(--border); }
+.ticket-table td { padding: 18px 16px; font-size: 14px; color: var(--text-main); text-align: center; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.ticket-table tbody tr:last-child td { border-bottom: none; }
+.ticket-table tbody tr { transition: background 0.15s; cursor: pointer; }
+.ticket-table tbody tr:hover { background: #F8F9FF; }
+.ticket-table .col-name { text-align: left; font-weight: 500; }
+.ticket-status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.status-done { background: #F3F4F6; color: #6B7280; }
+.status-cancel { color: #991B1B; }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 4px; padding: 20px; }
+.page-btn { width: 32px; height: 32px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--white); color: var(--text-sub); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: all 0.2s; text-decoration: none; }
+.page-btn:hover { border-color: var(--primary); color: var(--primary); }
+.page-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+/* mypage_wishlist */
+.empty-state { padding: 80px 20px; text-align: center; }
+.btn-explore { display: inline-block; padding: 12px 24px; background: var(--primary); color: white; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
+.btn-explore:hover { background: var(--primary-dark); }
+
+/* ══════════════════════════════════════
+   MYPAGE TICKET DETAIL
+══════════════════════════════════════ */
+.detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+.booking-title-bar { padding: 16px 20px; font-size: 16px; font-weight: 700; color: var(--text-main); border-bottom: 1.5px solid var(--border); background: #F8F9FB; }
+.booking-header { display: flex; align-items: stretch; }
+.booking-poster { width: 120px; flex-shrink: 0; overflow: hidden; }
+.booking-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.booking-poster-placeholder { width: 100%; height: 100%; min-height: 160px; background: linear-gradient(135deg,#3B6FFF22,#7C3AED22); display: flex; align-items: center; justify-content: center; }
+.booking-info-table { flex: 1; border-collapse: collapse; }
+.booking-info-table td { padding: 14px 18px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.booking-info-table td:first-child { color: var(--text-sub); font-weight: 500; background: #F8F9FB; width: 130px; border-right: 1px solid var(--border); }
+.booking-info-table tr:last-child td { border-bottom: none; }
+.booking-info-table .val-highlight { color: var(--text-main); font-weight: 600; }
+.booking-info-table .label-cell { color: var(--text-sub); font-weight: 500; background: #F8F9FB; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+.pay-table { width: 100%; border-collapse: collapse; }
+.pay-table td { padding: 14px 18px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.pay-table .label-cell { color: var(--text-sub); font-weight: 500; background: #F8F9FB; width: 130px; border-right: 1px solid var(--border); }
+.pay-table tr:last-child td { border-bottom: none; }
+.amount { color: #E53E3E; font-weight: 700; font-size: 16px; }
+.cancel-notice { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
+.cancel-deadline { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.cancel-deadline span { color: #E53E3E; }
+.cancel-fee-title { font-size: 14px; font-weight: 700; color: #E53E3E; margin-bottom: 8px; }
+.cancel-fee-desc { font-size: 13px; color: var(--text-sub); line-height: 1.7; }
+.cancel-fee-desc li { margin-left: 16px; }
+.btn-cancel.red, .cancel-notice .btn-cancel { display: block; width: 100%; padding: 16px; background: #E53E3E; color: white; border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; transition: background 0.2s; margin-top: 16px; }
+.cancel-notice .btn-cancel:hover { background: #C53030; }
+
+/* ══════════════════════════════════════
+   CALENDAR / CUSTOM DATE PICKER
+══════════════════════════════════════ */
+.custom-date-wrap { position: relative; }
+.custom-date-input { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--white); cursor: pointer; font-size: 13px; color: var(--text-main); transition: border-color 0.2s; user-select: none; }
+.custom-date-input:hover, .custom-date-input.open { border-color: var(--primary); }
+.date-text { font-weight: 500; }
+.calendar-popup { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 200; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.12); min-width: 280px; }
+.calendar-popup.show { display: block; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+.cal-month-label { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.cal-nav { display: flex; gap: 4px; }
+.cal-nav button { background: none; border: 1px solid var(--border); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--text-sub); }
+.cal-nav button:hover { border-color: var(--primary); color: var(--primary); }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; padding: 10px 12px; }
+.cal-day-label { text-align: center; font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 4px 0; }
+.cal-day-label.sun { color: #EF4444; }
+.cal-day-label.sat { color: var(--primary); }
+.cal-cell { display: flex; justify-content: center; }
+.cal-cell button { width: 32px; height: 32px; border: none; border-radius: 50%; background: none; font-size: 13px; cursor: pointer; color: var(--text-main); transition: all 0.15s; font-family: inherit; }
+.cal-cell button:hover:not(:disabled) { background: var(--primary-light); color: var(--primary); }
+.cal-cell button.selected { background: var(--primary); color: white; font-weight: 700; }
+.cal-cell button.today { border: 1.5px solid var(--primary); color: var(--primary); font-weight: 600; }
+.cal-cell button.other-month { color: var(--text-muted); }
+.cal-cell button:disabled { cursor: default; }
+.cal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid var(--border); }
+.cal-cancel { padding: 7px 16px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--text-sub); }
+.cal-ok { padding: 7px 16px; background: var(--primary); border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; color: white; }
+.cal-ok:hover { background: var(--primary-dark); }
+
+/* ══════════════════════════════════════
+   MYPAGE BENEFITS / MEMBERSHIP
+══════════════════════════════════════ */
+.mypage-hero { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 28px 36px; margin-bottom: 20px; display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.hero-greeting { font-size: 15px; font-weight: 700; line-height: 1.7; min-width: 110px; }
+.hero-divider { width: 1px; background: var(--border); height: 60px; flex-shrink: 0; margin: 0 36px; }
+.hero-stat { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.hero-stat-label { font-size: 13px; color: var(--text-sub); font-weight: 500; }
+.grade-block { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.membership-icon { width: 52px; height: 52px; object-fit: contain; }
+.grade-name { font-size: 14px; font-weight: 700; }
+.grade-name.premium { color: var(--premium); }
+.grade-name.basic   { color: var(--primary); }
+.grade-name.none    { color: var(--text-muted); }
+.btn-mem-link { display: inline-flex; align-items: center; gap: 3px; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-decoration: none; transition: all 0.2s; white-space: nowrap; background: var(--primary); color: white; border: none; box-shadow: 0 2px 8px rgba(59,111,255,0.3); }
+.btn-mem-link:hover { background: var(--primary-dark); }
+.coupon-count { font-size: 26px; font-weight: 700; color: var(--text-main); }
+.coupon-count span { font-size: 15px; font-weight: 500; color: var(--text-sub); margin-left: 2px; }
+.period-text { font-size: 13px; font-weight: 600; color: var(--text-main); line-height: 1.8; text-align: center; }
+.quick-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px; }
+.quick-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; text-align: center; text-decoration: none; color: var(--text-main); transition: all 0.2s; }
+.quick-card:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(59,111,255,0.1); transform: translateY(-2px); }
+.quick-card .q-num { font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.quick-card .q-label { font-size: 13px; color: var(--text-sub); }
+.recent-tickets { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.recent-ticket-table { width: 100%; border-collapse: collapse; }
+.recent-ticket-table th { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-sub); text-align: center; border-bottom: 1.5px solid var(--border); background: #F8F9FB; }
+.recent-ticket-table td { padding: 15px 16px; font-size: 13px; color: var(--text-main); text-align: center; border-bottom: 1px solid var(--border); }
+.recent-ticket-table tbody tr:last-child td { border-bottom: none; }
+.recent-ticket-table tbody tr { cursor: pointer; transition: background 0.15s; }
+.recent-ticket-table tbody tr:hover { background: #F8F9FF; }
+.rt-name { text-align: left; font-weight: 500; }
+.rt-status { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.status-booked { color: #065F46; }
+.status-pending { color: #92400E; }
+.see-all { display: block; text-align: center; padding: 14px; font-size: 13px; color: var(--primary); font-weight: 600; text-decoration: none; border-top: 1px solid var(--border); background: var(--bg); transition: background 0.2s; }
+.see-all:hover { background: var(--primary-light); }
+
+/* mypage_coupons */
+.coupon-header { font-size: 15px; font-weight: 600; color: var(--text-sub); margin-bottom: 16px; }
+.coupon-header span { color: var(--primary); }
+.coupon-list { display: flex; flex-direction: column; gap: 12px; }
+.coupon-item { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius); display: flex; align-items: stretch; overflow: hidden; transition: box-shadow 0.2s; }
+.coupon-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.coupon-item.expired { opacity: 0.55; }
+.coupon-body { flex: 1; padding: 20px 24px; }
+.coupon-type { font-size: 13px; color: var(--text-sub); margin-bottom: 6px; }
+.coupon-discount { font-size: 32px; font-weight: 700; color: var(--text-main); line-height: 1; }
+.coupon-discount span { font-size: 20px; }
+.coupon-expire { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+.coupon-expire .days { color: var(--primary); font-weight: 600; }
+.coupon-btn { border: none; padding: 0 28px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.2s; min-width: 100px; }
+.coupon-btn.available { background: var(--primary); color: white; }
+.coupon-btn.available:hover { background: var(--primary-dark); }
+.coupon-btn.unavailable { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
+
+/* mypage_membership */
+.membership-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.membership-single { display: flex; justify-content: center; }
+.membership-single .mem-card { max-width: 420px; width: 100%; }
+.mem-card { background: var(--white); border-radius: var(--radius); border: 2px solid var(--border); padding: 32px 28px; text-align: center; transition: all 0.2s; }
+.mem-card.basic   { border-color: #3B6FFF; }
+.mem-card.premium { border-color: #7C3AED; }
+.mem-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 16px; }
+.mem-badge.basic-badge   { background: var(--primary-light); color: var(--primary); }
+.mem-badge.premium-badge { background: var(--premium-light); color: var(--premium); }
+.mem-name  { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.mem-price { font-size: 14px; color: var(--text-sub); margin-bottom: 20px; }
+.mem-highlight { font-size: 13px; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 24px; }
+.mem-highlight.premium-hl { color: var(--premium); background: var(--premium-light); }
+.coupon-visual { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.coupon-chip { background: var(--bg); border: 2px dashed #D1D5DB; border-radius: 10px; padding: 14px 24px; font-size: 20px; font-weight: 700; color: #9CA3AF; min-width: 100px; }
+.coupon-chip.active        { color: var(--primary);  border-color: var(--primary);  background: var(--primary-light); }
+.coupon-chip.premium-chip  { color: var(--premium);  border-color: var(--premium);  background: var(--premium-light); }
+.coupon-chip-label { font-size: 12px; color: var(--text-muted); }
+.basic-discount { font-size: 28px; font-weight: 700; color: var(--primary); margin: 8px 0 4px; }
+.basic-disc-label { font-size: 13px; color: var(--text-sub); }
+.btn-join { width: 100%; margin-top: 24px; padding: 13px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+.btn-join-basic   { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(59,111,255,0.3); }
+.btn-join-basic:hover   { background: var(--primary-dark); }
+.btn-join-premium { background: var(--premium); color: white; box-shadow: 0 2px 8px rgba(124,58,237,0.3); }
+.btn-join-premium:hover { background: #6D28D9; }
+.btn-current { background: var(--bg); color: var(--text-muted); border: 1.5px solid var(--border); cursor: default; }
+.btn-join-cancel { background: white; color: #EF4444; border: 1.5px solid #EF4444; }
+.btn-join-cancel:hover { background: #FEF2F2; }
+
+/* ══════════════════════════════════════
+   결제 / 좌석 관련
+══════════════════════════════════════ */
+.result-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px; max-width: 520px; margin: 0 auto; }
+.result-icon { text-align: center; margin-bottom: 20px; }
+.result-title { font-size: 22px; font-weight: 800; color: var(--text-main); text-align: center; margin-bottom: 8px; }
+.result-sub { font-size: 14px; color: var(--text-sub); text-align: center; margin-bottom: 28px; }
+.result-info { background: var(--bg); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 24px; }
+.result-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.result-row:last-child { border-bottom: none; }
+.result-label { font-size: 14px; color: var(--text-sub); }
+.result-value { font-size: 16px; font-weight: 700; color: var(--primary); }
+.back-link-wrap { text-align: center; margin-top: 20px; }
+.back-link-wrap a { font-size: 13px; color: var(--text-sub); text-decoration: none; }
+.back-link-wrap a:hover { color: var(--primary); }
+.profile-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px 40px; width: 100%; box-sizing: border-box; }
+.section-label { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.field-label { display: block; font-size: 14px; font-weight: 600; color: #222; margin-bottom: 8px; }
+
+/* ══════════════════════════════════════
+   9. LOGIN / FIND-ID / FIND-PASSWORD
+   (이 섹션이 기존 CSS에 없어서 로그인 페이지가 깨졌던 원인)
+══════════════════════════════════════ */
+
+/* 로그인·아이디찾기·비밀번호찾기 공통 래퍼 */
+.content-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+ /*   background: var(--bg);*/
+}
+
+/* 카드 박스 */
+.card {
+  /*  background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+    border: 1px solid var(--border);
+    padding: 52px 44px 40px;*/
+    width: 100%;
+    max-width: 440px;
+}
+
+/* 카드 내부 로고 */
+.card .logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 36px;
+}
+.card .logo img {
+    width: 150px;
+    object-fit: contain;
+}
+
+/* 카드 내부 h1 (find_id, find_password용) */
+.card h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+/* 설명 문구 (find_id, find_password용) */
+.card .desc {
+    font-size: 14px;
+    color: var(--text-sub);
+    line-height: 1.7;
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+/* 플래시 메시지 (에러 / 성공 공통) */
+.flash-msg {
+    background: #FEE2E2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    text-align: center;
+    line-height: 1.5;
+}
+.flash-msg.flash-success {
+    background: #ECFDF5;
+    border-color: #A7F3D0;
+    color: #065F46;
+}
+
+/* 로그인 입력 묶음 — 아이콘+입력 하나의 테두리 박스 */
+.input-group {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+}
+.input-group:focus-within {
+    border-color: var(--primary);
+}
+
+/* input-group 내부 row — 기존 .input-row override */
+.input-group .input-row {
+    border: none;
+    border-radius: 0;
+  /*  background: transparent;*/
+    height: 52px;
+    padding: 0 18px;
+    gap: 12px;
+}
+.input-group .input-row + .input-row {
+    border-top: 1px solid var(--border);
+}
+.input-group .input-row:focus-within {
+    border-color: transparent; /* 부모 input-group이 처리 */
+}
+.input-group .input-row input {
+    font-size: 15px;
+}
+.input-group .input-row svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.input-group .input-row button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+.input-group .input-row button:hover {
+    color: var(--text-sub);
+}
+
+/* 로그인 상태 유지 체크박스 */
+.remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    user-select: none;
+}
+.remember input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.remember span {
+    font-size: 13px;
+    color: var(--text-sub);
+}
+
+/* 로그인 버튼 */
+.btn-login {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    box-shadow: 0 2px 12px rgba(59,111,255,0.3);
+}
+.btn-login:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(59,111,255,0.35);
+}
+
+/* 아이디찾기 | 비밀번호찾기 | 회원가입 링크 */
+.links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    margin-top: 20px;
+}
+.links a {
+    font-size: 13px;
+    color: var(--text-sub);
+    text-decoration: none;
+    padding: 0 12px;
+    transition: color 0.2s;
+    line-height: 1;
+}
+.links a:hover { color: var(--primary); }
+/* .links .divider — divider는 전역 flex 정의가 있으므로 links 안에서 override */
+.links .divider {
+    display: inline;
+    color: var(--border);
+    font-size: 13px;
+    margin: 0;
+    padding: 0;
+    line-height: 1.8;
+    flex: none;
+}
+.links .divider::before,
+.links .divider::after {
+    display: none;
+}
+
+/* find_id / find_password - 카드 내 입력 필드 */
+.card .field {
+    margin-bottom: 14px;
+}
+.card .field input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--white);
+    box-sizing: border-box;
+}
+.card .field input:focus { border-color: var(--primary); }
+.card .field input::placeholder { color: var(--text-muted); }
+
+/* find_id / find_password - 제출 버튼 */
+.card .btn,
+.card .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+    text-align: center;
+    text-decoration: none;
+    margin-top: 4px;
+    box-sizing: border-box;
+}
+.card .btn:hover,
+.card .btn-primary:hover { background: var(--primary-dark); }
+
+/* 인증 타이머 행 */
+.timer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding: 0 2px;
+}
+.timer {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--error);
+    font-variant-numeric: tabular-nums;
+}
+.resend {
+    font-size: 13px;
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+.resend:hover { opacity: 0.75; text-decoration: underline; }
+
+/* 아이디 찾기 결과 박스 */
+.result-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius-sm);
+    padding: 18px 20px;
+    margin-bottom: 24px;
+}
+/* result-label / result-value 는 위의 결제 섹션에 이미 정의되어 있으나
+   find_id 결과 화면에서도 동일 클래스 사용하므로 충돌 없음 */
+
+/* 돌아가기 링크 (.back-link — mypage에서도 사용) */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-sub);
+    text-decoration: none;
+    margin-bottom: 24px;
+    transition: color 0.2s;
+}
+.back-link:hover { color: var(--primary); }
