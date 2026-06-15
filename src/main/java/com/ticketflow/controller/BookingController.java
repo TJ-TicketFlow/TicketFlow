@@ -61,8 +61,8 @@ public class BookingController {
         return "VIP";
     }
 
-    // 3. 쿠폰 목록 가져오기 (이름 변경: checkcoupon -> coupons)
-    @GetMapping("/coupons")
+    // 3. 쿠폰 목록 가져오기
+    @GetMapping("/checkcoupons")
     @ResponseBody
     public List<Map<String, Object>> getCoupons() {
         // TODO: DB에서 유저의 쿠폰 목록과 할인율을 가져와서 던져줍니다.

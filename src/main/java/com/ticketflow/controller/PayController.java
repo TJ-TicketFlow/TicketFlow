@@ -88,10 +88,7 @@ public class PayController {
         }
     }
 
-    @PostMapping("/payment/webhook")
-    public ResponseEntity<?> handlePaymentWebhook(){
-        return ResponseEntity.ok(Map.of("message", "webhook"));
-    }
+
 
 
     @GetMapping("/payment/history")
