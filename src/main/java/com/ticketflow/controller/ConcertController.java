@@ -33,7 +33,7 @@ public class ConcertController {
      * 메인 페이지 이동
      * GET /concert/main
      */
-    @GetMapping("/main")
+    @GetMapping("/")
     public String mainPage() {
         // src/main/resources/templates/concert/mainpage.html 화면을 열어줍니다.
         return "concert/mainpage";
