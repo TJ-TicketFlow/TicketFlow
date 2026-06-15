@@ -36,6 +36,9 @@ public class Pay {
     @Column(name = "pay_name", length = 255, nullable = false)
     private String payName;
 
+    @Column(name = "pay_amount")
+    private Long payAmount;
+
     @Column(name = "pay_method", length = 50)
     private String payMethod;
 
