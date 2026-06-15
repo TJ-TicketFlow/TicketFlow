@@ -17,7 +17,7 @@
             <div class="concert-specs">
                 <p>장소: <span th:text="${concert.hall.hallName}"></span></p>
                 <p>공연기간: <span th:text="${dateRange}"></span></p>
-                <p>공연시간: <span th:text="${concert.concertRuntime} + '분'"></span></p>
+                <p>공연시간: <span th:text="${concert.concertRuntime}"></span></p>
                 <p>관람연령: <span th:text="${concert.concertAgeLimit}"></span></p>
                 <p>가격: <span th:text="${concert.concertPriceInfo}"></span></p>
 
