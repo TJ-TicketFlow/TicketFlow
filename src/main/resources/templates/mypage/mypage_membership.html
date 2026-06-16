@@ -1,32 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>멤버십 혜택 - 티켓플로우</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
-</head>
 <body>
-<th:block th:replace="~{fragments/header :: header}"></th:block>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 혜택 - 티켓플로우', '멤버십 혜택', 'benefits', ~{::content})}">
+    <th:block th:fragment="content">
 
-<div class="page-header">
-    <div class="page-header-inner">
-        <h1 class="page-title">멤버십 혜택</h1>
-    </div>
-</div>
-
-<div class="layout">
-    <aside>
-        <nav class="side-nav">
-            <a th:href="@{/mypage/benefits}" class="active">마이페이지 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/tickets}">티켓 예매 내역 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/wishlist}">위시리스트 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/coupons}">쿠폰함 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/profile}">회원정보 수정 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-        </nav>
-    </aside>
-    <main class="main-content">
         <a th:href="@{/mypage/benefits}" class="back-link">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
             마이페이지로 돌아가기
@@ -118,17 +95,16 @@
                 </div>
             </div>
         </th:block>
-    </main>
-</div>
 
-<th:block th:replace="~{fragments/footer :: footer}"></th:block>
+    </th:block>
+</th:block>
 
 <script>
-function confirmCancel(type) {
-    if (confirm(type + ' 멤버십을 해지하시겠습니까?')) {
-        window.location.href = '/mypage/membership/cancel';
+    function confirmCancel(type) {
+        if (confirm(type + ' 멤버십을 해지하시겠습니까?')) {
+            window.location.href = '/mypage/membership/cancel';
+        }
     }
-}
 </script>
 </body>
 </html>
