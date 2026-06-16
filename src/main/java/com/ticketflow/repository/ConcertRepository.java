@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface ConcertRepository extends JpaRepository<Concert, String> {
+public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall ORDER BY c.concertStartDate ASC")
     List<Concert> findAll();

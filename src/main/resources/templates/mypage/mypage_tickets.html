@@ -1,32 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>티켓 예매 내역 - 티켓플로우</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
-</head>
 <body>
-<th:block th:replace="~{fragments/header :: header}"></th:block>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('티켓 예매 내역 - 티켓플로우', '티켓 예매 내역', 'tickets', ~{::content})}">
+    <th:block th:fragment="content">
 
-<div class="page-header">
-    <div class="page-header-inner">
-        <h1 class="page-title">티켓 예매 내역</h1>
-    </div>
-</div>
-
-<div class="layout">
-    <aside>
-        <nav class="side-nav">
-            <a th:href="@{/mypage/benefits}">마이페이지 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/tickets}" class="active">티켓 예매 내역 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/wishlist}">위시리스트 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/coupons}">쿠폰함 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/profile}">회원정보 수정 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-        </nav>
-    </aside>
-    <main class="main-content">
         <div class="filter-row">
             <button class="filter-btn active" onclick="setFilter(this,'전체')">전체</button>
             <button class="filter-btn" onclick="setFilter(this,'예매완료')">예매완료</button>
@@ -106,10 +83,9 @@
                 <a class="page-btn" href="#">&gt;</a>
             </div>
         </div>
-    </main>
-</div>
 
-<th:block th:replace="~{fragments/footer :: footer}"></th:block>
+    </th:block>
+</th:block>
 
 <script>
     const state = { from:{year:2026,month:0,selected:'2026-01-01'}, to:{year:2026,month:11,selected:'2026-12-31'} };
