@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>회원가입 - 티켓플로우</title>
+    <!-- CSRF 메타태그 추가 -->
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
@@ -253,6 +256,12 @@
 
 <script>
     /* ══════════════════════════════════════
+       CSRF 토큰 (fetch POST 요청에 사용)
+    ══════════════════════════════════════ */
+    var csrfToken  = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    var csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+    /* ══════════════════════════════════════
        상태 변수
     ══════════════════════════════════════ */
     var idChecked     = false;
@@ -381,7 +390,11 @@
         btn.disabled = true;
         btn.textContent = '발송 중...';
 
-        fetch('/register/send-code?email=' + encodeURIComponent(email), { method: 'POST' })
+        // CSRF 헤더 추가
+        fetch('/register/send-code?email=' + encodeURIComponent(email), {
+            method: 'POST',
+            headers: { [csrfHeader]: csrfToken }
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 btn.disabled = false;
@@ -411,7 +424,11 @@
         var email = document.getElementById('email').value.trim();
         if (!email) { closeModal('emailVerifyModal'); return; }
 
-        fetch('/register/send-code?email=' + encodeURIComponent(email), { method: 'POST' })
+        // CSRF 헤더 추가
+        fetch('/register/send-code?email=' + encodeURIComponent(email), {
+            method: 'POST',
+            headers: { [csrfHeader]: csrfToken }
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 var vMsg = document.getElementById('verifyMsg');
@@ -467,8 +484,12 @@
             return;
         }
 
+        // CSRF 헤더 추가
         fetch('/register/verify-code?email=' + encodeURIComponent(email) +
-            '&code=' + encodeURIComponent(input), { method: 'POST' })
+            '&code=' + encodeURIComponent(input), {
+            method: 'POST',
+            headers: { [csrfHeader]: csrfToken }
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
