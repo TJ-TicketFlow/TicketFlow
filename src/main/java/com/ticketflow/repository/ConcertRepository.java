@@ -13,8 +13,9 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall ORDER BY c.concertStartDate ASC")
     List<Concert> findAll();
 
+    // 파라미터 타입을 String으로 수정 (제네릭 타입과 일치)
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertId = :id")
-    Optional<Concert> findById(@Param("id") Long id);
+    Optional<Concert> findById(@Param("id") String id);
 
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertGenre = :genre")
     List<Concert> findByConcertGenre(@Param("genre") String genre);
