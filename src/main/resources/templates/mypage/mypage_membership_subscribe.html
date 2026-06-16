@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 결제 안내 - 티켓플로우', '결제 안내', 'benefits', ~{::content})}">
+    <th:block th:fragment="content">
+
+        <style>
+            .subscribe-back-link {
+                color: #667085;
+                text-decoration: none;
+                font-size: 14px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                margin-bottom: 24px;
+            }
+            .subscribe-back-link:hover { color: #344054; }
+
+            .checkout-box {
+                max-width: 520px;
+                margin: 0 auto;
+                padding: 32px;
+                border: 1px solid #E4E7EC;
+                border-radius: 12px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+                font-family: sans-serif;
+            }
+            .checkout-box h2 {
+                margin: 0 0 8px 0;
+                font-size: 22px;
+                color: #1D2939;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .checkout-box .subtitle { color: #667085; font-size: 14px; margin: 0 0 24px 0; }
+
+            .info-card {
+                background-color: #F9FAFB;
+                padding: 18px;
+                border-radius: 8px;
+                border: 1px solid #EAECF0;
+                margin-bottom: 24px;
+            }
+            .info-card p { margin: 0; font-size: 15px; color: #344054; }
+            .info-card p:first-child { margin-bottom: 8px; }
+
+            .checkout-box h4 { margin: 0 0 8px 0; font-size: 15px; color: #1D2939; }
+            .checkout-box .notice-text { font-size: 14px; color: #475467; line-height: 1.6; margin: 0 0 24px 0; }
+            .checkout-box .email-highlight { color: var(--premium, #7C3AED); font-weight: bold; }
+
+            .checkout-box .terms-list {
+                padding-left: 20px;
+                color: #475467;
+                font-size: 14px;
+                line-height: 1.8;
+                margin: 0 0 32px 0;
+            }
+
+            /* 요청하신 프리미엄 전용 입체 버튼 디자인 */
+            .btn-join-premium {
+                width: 100%;
+                padding: 14px;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background-color 0.2s, box-shadow 0.2s;
+                background: var(--premium, #7C3AED);
+                color: white;
+                box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+            }
+            .btn-join-premium:hover { background: #6D28D9; }
+        </style>
+
+        <a th:href="@{/mypage/membership}" class="subscribe-back-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6"/>
+            </svg>
+            멤버십 혜택으로 돌아가기
+        </a>
+
+        <div class="checkout-box">
+            <h2>💳 Premium 멤버십 결제 안내</h2>
+            <p class="subtitle">선택하신 플랜의 결제 정보와 유의사항을 확인해주세요.</p>
+
+            <div class="info-card">
+                <p><strong>선택 플랜:</strong> Premium 멤버십</p>
+                <p><strong>결제 금액:</strong> 월 19,900원 (정기구독)</p>
+            </div>
+
+            <h4>✉️ 안내 메시지</h4>
+            <p class="notice-text">
+                회원가입 시 등록하신 이메일(<strong class="email-highlight" th:text="${user.userEmail}">user@email.com</strong>)로
+                레몬스퀴지(Lemon Squeezy) 정기 결제 영수증 및 구독 관리 링크가 안전하게 발송됩니다.
+            </p>
+
+            <h4>⚠️ 결제 유의사항</h4>
+            <ul class="terms-list">
+                <li>본 상품은 매월 자동 갱신 및 결제되는 <strong>정기구독 상품</strong>입니다.</li>
+                <li>이용 기간 중 언제든지 마이페이지에서 자유롭게 해지하실 수 있습니다.</li>
+                <li>결제 후 7일 이내에 서비스 사용 이력이 없는 경우에만 환불이 가능합니다.</li>
+            </ul>
+
+            <button th:data-email="${user.userEmail}"
+                    th:data-variant="'374082'"
+                    onclick="goToLemonSqueezy(this.getAttribute('data-email'), this.getAttribute('data-variant'))"
+                    class="btn-join-premium">
+                안내 사항을 확인했으며, 구독 시작하기 →
+            </button>
+        </div>
+
+        <script>
+            function goToLemonSqueezy(userEmail, variantId) {
+                if (!userEmail) {
+                    alert("이메일 정보를 확인할 수 없습니다.");
+                    return;
+                }
+                const requestData = { email: userEmail, variantId: variantId };
+
+                // 이미 구현되어 있는 PayController의 /api/create-checkout API 호출
+                fetch('/api/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw new Error(err.error || '결제창 생성 실패'); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 레몬스퀴지 결제창 주소로 전환
+                        if (data.url) { window.location.href = data.url; }
+                        else { alert('결제 URL을 받아오지 못했습니다.'); }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("결제 요청 실패: " + error.message);
+                    });
+            }
+        </script>
+
+    </th:block>
+</th:block>
+</body>
+</html>
