@@ -4,82 +4,13 @@
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 결제 안내 - 티켓플로우', '결제 안내', 'benefits', ~{::content})}">
     <th:block th:fragment="content">
 
-        <style>
-            .subscribe-back-link {
-                color: #667085;
-                text-decoration: none;
-                font-size: 14px;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                margin-bottom: 24px;
-            }
-            .subscribe-back-link:hover { color: #344054; }
-
-            .checkout-box {
-                max-width: 520px;
-                margin: 0 auto;
-                padding: 32px;
-                border: 1px solid #E4E7EC;
-                border-radius: 12px;
-                background-color: #ffffff;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-                font-family: sans-serif;
-            }
-            .checkout-box h2 {
-                margin: 0 0 8px 0;
-                font-size: 22px;
-                color: #1D2939;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .checkout-box .subtitle { color: #667085; font-size: 14px; margin: 0 0 24px 0; }
-
-            .info-card {
-                background-color: #F9FAFB;
-                padding: 18px;
-                border-radius: 8px;
-                border: 1px solid #EAECF0;
-                margin-bottom: 24px;
-            }
-            .info-card p { margin: 0; font-size: 15px; color: #344054; }
-            .info-card p:first-child { margin-bottom: 8px; }
-
-            .checkout-box h4 { margin: 0 0 8px 0; font-size: 15px; color: #1D2939; }
-            .checkout-box .notice-text { font-size: 14px; color: #475467; line-height: 1.6; margin: 0 0 24px 0; }
-            .checkout-box .email-highlight { color: var(--premium, #7C3AED); font-weight: bold; }
-
-            .checkout-box .terms-list {
-                padding-left: 20px;
-                color: #475467;
-                font-size: 14px;
-                line-height: 1.8;
-                margin: 0 0 32px 0;
-            }
-
-            /* 요청하신 프리미엄 전용 입체 버튼 디자인 */
-            .btn-join-premium {
-                width: 100%;
-                padding: 14px;
-                border: none;
-                border-radius: 8px;
-                font-weight: bold;
-                font-size: 16px;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                background: var(--premium, #7C3AED);
-                color: white;
-                box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
-            }
-            .btn-join-premium:hover { background: #6D28D9; }
-        </style>
+        <link th:href="@{/css/membership/membership.css}" rel="stylesheet" />
 
         <a th:href="@{/mypage/membership}" class="subscribe-back-link">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="m15 18-6-6 6-6"/>
             </svg>
-            멤버십 혜택으로 돌아가기
+            멤버십 혜택 소개로 돌아가기
         </a>
 
         <div class="checkout-box">
@@ -112,15 +43,29 @@
             </button>
         </div>
 
-        <script>
+        <div id="ls-overlay" class="ls-overlay" onclick="closeModal()">
+            <div class="ls-modal" onclick="event.stopPropagation()">
+                <div class="ls-modal-header">
+                    <span class="ls-modal-title" id="ls-modal-title">Premium 멤버십 - 19,900원/월</span>
+                    <button class="ls-modal-close" onclick="closeModal()" title="닫기">×</button>
+                </div>
+                <div id="iframe-target" class="ls-iframe-wrap">
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
             function goToLemonSqueezy(userEmail, variantId) {
                 if (!userEmail) {
                     alert("이메일 정보를 확인할 수 없습니다.");
                     return;
                 }
-                const requestData = { email: userEmail, variantId: variantId };
 
-                // 이미 구현되어 있는 PayController의 /api/create-checkout API 호출
+                const requestData = {
+                    email: userEmail,
+                    variantId: variantId
+                };
+
                 fetch('/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -133,14 +78,32 @@
                         return response.json();
                     })
                     .then(data => {
-                        // 레몬스퀴지 결제창 주소로 전환
-                        if (data.url) { window.location.href = data.url; }
-                        else { alert('결제 URL을 받아오지 못했습니다.'); }
+                        if (data.url) {
+                            const iframeTarget = document.getElementById('iframe-target');
+                            const lsOverlay = document.getElementById('ls-overlay');
+
+                            if (iframeTarget && lsOverlay) {
+                                iframeTarget.innerHTML = `<iframe class="ls-iframe" src="${data.url}" allow="payment"></iframe>`;
+                                lsOverlay.classList.add('open');
+                                document.body.style.overflow = 'hidden';
+                            } else {
+                                console.error("오류: 화면에서 'iframe-target' 또는 'ls-overlay' 태그를 찾을 수 없습니다.");
+                                window.location.href = data.url;
+                            }
+                        } else {
+                            alert('결제 URL을 받아오지 못했습니다.');
+                        }
                     })
                     .catch(error => {
                         console.error('Error:', error);
                         alert("결제 요청 실패: " + error.message);
                     });
+            }
+
+            function closeModal() {
+                document.getElementById('ls-overlay').classList.remove('open');
+                document.getElementById('iframe-target').innerHTML = '';
+                document.body.style.overflow = '';
             }
         </script>
 

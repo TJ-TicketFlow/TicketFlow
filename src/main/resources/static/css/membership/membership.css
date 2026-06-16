@@ -1,5 +1,5 @@
 /* ==========================================================================
-   구독 안내 페이지 전용 서브 스타일 클래스 (membership.css 맨 밑에 추가)
+   구독 안내 페이지 전용 서브 스타일 클래스
    ========================================================================== */
 
 .subscribe-back-link {
@@ -102,4 +102,73 @@
 
 .btn-join-premium:hover {
     background: #6D28D9;
+}
+
+/* ===================================================
+   레몬스퀴지 모달
+   =================================================== */
+.ls-overlay {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+}
+.ls-overlay.open {
+    display: flex;
+}
+
+.ls-modal {
+    width: 95%;
+    max-width: 900px;
+    height: 85vh;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ls-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #EAECF0;
+    background-color: #ffffff;
+}
+.ls-modal-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1D2939;
+}
+.ls-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #667085;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+.ls-modal-close:hover { color: #1D2939; }
+
+.ls-iframe-wrap {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.ls-iframe-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
 }
