@@ -1,105 +1,266 @@
-const layout = [
+// ==========================
+// 공연 ID 가져오기
+// ==========================
 
-    // 1
-    ['A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A'],
+const seatContainer =
+    document.getElementById("seat-container");
 
-    // 2
-    ['A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
 
-    // 3
-    ['A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
+const concertId =
+    seatContainer.dataset.concertId;
 
-    // 4
-    ['A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
 
-    // 5
-    ['A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
 
-    // 6
-    ['A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
+// ==========================
+// 공연별 좌석 배치 선택
+// ==========================
 
-    // 7
-    ['N','N','A','A','A','A','A','A','N','A','A','A','A','A','A','N','N'],
+let seatLayout;
 
-    // 8
-    ['N','N','A','A','A','A','A','A','N','A','A','A','A','A','A','N','N'],
 
-    // 9
-    ['N','N','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
 
-    // 10
-    ['N','N','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
+switch(concertId){
 
-    // 11
-    ['N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
 
-    // 12
-    ['N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
 
-    // 13
-    ['N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N']
+    // ======================
+    // 공연장 1
+    // ======================
 
-];
+    case "1":
 
-const seatMap = document.getElementById("seatMap");
 
-layout.forEach((row,rowIndex)=>{
+        seatLayout = [
 
-    const rowDiv = document.createElement("div");
-    rowDiv.classList.add("row");
 
-    row.forEach((type,colIndex)=>{
+            // 앞쪽
+            [
+                "N","N","N","N","N","N","N","N",
+                "A","A","A","A","A","A",
+                "N","N"
+            ],
 
-        if(type==="N"){
-            const empty = document.createElement("div");
-            empty.className="empty";
-            rowDiv.appendChild(empty);
-            return;
-        }
 
-        const seat = document.createElement("div");
-        seat.className="seat";
+            [
+                "A","A","A","N",
+                "N","A","A",
+                "N",
+                "A","A","A","N",
+                "A","A"
+            ],
 
-        seat.dataset.seatNo =
-            `${rowIndex+1}-${colIndex+1}`;
 
-        seat.title = seat.dataset.seatNo;
 
-        // 여기 부분 교체
-        seat.addEventListener("click", () => {
+            // 중앙
+            [
+                "A","A","A","A","A",
+                "A","A","A","A","A",
+                "A","A","A","A"
+            ],
 
-            const isSelected =
-                seat.classList.contains("selected");
 
-            const selectedCount =
-                document.querySelectorAll(".seat.selected").length;
+            [
+                "A","A","A","A","A",
+                "A","A","A","A","A",
+                "A","A","A","A"
+            ],
 
-            // 선택 해제
-            if (isSelected) {
-                seat.classList.remove("selected");
-                return;
-            }
 
-            // 최대 4석 제한
-            if (selectedCount >= 4) {
-                alert("최대 4석까지만 선택 가능합니다.");
-                return;
-            }
+            [
+                "A","A","A","A","A",
+                "A","A","A","A","A",
+                "A","A","A","A"
+            ],
 
-            // 선택
-            seat.classList.add("selected");
 
-            console.log(
-                "좌석:",
-                seat.dataset.seatNo
-            );
+            [
+                "A","A","A","A","A",
+                "A","A","A","A","A",
+                "A","A","A","A"
+            ],
 
-        });
 
-        rowDiv.appendChild(seat);
 
-    });
+            // 뒤쪽
+            [
+                "A","A","A","A","A",
+                "A","A","A","A","A",
+                "A","A","A","A"
+            ]
 
-    seatMap.appendChild(rowDiv);
+        ];
 
-});
+
+        break;
+
+
+
+
+
+    // ======================
+    // 공연장 2
+    // ======================
+
+    case "2":
+
+
+        seatLayout = [
+
+
+
+            // 1
+            [
+                'A','A','A','A',
+                'A','A','A','A',
+                'N',
+                'A','A','A','A'
+            ],
+
+
+
+            // 2
+            [
+                'A','A','A','A',
+                'A','A','A','A',
+                'N',
+                'A','A','A','A'
+            ],
+
+
+
+            // 3
+            [
+                'A','A','A','A',
+                'A','A','A','A',
+                'N',
+                'A','A','A','A'
+            ],
+
+
+
+            // 4
+            [
+                'A','A','A','A',
+                'A','A','A','A',
+                'N',
+                'A','A','A','A'
+            ],
+
+
+
+            // 5
+            [
+                'A','A','A','A',
+                'A','A','A','A',
+                'N',
+                'A','A','A','A'
+            ],
+
+
+
+            // 6
+            [
+                'A','A','A','A',
+                'A','A','A','A',
+                'N',
+                'A','A','A','A'
+            ],
+
+
+
+            // 7
+            [
+                'N','N',
+                'A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A',
+                'N','N'
+            ],
+
+
+
+            // 8
+            [
+                'N','N',
+                'A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A',
+                'N','N'
+            ],
+
+
+
+            // 9
+            [
+                'N','N',
+                'A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A','A',
+                'N'
+            ],
+
+
+
+            // 10
+            [
+                'N','N',
+                'A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A','A',
+                'N'
+            ],
+
+
+
+            // 11
+            [
+                'N',
+                'A','A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A','A',
+                'N'
+            ],
+
+
+
+            // 12
+            [
+                'N',
+                'A','A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A','A',
+                'N'
+            ],
+
+
+
+            // 13
+            [
+                'N',
+                'A','A','A','A','A','A','A',
+                'N',
+                'A','A','A','A','A','A',
+                'N'
+            ]
+
+
+        ];
+
+
+        break;
+
+
+
+
+
+    default:
+
+
+        alert(
+            "좌석 배치 정보가 없습니다."
+        );
+
+
+        seatLayout = [];
+
+}

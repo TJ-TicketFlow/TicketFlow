@@ -1,5 +1,7 @@
 package com.ticketflow.controller;
 
+import com.ticketflow.dto.BookingRequestDto;
+import com.ticketflow.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +12,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RequestMapping("/booking")
 public class BookingController {
+
+    private final BookingService bookingService;
 
     // ==========================================
     // [화면 띄우기 구역]
@@ -43,14 +47,10 @@ public class BookingController {
     // 1. 임시 예매 생성 및 레몬스퀴즈 창 띄우기
     @PostMapping("/create")
     @ResponseBody // 화면 이동 대신 URL 데이터만 던져줍니다!
-    public String createBooking() {
-        // 1. Service를 불러서 예매 테이블에 미리 정보를 저장합니다.
+    public String createBooking(@RequestBody BookingRequestDto requestDto) {
 
-        // 2. 레몬스퀴즈 고유 결제 URL을 생성하거나 가져옵니다.
-        String lemonSqueezyUrl = "https://lemonsqueezy.com/checkout/buy/블라블라";
+        String lemonSqueezyUrl = bookingService.createTemporaryPayment(requestDto);
 
-        // 3. 이 URL을 프론트엔드로 반환합니다.
-        // (프론트엔드의 JS에서 이 URL을 받아서 window.location.href 로 이동시킵니다)
         return lemonSqueezyUrl;
     }
 
