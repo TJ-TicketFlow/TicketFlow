@@ -69,21 +69,9 @@ public class Pay {
     @Column(name = "pay_updated_at")
     private LocalDateTime payUpdatedAt;
 
-    @Column(name = "ls_order_id", length = 100)
-    private String lsOrderId;
+    @Column(name = "tx_id", length = 100)
+    private String txId;
 
     @Column(name = "pay_fail_reason", length = 255)
     private String payFailReason;
-
-    @Column(name = "currency", length = 10)
-    private String currency;
-
-    @Column(name = "receipt_url", length = 500)
-    private String receiptUrl;
-
-    @Column(name = "ls_customer_id", length = 100)
-    private String lsCustomerId;
-
-    @Column(name = "ls_webhook_event_id", length = 50, unique = true)
-    private  String lsWebhookEventId;
 }

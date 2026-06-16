@@ -1,32 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>예매 확인/취소 - 티켓플로우</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
-</head>
 <body>
-<th:block th:replace="~{fragments/header :: header}"></th:block>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('예매 확인/취소 - 티켓플로우', '예매 확인/취소', 'tickets', ~{::content})}">
+    <th:block th:fragment="content">
 
-<div class="page-header">
-    <div class="page-header-inner">
-        <h1 class="page-title">예매 확인/취소</h1>
-    </div>
-</div>
-
-<div class="layout">
-    <aside>
-        <nav class="side-nav">
-            <a th:href="@{/mypage/benefits}">마이페이지 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/tickets}" class="active">티켓 예매 내역 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/wishlist}">위시리스트 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/coupons}">쿠폰함 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-            <a th:href="@{/mypage/profile}">회원정보 수정 <svg class="chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
-        </nav>
-    </aside>
-    <main class="main-content">
         <a th:href="@{/mypage/tickets}" class="back-link">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
             예매 내역으로 돌아가기
@@ -34,6 +11,7 @@
 
         <div class="section-title">예매 내역</div>
         <div class="detail-card">
+            <div class="booking-title-bar" th:text="${ticket['title'] ?: ticket['show_name']}"></div>
             <div class="booking-header">
                 <div class="booking-poster">
                     <div class="booking-poster-placeholder">
@@ -103,18 +81,17 @@
             </div>
             <button class="btn-cancel" onclick="confirmCancel()">예매 취소</button>
         </div>
-    </main>
-</div>
 
-<th:block th:replace="~{fragments/footer :: footer}"></th:block>
+    </th:block>
+</th:block>
 
 <script>
-function confirmCancel() {
-    if (confirm('정말로 예매를 취소하시겠습니까?')) {
-        alert('예매가 취소되었습니다.');
-        location.href = '/mypage/tickets';
+    function confirmCancel() {
+        if (confirm('정말로 예매를 취소하시겠습니까?')) {
+            alert('예매가 취소되었습니다.');
+            location.href = '/mypage/tickets';
+        }
     }
-}
 </script>
 </body>
 </html>
