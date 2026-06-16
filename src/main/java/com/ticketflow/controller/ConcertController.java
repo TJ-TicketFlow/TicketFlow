@@ -12,6 +12,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpSession;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -63,6 +64,8 @@ public class ConcertController {
     public String concertDetailPage(@PathVariable String id, Model model) {
         Concert concert = concertService.findById(id);
         model.addAttribute("concert", concert);
+
+        model.addAttribute("today", LocalDate.now());
 
         String dateRange = concert.getConcertStartDate().equals(concert.getConcertEndDate())
                 ? concert.getConcertStartDate().toString()

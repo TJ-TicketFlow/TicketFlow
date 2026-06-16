@@ -42,7 +42,7 @@
         </div>
 
         <div class="booking-right">
-            <div th:with="isEnded=${concert.concertEndDate < #temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+            <div th:with="isEnded=${concert.concertEndDate < today}">
 
                 <div th:if="${isEnded}" class="sold-out-box" style="border: 2px solid #eee; padding: 30px; text-align: center; border-radius: 15px; background: #fafafa; color: #666;">
                     <h3 style="margin-top: 0; color: #333;">판매종료</h3>
@@ -63,7 +63,6 @@
                         <button type="submit" class="btn-primary">예매하기</button>
                     </form>
                 </div>
-
             </div>
         </div>
     </div> <section class="bottom-section">
