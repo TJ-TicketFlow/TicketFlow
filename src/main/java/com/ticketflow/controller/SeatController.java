@@ -17,15 +17,13 @@ public class SeatController {
     private final SeatService seatService;
 
 
-    // 좌석 페이지 이동
     @GetMapping("/{concertId}")
     public String seatPage(
 
-            @PathVariable Long concertId,
+            @PathVariable String concertId,
             Model model
 
     ){
-
 
         model.addAttribute(
                 "concertId",
@@ -60,7 +58,7 @@ public class SeatController {
     @GetMapping("/select/pay")
     @ResponseBody
     public ResponseEntity<Integer> calculatePrice(
-            @RequestParam Long concertId,
+            @RequestParam String concertId,
             @RequestParam String seatId
     ) {
 

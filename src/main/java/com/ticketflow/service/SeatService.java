@@ -176,7 +176,7 @@ public class SeatService {
         요금 계산
      */
     public int calculatePrice(
-            Long concertId,
+            String concertId,
             String seatId
     ) {
 
