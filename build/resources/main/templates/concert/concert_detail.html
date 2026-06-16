@@ -3,28 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <title>공연 상세 정보 | 티켓플로우</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+
+    <style>
+        /* CSS 파일의 클래스들을 보완하는 최소한의 로컬 스타일
+           (스타일 충돌 방지를 위해 !important 사용)
+        */
+        .detail-grid { display: grid !important; }
+        .booking-right { display: flex; flex-direction: column; gap: 15px; }
+    </style>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+
 </head>
 <body>
 
 <div th:replace="~{fragments/header :: header}"></div>
 
 <main class="detail-wrap">
-    <!-- 1. 공연 제목 영역 -->
     <div class="detail-header">
         <h1 class="detail-title" th:text="${concert.concertName}">공연 제목</h1>
-        <p class="concert-genre" th:text="${concert.concertGenre}">콘서트</p>
+        <p class="detail-badge" th:text="${concert.concertGenre}">콘서트</p>
     </div>
 
     <div class="detail-grid">
-        <!-- 2. 포스터 및 상세 정보 영역 -->
         <div class="info-left">
             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
-            <div class="wish-section" style="margin-top: 10px;">
-                <img id="wishIcon" src="/images/notfavicon.png" alt="찜하기" style="cursor:pointer; width: 24px;"
-                     th:attr="data-concert-id=${concert.concertId}" onclick="toggleWish(this.getAttribute('data-concert-id'))">
-                <span>위시리스트</span>
+            <div id="wishBtn" style="margin-top: 15px; cursor: pointer; display: flex; align-items: center; gap: 8px;" th:data-id="${concert.concertId}">
+                <img id="wishIcon" src="/images/notfavicon.png" style="width: 24px;">
+                <span style="color: var(--text-sub);">위시리스트</span>
             </div>
         </div>
 
@@ -35,54 +43,102 @@
                 <p><strong>공연시간</strong> <span th:text="${concert.concertRuntime}"></span></p>
                 <p><strong>관람연령</strong> <span th:text="${concert.concertAgeLimit}"></span></p>
                 <p><strong>가격</strong> <span th:text="${concert.concertPriceInfo}"></span></p>
-                <p><strong>혜택</strong> <span>기본할인 3% <a href="#">내 쿠폰 확인하기</a></span></p>
             </div>
         </div>
 
-        <!-- 3. 캘린더 및 예매 영역 -->
         <div class="booking-right">
-            <h3>관람일</h3>
-            <div id="calendar"></div> <!-- 여기에 캘린더 라이브러리 연동 -->
+            <h3>관람일 선택</h3>
+            <div id="calendar"></div>
 
-            <h3>회차</h3>
-            <div class="session-box" th:text="${concert.concertTime}">18:00</div>
+            <h3>회차 선택</h3>
+            <div id="session-container" class="session-wrapper">
+                <p style="color: var(--text-sub); font-size: 14px;">달력에서 날짜를 선택하세요.</p>
+            </div>
 
-            <form th:action="@{/concert/seatmap}" method="get" style="margin-top:20px;">
+            <form th:action="@{/concert/seatmap}" method="get">
                 <input type="hidden" name="concertId" th:value="${concert.concertId}">
-                <button type="submit" class="btn-primary" style="width:100%;">예매하기</button>
+                <input type="hidden" name="sessionId" id="selectedSessionId">
+                <button type="submit" class="btn-primary">예매하기</button>
             </form>
         </div>
     </div>
 
-    <!-- 통계 및 상세 정보 이미지 -->
-    <section class="stats-section" style="margin-top: 40px;">
-        <h3>예매자 성별 분포</h3>
-        <canvas id="genderDonutChart"></canvas>
-        <h3>연령별 예매자 수</h3>
-        <canvas id="ageBarChart"></canvas>
+    <section class="info-images-section">
+        <h3>공연 상세 정보</h3>
+        <div th:each="imgUrl : ${concert.concertInfoImages}">
+            <img th:src="${imgUrl}" alt="상세 정보">
+        </div>
     </section>
 </main>
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
 <script>
-    // 좋아요(찜하기) 토글 함수
+    document.addEventListener('DOMContentLoaded', function() {
+        // 달력 초기화
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            locale: 'ko',
+            initialView: 'dayGridMonth',
+            selectable: true,
+            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+            dateClick: function(info) { loadSessions(info.dateStr); }
+        });
+        calendar.render();
+
+        // 위시리스트 클릭 이벤트
+        const wishBtn = document.getElementById('wishBtn');
+        if (wishBtn) {
+            wishBtn.addEventListener('click', function() {
+                toggleWish(this.getAttribute('data-id'));
+            });
+        }
+    });
+
+    function loadSessions(date) {
+        const container = document.getElementById('session-container');
+        container.innerHTML = `
+            <button type="button" class="btn-session" onclick="selectSession(this, 's1')">14:00</button>
+            <button type="button" class="btn-session" onclick="selectSession(this, 's2')">18:00</button>
+        `;
+    }
+
+    function selectSession(btn, sessionId) {
+        document.querySelectorAll('.btn-session').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('selectedSessionId').value = sessionId;
+    }
+
     function toggleWish(concertId) {
         const icon = document.getElementById('wishIcon');
-        const isLiked = icon.src.includes('favicon.png');
+        const isLiked = icon.getAttribute('src').includes('favicon.png');
+
+        // 메타 태그에서 CSRF 토큰 가져오기
+        const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
         fetch(`/concert/${concertId}/like`, {
-            method: isLiked ? 'DELETE' : 'POST'
+            method: isLiked ? 'DELETE' : 'POST',
+            headers: {
+                [header]: token, // 👈 CSRF 토큰 추가
+                'Content-Type': 'application/json'
+            }
         })
-            .then(response => {
-                if (response.ok) {
-                    icon.src = isLiked ? '/images/notfavicon.png' : '/images/favicon.png';
-                } else if (response.status === 401) {
-                    alert('로그인이 필요합니다.');
-                } else {
-                    alert('요청에 실패했습니다.');
+            .then(res => {
+                if (res.status === 401 || res.status === 403) {
+                    if (confirm('로그인이 필요한 서비스입니다. 로그인 페이지로 이동할까요?')) {
+                        window.location.href = '/login';
+                    }
+                    return;
                 }
-            });
+
+                if (res.ok) {
+                    icon.src = isLiked ? '/images/notfavicon.png' : '/images/favicon.png';
+                } else {
+                    alert('처리 중 오류가 발생했습니다.');
+                }
+            })
+            .catch(err => console.error('Error:', err));
     }
 </script>
 
