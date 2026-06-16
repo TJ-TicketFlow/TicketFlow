@@ -32,7 +32,28 @@ public class ConcertService {
     }
 
     /**
-     * [수정됨] 특정 날짜를 받아 해당 요일에 맞는 시간만 반환
+     * [랭킹 페이지용] 예측 매진율 기반 랭킹 조회
+     */
+    public List<Map<String, Object>> getRankedConcerts() {
+        List<Object[]> results = concertRepository.findConcertsByRanking();
+
+        return results.stream().map(obj -> {
+            Map<String, Object> map = new HashMap<>();
+
+            // 데이터 순서: obj[0] = Concert 객체, obj[1] = ranking (Integer)
+            Concert concert = (Concert) obj[0];
+
+            // Integer를 캐스팅할 때 발생할 수 있는 오류 방지
+            int ranking = ((Number) obj[1]).intValue();
+
+            map.put("concert", concert);
+            map.put("ranking", ranking);
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * [기존 유지] 특정 날짜를 받아 해당 요일에 맞는 시간만 반환
      */
     public List<String> findSessionsByDate(String id, String selectedDate) {
         Concert concert = findById(id);
@@ -46,11 +67,10 @@ public class ConcertService {
         return Arrays.stream(allTimes.split(","))
                 .map(String::trim)
                 .filter(time -> {
-                    // 1. "토요일 ~ 일요일(17:00)" 형태 처리: 요일이 포함되어 있는지 확인
+                    // 1. "토요일 ~ 일요일(17:00)" 형태 처리
                     if (time.contains("~")) {
-                        // 예: "토요일 ~ 일요일" 부분을 잘라내어 해당 요일이 있는지 확인
-                        String rangePart = time.split("\\(")[0]; // "토요일 ~ 일요일"
-                        return rangePart.contains(dayOfWeek.substring(0, 1)); // '토', '일' 등 첫 글자 비교
+                        String rangePart = time.split("\\(")[0];
+                        return rangePart.contains(dayOfWeek.substring(0, 1));
                     }
                     // 2. 단일 요일 형태 처리: "금요일(20:00)"
                     return time.startsWith(dayOfWeek);

@@ -75,7 +75,7 @@
             <a th:href="@{/concert/}" class="cat-item" th:classappend="${genre == null} ? ' active'">전체</a>
             <span class="cat-sep">|</span>
 
-            <a th:href="@{/concert/ranking-page}" class="cat-item" th:classappend="${genre == 'ranking'} ? ' active'">랭킹</a>
+            <a th:href="@{/concert/ranking}" class="cat-item" th:classappend="${genre == 'ranking'} ? ' active'">랭킹</a>
             <span class="cat-sep">|</span>
 
             <a th:href="@{/concert/(genre='jazz')}" class="cat-item" th:classappend="${genre == 'jazz'} ? ' active'">재즈/팝</a>
@@ -94,15 +94,3 @@
 </nav>
 </body>
 </html>
-
-case "jazz" -> "재즈/팝";
-
-case "ballad" -> "발라드/R&B";
-
-case "rock" -> "록/메탈";
-
-case "indie" -> "인디/어쿠스틱";
-
-case "hiphop" -> "힙합/랩";
-
-case "etc" -> "기타 대중음악";

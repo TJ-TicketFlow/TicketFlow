@@ -13,7 +13,6 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall ORDER BY c.concertStartDate ASC")
     List<Concert> findAll();
 
-    // 파라미터 타입을 String으로 수정 (제네릭 타입과 일치)
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertId = :id")
     Optional<Concert> findById(@Param("id") String id);
 
@@ -22,4 +21,15 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
 
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertName LIKE %:keyword%")
     List<Concert> findByConcertNameContaining(@Param("keyword") String keyword);
+
+    /**
+     * 예측 매진율 기반 순위 조회
+     * RANK() 함수를 사용하여 동일 순위 발생 시 다음 순위를 건너뜁니다 (예: 1, 2, 2, 4)
+     * Concert와 Stats를 JOIN하여 매진율 데이터를 가져옵니다.
+     */
+    // ConcertRepository.java
+    @Query(value = "SELECT c, RANK() OVER (ORDER BY s.predictSoldOutRate DESC) as ranking " +
+            "FROM Concert c " +
+            "JOIN c.stats s") // 엔티티 관계(OneToMany 등)가 설정되어 있다면 바로 조인 가능
+    List<Object[]> findConcertsByRanking();
 }

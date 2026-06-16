@@ -59,25 +59,18 @@ public class ConcertController {
         };
     }
 
-    // ConcertController.java 수정 예시
     @GetMapping("/{id}/detail-page")
     public String concertDetailPage(@PathVariable String id, Model model) {
         Concert concert = concertService.findById(id);
         model.addAttribute("concert", concert);
 
-        // 공연 기간 로직 (시작일 == 종료일 인 경우 시작일만 표시)
         String dateRange = concert.getConcertStartDate().equals(concert.getConcertEndDate())
                 ? concert.getConcertStartDate().toString()
                 : concert.getConcertStartDate() + " ~ " + concert.getConcertEndDate();
         model.addAttribute("dateRange", dateRange);
 
-        // [핵심 수정]
         if (concert.getConcertPriceInfo() != null) {
-            // 정규식: (숫자+쉼표+숫자) 형식을 제외한 쉼표만 찾아 분리
-            // 만약 데이터가 너무 복잡하다면, DB 데이터를 "VIP석 99,000원|GA석 88,000원" 처럼
-            // 파이프(|) 구분자로 바꾸는 것이 가장 확실합니다.
             String[] prices = concert.getConcertPriceInfo().split(",(?![0-9])");
-
             List<String> priceList = Arrays.stream(prices)
                     .map(String::trim)
                     .collect(Collectors.toList());
@@ -92,26 +85,37 @@ public class ConcertController {
         return "concert/seatmap";
     }
 
+    @GetMapping("/ranking")
+    public String rankingPage(Model model) {
+        List<Map<String, Object>> allRankings = concertService.getRankedConcerts();
+
+        // 헤더에서 active 클래스를 부여하기 위해 genre를 'ranking'으로 설정
+        model.addAttribute("genre", "ranking");
+
+        if (allRankings.size() >= 3) {
+            model.addAttribute("top3", allRankings.subList(0, 3));
+            model.addAttribute("restRankings", allRankings.subList(3, allRankings.size()));
+        } else {
+            model.addAttribute("top3", allRankings);
+            model.addAttribute("restRankings", Collections.emptyList());
+        }
+        return "concert/ranking";
+    }
+
     // =========================================================================
     // [2] 순수 데이터 API 영역 (REST API)
     // =========================================================================
 
-    /**
-     * [수정] 캘린더 날짜 클릭 시 해당 날짜의 실제 회차(concert_time) 조회
-     * DB의 "금요일 14:00" 같은 데이터에서 요일을 제거하고 시간만 추출하여 전달
-     */
     @GetMapping("/{id}/sessions")
     @ResponseBody
     public ResponseEntity<?> getSessionsByDate(@PathVariable String id, @RequestParam String date) {
         List<String> rawTimes = concertService.findSessionsByDate(id, date);
 
-        // 데이터가 없으면 빈 리스트 반환
         if (rawTimes == null || rawTimes.isEmpty()) {
             return ResponseEntity.ok(Collections.emptyList());
         }
 
         List<Map<String, String>> cleanedSessions = rawTimes.stream().map(time -> {
-            // 요일, 공백, 괄호(), 물결표(~), 대시(-) 등을 모두 제거하고 숫자와 콜론만 남김
             String cleanTime = time.replaceAll("[가-힣\\s\\(\\)\\~\\-]", "");
             return Map.of("id", cleanTime, "time", cleanTime);
         }).collect(Collectors.toList());
@@ -150,12 +154,6 @@ public class ConcertController {
     @ResponseBody
     public ResponseEntity<?> getConcertsByCategory(@PathVariable String name) {
         return ResponseEntity.ok().body(Map.of("category", name, "concerts", Collections.emptyList()));
-    }
-
-    @GetMapping("/ranking")
-    @ResponseBody
-    public ResponseEntity<?> getConcertRanking() {
-        return ResponseEntity.ok().body(Map.of("ranking", Collections.emptyList()));
     }
 
     @PostMapping("/{id}/like")
