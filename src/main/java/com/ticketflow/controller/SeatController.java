@@ -4,6 +4,7 @@ import com.ticketflow.service.SeatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -15,6 +16,26 @@ public class SeatController {
 
     private final SeatService seatService;
 
+
+    // 좌석 페이지 이동
+    @GetMapping("/{concertId}")
+    public String seatPage(
+
+            @PathVariable Long concertId,
+            Model model
+
+    ){
+
+
+        model.addAttribute(
+                "concertId",
+                concertId
+        );
+
+
+        return "concert/seatmap";
+
+    }
 
     // 1. 좌석 선택
     @PostMapping("/select")
