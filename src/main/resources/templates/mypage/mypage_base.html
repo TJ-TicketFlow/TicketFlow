@@ -63,5 +63,28 @@
 </div>
 
 <th:block th:replace="~{fragments/footer :: footer}"></th:block>
+<script>
+    (function() {
+        function fixMainWidth() {
+            var layout = document.querySelector('.layout');
+            var aside = document.querySelector('aside');
+            var main = document.querySelector('.main-content');
+            if (!layout || !aside || !main) return;
+
+            var layoutWidth = layout.getBoundingClientRect().width;
+            var layoutStyle = window.getComputedStyle(layout);
+            var gap = parseFloat(layoutStyle.gap) || 32;
+            var asideWidth = aside.getBoundingClientRect().width;
+            var mainWidth = layoutWidth - asideWidth - gap;
+
+            main.style.width = mainWidth + 'px';
+            main.style.minWidth = mainWidth + 'px';
+            main.style.maxWidth = mainWidth + 'px';
+            main.style.flex = 'none';
+        }
+        document.addEventListener('DOMContentLoaded', fixMainWidth);
+        window.addEventListener('resize', fixMainWidth);
+    })();
+</script>
 </body>
 </html>
