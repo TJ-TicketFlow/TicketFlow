@@ -95,13 +95,24 @@ public class MyPageController {
         return "mypage/mypage_membership";
     }
 
+//    @GetMapping("/membership/subscribe")
+//    public String mypageMembershipSubscribe(@AuthenticationPrincipal UserDetails userDetails,
+//                                            @RequestParam(required = false) String plan,
+//                                            RedirectAttributes rttr) {
+//        // TODO: membershipService.subscribe(userDetails.getUsername(), plan)
+//        rttr.addFlashAttribute("successMessage", "멤버십이 신청되었습니다.");
+//        return "redirect:/mypage/membership";
+//    }
     @GetMapping("/membership/subscribe")
     public String mypageMembershipSubscribe(@AuthenticationPrincipal UserDetails userDetails,
-                                            @RequestParam(required = false) String plan,
-                                            RedirectAttributes rttr) {
-        // TODO: membershipService.subscribe(userDetails.getUsername(), plan)
-        rttr.addFlashAttribute("successMessage", "멤버십이 신청되었습니다.");
-        return "redirect:/mypage/membership";
+                                        @RequestParam(required = false) String plan,
+                                        Model model) {
+
+        User user = userService.findByUserId(userDetails.getUsername());
+        model.addAttribute("user", user);
+        model.addAttribute("plan", plan);
+
+        return "mypage/mypage_membership_subscribe";
     }
 
     @GetMapping("/membership/cancel")

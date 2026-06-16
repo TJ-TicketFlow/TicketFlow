@@ -1,0 +1,105 @@
+/* ==========================================================================
+   구독 안내 페이지 전용 서브 스타일 클래스 (membership.css 맨 밑에 추가)
+   ========================================================================== */
+
+.subscribe-back-link {
+    color: #667085;
+    text-decoration: none;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+}
+
+.subscribe-back-link:hover {
+    color: #344054;
+}
+
+.checkout-box {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 32px;
+    border: 1px solid #E4E7EC;
+    border-radius: 12px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    font-family: sans-serif;
+}
+
+.checkout-box h2 {
+    margin: 0 0 8px 0;
+    font-size: 22px;
+    color: #1D2939;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkout-box .subtitle {
+    color: #667085;
+    font-size: 14px;
+    margin: 0 0 24px 0;
+}
+
+.info-card {
+    background-color: #F9FAFB;
+    padding: 18px;
+    border-radius: 8px;
+    border: 1px solid #EAECF0;
+    margin-bottom: 24px;
+}
+
+.info-card p {
+    margin: 0;
+    font-size: 15px;
+    color: #344054;
+}
+
+.info-card p:first-child {
+    margin-bottom: 8px;
+}
+
+.checkout-box h4 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    color: #1D2939;
+}
+
+.checkout-box .notice-text {
+    font-size: 14px;
+    color: #475467;
+    line-height: 1.6;
+    margin: 0 0 24px 0;
+}
+
+.checkout-box .email-highlight {
+    color: var(--premium, #7C3AED);
+    font-weight: bold;
+}
+
+.checkout-box .terms-list {
+    padding-left: 20px;
+    color: #475467;
+    font-size: 14px;
+    line-height: 1.8;
+    margin: 0 0 32px 0;
+}
+
+.btn-join-premium {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    background: var(--premium, #7C3AED);
+    color: white;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.btn-join-premium:hover {
+    background: #6D28D9;
+}

@@ -1,3 +1,114 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="ko" xmlns:th="http://www.thymeleaf.org">-->
+<!--<body>-->
+<!--<th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 혜택 - 티켓플로우', '멤버십 혜택', 'benefits', ~{::content})}">-->
+<!--    <th:block th:fragment="content">-->
+
+<!--        <a th:href="@{/mypage/benefits}" class="back-link">-->
+<!--            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>-->
+<!--            마이페이지로 돌아가기-->
+<!--        </a>-->
+
+<!--        &lt;!&ndash; 프리미엄 보유 &ndash;&gt;-->
+<!--        <th:block th:if="${user['membership'] == 'premium'}">-->
+<!--            <div class="membership-single">-->
+<!--                <div class="mem-card premium">-->
+<!--                    <div><span class="mem-badge premium-badge">PREMIUM</span></div>-->
+<!--                    <div style="margin-bottom:16px;">-->
+<!--                        <img th:src="@{/images/coupon-premium.png}" alt="Premium" style="width:100px;height:100px;object-fit:contain;">-->
+<!--                    </div>-->
+<!--                    <div class="mem-name">Premium</div>-->
+<!--                    <div class="mem-price">월 19,900원</div>-->
+<!--                    <div class="mem-highlight premium-hl">멤버십 3개월 유지시 20% 쿠폰 1장 지급</div>-->
+<!--                    <div class="coupon-visual">-->
+<!--                        <div class="basic-discount">3%</div>-->
+<!--                        <div class="basic-disc-label">기본 할인 3%</div>-->
+<!--                        <div class="coupon-chip premium-chip">10%</div>-->
+<!--                        <div class="coupon-chip-label">10% 쿠폰 2장</div>-->
+<!--                        <div class="coupon-chip premium-chip">15%</div>-->
+<!--                        <div class="coupon-chip-label">15% 쿠폰 1장</div>-->
+<!--                    </div>-->
+<!--                    <button class="btn-join btn-current" disabled>현재 이용 중</button>-->
+<!--                    <button class="btn-join btn-join-cancel" onclick="confirmCancel('Premium')" style="margin-top:8px;">해지하기</button>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </th:block>-->
+
+<!--        &lt;!&ndash; 베이직 보유 &ndash;&gt;-->
+<!--        <th:block th:if="${user['membership'] == 'basic'}">-->
+<!--            <div class="membership-single">-->
+<!--                <div class="mem-card basic">-->
+<!--                    <div><span class="mem-badge basic-badge">BASIC</span></div>-->
+<!--                    <div style="margin-bottom:16px;">-->
+<!--                        <img th:src="@{/images/coupon-basic.png}" alt="Basic" style="width:100px;height:100px;object-fit:contain;">-->
+<!--                    </div>-->
+<!--                    <div class="mem-name">Basic</div>-->
+<!--                    <div class="mem-price">무료</div>-->
+<!--                    <div class="mem-highlight">신규 가입시 5% 할인 쿠폰 지급</div>-->
+<!--                    <div class="coupon-visual">-->
+<!--                        <div class="coupon-chip active">5%</div>-->
+<!--                        <div class="coupon-chip-label">5% 쿠폰 1장</div>-->
+<!--                    </div>-->
+<!--                    <button class="btn-join btn-current" disabled>현재 이용 중</button>-->
+<!--                    <button class="btn-join btn-join-cancel" onclick="confirmCancel('Basic')" style="margin-top:8px;">해지하기</button>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </th:block>-->
+
+<!--        &lt;!&ndash; 멤버십 없음 &ndash;&gt;-->
+<!--        <th:block th:if="${user['membership'] == null or user['membership'] == ''}">-->
+<!--            <div class="membership-grid">-->
+<!--                &lt;!&ndash; Basic &ndash;&gt;-->
+<!--                <div class="mem-card basic">-->
+<!--                    <div><span class="mem-badge basic-badge">BASIC</span></div>-->
+<!--                    <div style="margin-bottom:16px;">-->
+<!--                        <img th:src="@{/images/coupon-basic.png}" alt="Basic" style="width:100px;height:100px;object-fit:contain;">-->
+<!--                    </div>-->
+<!--                    <div class="mem-name">Basic</div>-->
+<!--                    <div class="mem-price">무료</div>-->
+<!--                    <div class="mem-highlight">신규 가입시 5% 할인 쿠폰 지급</div>-->
+<!--                    <div class="coupon-visual">-->
+<!--                        <div class="coupon-chip active">5%</div>-->
+<!--                        <div class="coupon-chip-label">5% 쿠폰 1장</div>-->
+<!--                    </div>-->
+<!--                    <button class="btn-join btn-join-basic" onclick="location.href='/mypage/membership/subscribe?plan=basic'">Basic 가입하기</button>-->
+<!--                </div>-->
+
+<!--                &lt;!&ndash; Premium &ndash;&gt;-->
+<!--                <div class="mem-card premium">-->
+<!--                    <div><span class="mem-badge premium-badge">PREMIUM</span></div>-->
+<!--                    <div style="margin-bottom:16px;">-->
+<!--                        <img th:src="@{/images/coupon-premium.png}" alt="Premium" style="width:100px;height:100px;object-fit:contain;">-->
+<!--                    </div>-->
+<!--                    <div class="mem-name">Premium</div>-->
+<!--                    <div class="mem-price">월 19,900원</div>-->
+<!--                    <div class="mem-highlight premium-hl">멤버십 3개월 유지시 20% 쿠폰 1장 지급</div>-->
+<!--                    <div class="coupon-visual">-->
+<!--                        <div class="basic-discount">3%</div>-->
+<!--                        <div class="basic-disc-label">기본 할인 3%</div>-->
+<!--                        <div class="coupon-chip premium-chip">10%</div>-->
+<!--                        <div class="coupon-chip-label">10% 쿠폰 2장</div>-->
+<!--                        <div class="coupon-chip premium-chip">15%</div>-->
+<!--                        <div class="coupon-chip-label">15% 쿠폰 1장</div>-->
+<!--                    </div>-->
+<!--                    <button class="btn-join btn-join-premium" onclick="location.href='/mypage/membership/subscribe?plan=pro'">Premium 가입하기</button>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </th:block>-->
+
+<!--    </th:block>-->
+<!--</th:block>-->
+
+<!--<script>-->
+<!--    function confirmCancel(type) {-->
+<!--        if (confirm(type + ' 멤버십을 해지하시겠습니까?')) {-->
+<!--            window.location.href = '/mypage/membership/cancel';-->
+<!--        }-->
+<!--    }-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
+
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
@@ -9,13 +120,12 @@
             마이페이지로 돌아가기
         </a>
 
-        <!-- 프리미엄 보유 -->
         <th:block th:if="${user['membership'] == 'premium'}">
             <div class="membership-single">
                 <div class="mem-card premium">
                     <div><span class="mem-badge premium-badge">PREMIUM</span></div>
                     <div style="margin-bottom:16px;">
-                        <img th:src="@{/images/cpupon-premium.png}" alt="Premium" style="width:80px;height:80px;object-fit:contain;">
+                        <img th:src="@{/images/coupon-premium.png}" alt="Premium" style="width:100px;height:100px;object-fit:contain;">
                     </div>
                     <div class="mem-name">Premium</div>
                     <div class="mem-price">월 19,900원</div>
@@ -34,13 +144,12 @@
             </div>
         </th:block>
 
-        <!-- 베이직 보유 -->
-        <th:block th:if="${user['membership'] == 'basic'}">
-            <div class="membership-single">
+        <th:block th:if="${user['membership'] == 'basic' or user['membership'] == null or user['membership'] == ''}">
+            <div class="membership-grid">
                 <div class="mem-card basic">
                     <div><span class="mem-badge basic-badge">BASIC</span></div>
                     <div style="margin-bottom:16px;">
-                        <img th:src="@{/images/cpupon-basic.png}" alt="Basic" style="width:80px;height:80px;object-fit:contain;">
+                        <img th:src="@{/images/coupon-basic.png}" alt="Basic" style="width:100px;height:100px;object-fit:contain;">
                     </div>
                     <div class="mem-name">Basic</div>
                     <div class="mem-price">무료</div>
@@ -50,35 +159,12 @@
                         <div class="coupon-chip-label">5% 쿠폰 1장</div>
                     </div>
                     <button class="btn-join btn-current" disabled>현재 이용 중</button>
-                    <button class="btn-join btn-join-cancel" onclick="confirmCancel('Basic')" style="margin-top:8px;">해지하기</button>
-                </div>
-            </div>
-        </th:block>
-
-        <!-- 멤버십 없음 -->
-        <th:block th:if="${user['membership'] == null or user['membership'] == ''}">
-            <div class="membership-grid">
-                <!-- Basic -->
-                <div class="mem-card basic">
-                    <div><span class="mem-badge basic-badge">BASIC</span></div>
-                    <div style="margin-bottom:16px;">
-                        <img th:src="@{/images/cpupon-basic.png}" alt="Basic" style="width:80px;height:80px;object-fit:contain;">
-                    </div>
-                    <div class="mem-name">Basic</div>
-                    <div class="mem-price">무료</div>
-                    <div class="mem-highlight">신규 가입시 5% 할인 쿠폰 지급</div>
-                    <div class="coupon-visual">
-                        <div class="coupon-chip active">5%</div>
-                        <div class="coupon-chip-label">5% 쿠폰 1장</div>
-                    </div>
-                    <button class="btn-join btn-join-basic" onclick="location.href='/mypage/membership/subscribe?plan=basic'">Basic 가입하기</button>
                 </div>
 
-                <!-- Premium -->
                 <div class="mem-card premium">
                     <div><span class="mem-badge premium-badge">PREMIUM</span></div>
                     <div style="margin-bottom:16px;">
-                        <img th:src="@{/images/cpupon-premium.png}" alt="Premium" style="width:80px;height:80px;object-fit:contain;">
+                        <img th:src="@{/images/coupon-premium.png}" alt="Premium" style="width:100px;height:100px;object-fit:contain;">
                     </div>
                     <div class="mem-name">Premium</div>
                     <div class="mem-price">월 19,900원</div>
