@@ -48,6 +48,18 @@ public class User {
     @Column(name = "user_sex")
     private Integer userSex;
 
+    // 멤버십 등급: "premium", "basic", null
+    @Column(name = "membership", length = 50)
+    private String membership;
+
+    // 멤버십 시작일
+    @Column(name = "membership_start")
+    private LocalDate membershipStart;
+
+    // 멤버십 종료일
+    @Column(name = "membership_end")
+    private LocalDate membershipEnd;
+
     @CreationTimestamp
     @Column(name = "user_created_at", updatable = false)
     private LocalDateTime userCreatedAt;
