@@ -34,17 +34,30 @@ public class ConcertController {
 
     @GetMapping("/")
     public String mainPage(@RequestParam(required = false) String genre, Model model) {
-        List<Concert> concertList;
+        LocalDate today = LocalDate.now();
+        List<Concert> allConcerts;
 
+        // 1. 장르별 또는 전체 공연 조회
         if (genre != null && !genre.isEmpty()) {
             String koreanGenre = mapGenreCodeToName(genre);
-            concertList = concertService.getConcertsByGenre(koreanGenre);
+            allConcerts = concertService.getConcertsByGenre(koreanGenre);
         } else {
-            concertList = concertService.getAllConcerts();
+            allConcerts = concertService.getAllConcerts();
         }
 
-        model.addAttribute("concertList", concertList);
+        // 2. 날짜 기준 필터링 (LocalDate 비교)
+        List<Concert> upcoming = allConcerts.stream()
+                .filter(c -> !c.getConcertEndDate().isBefore(today))
+                .collect(Collectors.toList());
+
+        List<Concert> past = allConcerts.stream()
+                .filter(c -> c.getConcertEndDate().isBefore(today))
+                .collect(Collectors.toList());
+
+        model.addAttribute("upcomingConcerts", upcoming);
+        model.addAttribute("pastConcerts", past);
         model.addAttribute("genre", genre);
+
         return "concert/mainpage";
     }
 

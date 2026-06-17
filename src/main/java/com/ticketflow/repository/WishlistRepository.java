@@ -8,6 +8,6 @@ import java.util.Optional;
 
 public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
     List<Wishlist> findByUser_UserId(String userId);
-    Optional<Wishlist> findByUser_UserIdAndConcert_ConcertId(String userId, Long concertId);
-    boolean existsByUser_UserIdAndConcert_ConcertId(String userId, Long concertId);
+    Optional<Wishlist> findByUser_UserIdAndConcert_ConcertId(String userId, String concertId);
+    boolean existsByUser_UserIdAndConcert_ConcertId(String userId, String concertId);
 }
