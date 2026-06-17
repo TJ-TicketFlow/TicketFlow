@@ -10,6 +10,7 @@ public class BookingRequestDto {
     private String merchantUid;
     private String payName;
     private long payAmount;
+    private Long userCouponId;
     private String buyerName;
     private String buyerEmail;
     private String payDelName;
