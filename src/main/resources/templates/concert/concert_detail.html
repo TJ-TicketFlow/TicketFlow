@@ -9,11 +9,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" th:href="@{/css/styles.css}">
     <style>
-        .stats-chart-wrapper { display: flex; gap: 50px; justify-content: center; align-items: center; padding: 20px; background: #f9f9f9; border-radius: 15px; margin-top: 20px; }
-        .chart-box { width: 300px; text-align: center; }
-        .chart-box canvas { width: 100% !important; height: auto !important; }
-        /* 위시리스트 스타일 */
-        .wishlist-box { margin-top: 15px; display: flex; align-items: center; cursor: pointer; font-size: 1.1rem; }
+        .stats-chart-wrapper {
+            display: flex;
+            gap: 60px;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            background: #f9f9f9;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        /* 도넛 차트 전용 (너비를 늘림) */
+        .chart-box-doughnut { width: 330px; text-align: center; }
+
+        /* 막대 차트 전용 */
+        .chart-box-bar { width: 450px; text-align: center; }
+
+        .chart-box-doughnut canvas, .chart-box-bar canvas { width: 100% !important; height: auto !important; }
     </style>
 </head>
 <body>
@@ -83,8 +96,9 @@
         <div class="stats-section">
             <h3>예매자 통계</h3>
             <div th:if="${stats != null}" class="stats-chart-wrapper">
-                <div class="chart-box"><canvas id="genderChart"></canvas></div>
-                <div class="chart-box"><canvas id="ageChart"></canvas></div>
+                <div class="chart-box-doughnut"><canvas id="genderChart"></canvas></div>
+
+                <div class="chart-box-bar"><canvas id="ageChart"></canvas></div>
             </div>
             <div th:unless="${stats != null}" class="empty-msg">
                 <p>아직 예매 데이터가 없습니다.</p>

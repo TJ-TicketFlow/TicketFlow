@@ -28,6 +28,17 @@ document.addEventListener("DOMContentLoaded", function() {
                     data: [10, 35, 30, 15, 10],
                     backgroundColor: '#818cf8'
                 }]
+            },
+            options: {
+                maintainAspectRatio: false, // 비율 유지 해제 (높이 확보용)
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: '연령대별 예매율 (%)' },
+                    tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' } }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100 }
+                }
             }
         });
     }

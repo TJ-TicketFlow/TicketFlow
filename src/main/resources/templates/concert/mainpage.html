@@ -19,15 +19,10 @@
 <main class="main-wrap">
     <div class="main-inner">
         <section class="concert-section">
-            <h2 class="section-heading">공연 목록</h2>
+            <h2 class="section-heading" th:text="${genre != null} ? ${#strings.replace(genre, 'jazz', '재즈').replace('ballad', '발라드').replace('rock', '록').replace('indie', '인디').replace('hiphop', '힙합').replace('etc', '기타')} + ' 공연 목록' : '공연 목록'">공연 목록</h2>
 
-            <div class="filter-wrap">
-                <button type="button" class="btn-filter active" onclick="filterConcerts('upcoming', this)">진행 예정 공연</button>
-                <button type="button" class="btn-filter" onclick="filterConcerts('past', this)">지난 공연</button>
-            </div>
-
-            <div class="concert-grid" id="upcoming-list">
-                <article class="concert-card" th:each="concert : ${upcomingConcerts}">
+            <div class="concert-grid" th:if="${genre != null}">
+                <article class="concert-card" th:each="concert : ${concertList}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
                         <div class="poster-wrap">
                             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img">
@@ -42,20 +37,39 @@
                 </article>
             </div>
 
-            <div class="concert-grid" id="past-list" style="display: none;">
-                <article class="concert-card" th:each="concert : ${pastConcerts}">
-                    <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap">
-                            <img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img">
-                        </div>
-                        <div class="concert-info">
-                            <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
-                            <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
-                            <p class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</p>
-                            <p class="concert-hall" th:text="${concert.hall.hallName}">공연장</p>
-                        </div>
-                    </a>
-                </article>
+            <div th:if="${genre == null}">
+                <div class="filter-wrap">
+                    <button type="button" class="btn-filter active" onclick="filterConcerts('upcoming', this)">진행 예정 공연</button>
+                    <button type="button" class="btn-filter" onclick="filterConcerts('past', this)">지난 공연</button>
+                </div>
+
+                <div class="concert-grid" id="upcoming-list">
+                    <article class="concert-card" th:each="concert : ${upcomingConcerts}">
+                        <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
+                            <div class="poster-wrap"><img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img"></div>
+                            <div class="concert-info">
+                                <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
+                                <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
+                                <p class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</p>
+                                <p class="concert-hall" th:text="${concert.hall.hallName}">공연장</p>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+
+                <div class="concert-grid" id="past-list" style="display: none;">
+                    <article class="concert-card" th:each="concert : ${pastConcerts}">
+                        <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
+                            <div class="poster-wrap"><img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img"></div>
+                            <div class="concert-info">
+                                <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
+                                <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
+                                <p class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</p>
+                                <p class="concert-hall" th:text="${concert.hall.hallName}">공연장</p>
+                            </div>
+                        </a>
+                    </article>
+                </div>
             </div>
         </section>
     </div>
