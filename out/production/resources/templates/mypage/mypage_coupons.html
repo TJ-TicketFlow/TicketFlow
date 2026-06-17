@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('쿠폰함 - 티켓플로우', '쿠폰함', 'coupons', ~{::content})}">
+    <th:block th:fragment="content">
+
+        <div class="coupon-header">사용 가능 쿠폰 (<span th:text="${coupons != null ? #lists.size(coupons) : 0}">0</span>장)</div>
+
+        <th:block th:if="${coupons != null and !#lists.isEmpty(coupons)}">
+            <div class="coupon-list">
+                <div class="coupon-item"
+                     th:each="coupon : ${coupons}"
+                     th:classappend="${coupon.daysLeft == 0} ? ' expired'">
+                    <div class="coupon-body">
+                        <div class="coupon-type" th:text="${coupon.type}"></div>
+                        <div class="coupon-discount">
+                            <span th:text="${coupon.discount}"></span><span>% 할인</span>
+                        </div>
+                        <div class="coupon-expire">
+                            <span th:text="${coupon.startDate}"></span> ~
+                            <span th:text="${coupon.expireDate}"></span>
+                            <th:block th:if="${coupon.daysLeft > 0}">
+                                (<span class="days" th:text="${coupon.daysLeft} + '일 남음'"></span>)
+                            </th:block>
+                            <th:block th:if="${coupon.daysLeft == 0}">
+                                (<span style="color:#EF4444;font-weight:600;">기간 만료</span>)
+                            </th:block>
+                        </div>
+                    </div>
+                    <th:block th:if="${coupon.daysLeft > 0}">
+                        <button class="coupon-btn available">사용가능</button>
+                    </th:block>
+                    <th:block th:if="${coupon.daysLeft == 0}">
+                        <button class="coupon-btn unavailable" disabled>사용완료</button>
+                    </th:block>
+                </div>
+            </div>
+        </th:block>
+
+        <th:block th:if="${coupons == null or #lists.isEmpty(coupons)}">
+            <div class="empty-state">
+                <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path d="M20 12v10H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+                    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
+                <p>사용 가능한 쿠폰이 없습니다.</p>
+            </div>
+        </th:block>
+
+    </th:block>
+</th:block>
+</body>
+</html>

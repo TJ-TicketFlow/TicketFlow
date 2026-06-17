@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('위시리스트 - 티켓플로우', '위시리스트', 'wishlist', ~{::content})}">
+    <th:block th:fragment="content">
+
+        <div class="empty-state">
+            <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <p>관심 있는 공연을 위시리스트에 추가해보세요!</p>
+            <a th:href="@{/}" class="btn-explore">공연 둘러보기</a>
+        </div>
+
+    </th:block>
+</th:block>
+</body>
+</html>

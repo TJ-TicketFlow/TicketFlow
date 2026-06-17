@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="505f9c72-6bc5-49b3-b378-9c08035622d5" name="변경" comment="좌석 배치도 버그">
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/sqldialects.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/ticketflow/controller/SeatController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/ticketflow/controller/SeatController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/ticketflow/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/ticketflow/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/ticketflow/service/SeatService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/ticketflow/service/SeatService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/static/js/seatmap.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/js/seatmap.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/templates/concert/seatmap.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/concert/seatmap.html" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="ticketflow" type="f1a62948:ProjectNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;hanseunghyun23&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/TJ-TicketFlow/TicketFlow.git&quot;,
+    &quot;accountId&quot;: &quot;e512016b-ce27-4607-9dfd-9cd5e15cf6a4&quot;
+  }
+}</component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0000000000000004" />
+      <entry key="S60" value="1.000000073147768" />
+      <entry key="M2" value="1.0008550968335626" />
+      <entry key="M5" value="1.2369147854202025" />
+      <entry key="M10" value="2.6644670700444797" />
+      <entry key="M15" value="4.536907595461662" />
+      <entry key="M30" value="10.083237073304426" />
+      <entry key="H1" value="18.57733201260447" />
+      <entry key="H2" value="29.303479226679887" />
+      <entry key="H4" value="39.564390875479" />
+      <entry key="D1" value="53.37097384197493" />
+      <entry key="W1" value="56.45980041251669" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="7.967599580344168E-265" />
+      <entry key="S10" value="8.926141148527832E-133" />
+      <entry key="S30" value="9.628410179178845E-45" />
+      <entry key="S60" value="9.81244626949816E-23" />
+      <entry key="M2" value="9.905779257331636E-12" />
+      <entry key="M5" value="3.96602523951724E-5" />
+      <entry key="M10" value="0.006299310932786728" />
+      <entry key="M15" value="0.03428181050573704" />
+      <entry key="M30" value="0.20545796875232022" />
+      <entry key="H1" value="0.6854363580865583" />
+      <entry key="H2" value="1.6281939578372877" />
+      <entry key="H4" value="2.761253306089681" />
+      <entry key="D1" value="4.509084539600303" />
+      <entry key="W1" value="4.9262132905015275" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.9526379980439373" />
+      <entry key="MS500" value="0.9903428719330246" />
+      <entry key="S2" value="0.9975769252644544" />
+      <entry key="S5" value="0.9990300646389034" />
+      <entry key="S10" value="0.9995149146655609" />
+      <entry key="S30" value="0.9998382787361634" />
+      <entry key="S60" value="0.9999192091601748" />
+      <entry key="M2" value="1.000814172809011" />
+      <entry key="M5" value="1.2368790066177566" />
+      <entry key="M10" value="2.6702019728638566" />
+      <entry key="M15" value="4.569649259618929" />
+      <entry key="M30" value="10.284955185069096" />
+      <entry key="H1" value="19.258162721321263" />
+      <entry key="H2" value="30.927677945352507" />
+      <entry key="H4" value="42.32286898855484" />
+      <entry key="D1" value="57.8794260049759" />
+      <entry key="W1" value="61.38591799694992" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="3FAHTe0BPbDKQZ9EBqB65GgRc7K" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Gradle.TicketFlow 빌드.executor": "Run",
+    "JavaScript 디버그.ranking.html.executor": "Run",
+    "JavaScript 디버그.seatmap.html.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Spring Boot.TicketflowApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "seat",
+    "git.auto.fetch.suggestion.counter": "3",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/tj14/IdeaProjects/TicketFlow/src/main/resources",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "전역 라이브러리",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "editor.preferences.tabs",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "mysql"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\tj14\IdeaProjects\TicketFlow\src\main\resources" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Spring Boot.TicketflowApplication">
+    <configuration name="ranking.html" type="JavascriptDebugType" temporary="true" nameIsGenerated="true" uri="http://localhost:63342/ticketflow/ticketflow.main/templates/concert/ranking.html" useBuiltInWebServerPort="true">
+      <method v="2" />
+    </configuration>
+    <configuration name="seatmap.html" type="JavascriptDebugType" temporary="true" nameIsGenerated="true" uri="http://localhost:63342/ticketflow/ticketflow.main/templates/concert/seatmap.html" useBuiltInWebServerPort="true">
+      <method v="2" />
+    </configuration>
+    <configuration name="TicketflowApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="ticketflow.main" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.ticketflow.TicketflowApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JavaScript 디버그.ranking.html" />
+        <item itemvalue="JavaScript 디버그.seatmap.html" />
+        <item itemvalue="JavaScript 디버그.seatmap.html" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="디폴트 작업">
+      <changelist id="505f9c72-6bc5-49b3-b378-9c08035622d5" name="변경" comment="" />
+      <created>1781510965039</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1781510965039</updated>
+      <workItem from="1781510966919" duration="2844000" />
+      <workItem from="1781513851860" duration="626000" />
+      <workItem from="1781570867946" duration="3869000" />
+      <workItem from="1781574765652" duration="6893000" />
+      <workItem from="1781581709717" duration="3717000" />
+      <workItem from="1781588981435" duration="12033000" />
+      <workItem from="1781656548579" duration="8704000" />
+      <workItem from="1781665562825" duration="28000" />
+    </task>
+    <task id="LOCAL-00001" summary="스탠딩석, 일반 좌석 배치도 통합">
+      <option name="closed" value="true" />
+      <created>1781513538426</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1781513538426</updated>
+    </task>
+    <task id="LOCAL-00002" summary="스탠딩석, 일반 좌석 배치도 통합">
+      <option name="closed" value="true" />
+      <created>1781572862508</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1781572862508</updated>
+    </task>
+    <task id="LOCAL-00003" summary="좌석 배치도 뜨지 않는 버그">
+      <option name="closed" value="true" />
+      <created>1781597468427</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1781597468427</updated>
+    </task>
+    <task id="LOCAL-00004" summary="좌석 배치도 버그">
+      <option name="closed" value="true" />
+      <created>1781599048829</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1781599048829</updated>
+    </task>
+    <task id="LOCAL-00005" summary="좌석 배치도 버그">
+      <option name="closed" value="true" />
+      <created>1781600888220</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1781600888220</updated>
+    </task>
+    <task id="LOCAL-00006" summary="좌석 배치도 버그">
+      <option name="closed" value="true" />
+      <created>1781600946143</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1781600946143</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="스탠딩석, 일반 좌석 배치도 통합" />
+    <MESSAGE value="좌석 배치도 뜨지 않는 버그" />
+    <MESSAGE value="좌석 배치도 버그" />
+    <option name="LAST_COMMIT_MESSAGE" value="좌석 배치도 버그" />
+  </component>
+</project>

@@ -190,7 +190,7 @@ public class SeatService {
         좌석 상태
      */
     public Object getSeatStatus(
-            Long concertId
+            String concertId
     ) {
 
         return List.of(
@@ -207,7 +207,7 @@ public class SeatService {
 
 
     public boolean isSelected(
-            Long concertId,
+            String concertId,
             String seatId
     ) {
 
@@ -218,7 +218,7 @@ public class SeatService {
 
 
     public void cancelSeat(
-            Long concertId,
+            String concertId,
             String seatId,
             Long userNo
     ) {
@@ -228,7 +228,7 @@ public class SeatService {
 
 
     public int getRemainSeat(
-            Long concertId
+            String concertId
     ) {
 
         return 100;

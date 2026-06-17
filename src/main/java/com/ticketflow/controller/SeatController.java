@@ -19,10 +19,8 @@ public class SeatController {
 
     @GetMapping("/{concertId}")
     public String seatPage(
-
             @PathVariable String concertId,
             Model model
-
     ){
 
         model.addAttribute(
@@ -32,14 +30,13 @@ public class SeatController {
 
 
         return "concert/seatmap";
-
     }
 
     // 1. 좌석 선택
     @PostMapping("/select")
     @ResponseBody
     public ResponseEntity<?> selectSeat(
-            @RequestParam Long concertId,
+            @RequestParam String concertId,
             @RequestParam String seatId,
             @RequestParam Long userNo
     ) {
@@ -76,7 +73,7 @@ public class SeatController {
     @GetMapping("/status/{concertId}")
     @ResponseBody
     public ResponseEntity<?> getSeatStatus(
-            @PathVariable Long concertId
+            @PathVariable String concertId
     ) {
 
         return ResponseEntity.ok(
@@ -91,7 +88,7 @@ public class SeatController {
     @GetMapping("/selected")
     @ResponseBody
     public ResponseEntity<Boolean> checkSelected(
-            @RequestParam Long concertId,
+            @RequestParam String concertId,
             @RequestParam String seatId
     ) {
 
@@ -111,7 +108,7 @@ public class SeatController {
     @DeleteMapping("/select")
     @ResponseBody
     public ResponseEntity<?> cancelSeat(
-            @RequestParam Long concertId,
+            @RequestParam String concertId,
             @RequestParam String seatId,
             @RequestParam Long userNo
     ) {
@@ -132,7 +129,7 @@ public class SeatController {
     @GetMapping("/remain")
     @ResponseBody
     public ResponseEntity<Integer> remainSeat(
-            @RequestParam Long concertId
+            @RequestParam String concertId
     ) {
 
         return ResponseEntity.ok(
