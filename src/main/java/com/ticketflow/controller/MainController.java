@@ -3,7 +3,9 @@ package com.ticketflow.controller;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
 public class MainController {
@@ -20,5 +22,11 @@ public class MainController {
             return "redirect:/mypage/benefits";
         }
         return "redirect:/login";
+    }
+
+    @GetMapping("/seat/{concertId}")
+    public String seatPage(@PathVariable String concertId, Model model){
+        model.addAttribute("concertId",concertId);
+        return "concert/seatmap";
     }
 }
