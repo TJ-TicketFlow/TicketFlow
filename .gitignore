@@ -1,5 +1,5 @@
 # 디폴트 무시된 파일
-/.idea/shelf/
+/.idea/
 /workspace.xml
 # 쿼리 파일을 포함한 무시된 디폴트 폴더
 /queries/
@@ -11,4 +11,4 @@
 **/build/
 **/.env
 **/.gradle/
-**/application.yml
+**/application.ym
