@@ -1,6 +1,7 @@
 package com.ticketflow.service;
 
 import com.ticketflow.entity.Concert;
+import com.ticketflow.entity.Stats; // Stats 엔티티 import 확인 필요
 import com.ticketflow.repository.ConcertRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,13 +40,8 @@ public class ConcertService {
 
         return results.stream().map(obj -> {
             Map<String, Object> map = new HashMap<>();
-
-            // 데이터 순서: obj[0] = Concert 객체, obj[1] = ranking (Integer)
             Concert concert = (Concert) obj[0];
-
-            // Integer를 캐스팅할 때 발생할 수 있는 오류 방지
             int ranking = ((Number) obj[1]).intValue();
-
             map.put("concert", concert);
             map.put("ranking", ranking);
             return map;
@@ -62,18 +58,49 @@ public class ConcertService {
             Map<String, Object> map = new HashMap<>();
             Concert concert = (Concert) obj[0];
             int ranking = ((Number) obj[1]).intValue();
-
             map.put("concert", concert);
             map.put("ranking", ranking);
             return map;
         }).collect(Collectors.toList());
     }
+
+    /**
+     * [상세페이지용] 예매자 통계 데이터 가공
+     */
+    public Map<String, List<?>> getStatsData(String concertId) {
+        Concert concert = findById(concertId);
+
+        // stats가 비어있거나 null이면 차트를 띄우지 않기 위해 null 반환
+        if (concert.getStats() == null || concert.getStats().isEmpty()) {
+            return null;
+        }
+
+        // Stats 엔티티의 필드명에 맞게 정확한 getter 호출
+        Stats stats = concert.getStats().get(0);
+
+        Map<String, List<?>> data = new HashMap<>();
+
+        // 성별 데이터 [남성%, 여성%]
+        data.put("genderData", Arrays.asList(stats.getMaleRatio(), stats.getFemaleRatio()));
+
+        // 연령 데이터 [10대, 20대, 30대, 40대, 50대]
+        data.put("ageData", Arrays.asList(
+                stats.getAge10sRatio(),
+                stats.getAge20sRatio(),
+                stats.getAge30sRatio(),
+                stats.getAge40sRatio(),
+                stats.getAge50sRatio()
+        ));
+
+        return data;
+    }
+
     /**
      * [기존 유지] 특정 날짜를 받아 해당 요일에 맞는 시간만 반환
      */
     public List<String> findSessionsByDate(String id, String selectedDate) {
         Concert concert = findById(id);
-        String allTimes = concert.getConcertTime(); // "금요일(20:00), 토요일 ~ 일요일(17:00)"
+        String allTimes = concert.getConcertTime();
 
         if (allTimes == null || allTimes.isEmpty()) return Collections.emptyList();
 
@@ -83,16 +110,15 @@ public class ConcertService {
         return Arrays.stream(allTimes.split(","))
                 .map(String::trim)
                 .filter(time -> {
-                    // 1. "토요일 ~ 일요일(17:00)" 형태 처리
                     if (time.contains("~")) {
                         String rangePart = time.split("\\(")[0];
                         return rangePart.contains(dayOfWeek.substring(0, 1));
                     }
-                    // 2. 단일 요일 형태 처리: "금요일(20:00)"
                     return time.startsWith(dayOfWeek);
                 })
                 .collect(Collectors.toList());
     }
+
     /**
      * 진행 예정 공연 조회 (오늘 포함 이후)
      */

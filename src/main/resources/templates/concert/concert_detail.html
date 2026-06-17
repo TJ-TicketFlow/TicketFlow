@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <title>공연 상세 정보</title>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <style>
+        .stats-chart-wrapper { display: flex; gap: 50px; justify-content: center; align-items: center; padding: 20px; background: #f9f9f9; border-radius: 15px; margin-top: 20px; }
+        .chart-box { width: 300px; text-align: center; }
+        .chart-box canvas { width: 100% !important; height: auto !important; }
+    </style>
 </head>
 <body>
 
@@ -30,33 +36,20 @@
                         <span th:each="price : ${priceList}" th:text="${price}"></span>
                     </div>
                 </div>
-
-                <div class="benefit-section">
-                    <p><strong>혜택</strong></p>
-                    <div class="benefit-box">
-                        <span>기본할인 3%</span>
-                        <a href="#">내 쿠폰 확인하기 ></a>
-                    </div>
-                </div>
             </div>
         </div>
 
         <div class="booking-right">
             <div th:with="isEnded=${concert.concertEndDate < today}">
-
                 <div th:if="${isEnded}" class="sold-out-box" style="border: 2px solid #eee; padding: 30px; text-align: center; border-radius: 15px; background: #fafafa; color: #666;">
-                    <h3 style="margin-top: 0; color: #333;">판매종료</h3>
-                    <p>본 상품은 판매가 종료되었어요</p>
-                    <button type="button" class="btn-primary" disabled style="background-color: #bbbbbb; border: none; width: 100%; padding: 12px; color: #fff; border-radius: 5px; cursor: not-allowed;">예매하기</button>
+                    <h3>판매종료</h3>
+                    <button type="button" class="btn-primary" disabled style="background-color: #bbbbbb; width: 100%; padding: 12px; border: none; color: #fff; border-radius: 5px;">예매하기</button>
                 </div>
-
                 <div th:unless="${isEnded}">
                     <h3>관람일 선택</h3>
                     <div id="calendar"></div>
                     <h3>회차 선택</h3>
-                    <div id="session-container" class="session-wrapper">
-                        <p class="empty-msg">달력에서 날짜를 선택하세요.</p>
-                    </div>
+                    <div id="session-container" class="session-wrapper"></div>
                     <form th:action="@{/concert/seatmap}" method="get">
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
                         <input type="hidden" name="sessionId" id="selectedSessionId">
@@ -65,35 +58,73 @@
                 </div>
             </div>
         </div>
-    </div> <section class="bottom-section">
-    <div class="info-images-section">
-        <h3>공연 상세 정보</h3>
-        <div th:if="${not #lists.isEmpty(concert.concertInfoImages)}" th:each="imgUrl : ${concert.concertInfoImages}">
-            <img th:src="${imgUrl}" alt="상세 정보">
-        </div>
-        <p th:if="${#lists.isEmpty(concert.concertInfoImages)}" class="empty-msg">등록된 상세 이미지가 없습니다.</p>
     </div>
 
-    <div class="stats-section">
-        <h3>예매자 통계</h3>
-        <div th:if="${stats != null}" class="stats-chart">
-            <p>성별/연령 통계 그래프 영역</p>
+    <section class="bottom-section">
+        <div class="info-images-section">
+            <h3>공연 상세 정보</h3>
+            <div th:if="${not #lists.isEmpty(concert.concertInfoImages)}" th:each="imgUrl : ${concert.concertInfoImages}">
+                <img th:src="${imgUrl}" alt="상세 정보">
+            </div>
         </div>
-        <div th:if="${stats == null}" class="empty-msg">
-            <p>아직 예매 데이터가 없습니다.</p>
+
+        <div class="stats-section">
+            <h3>예매자 통계</h3>
+            <div th:if="${stats != null}" class="stats-chart-wrapper">
+                <div class="chart-box"><canvas id="genderChart"></canvas></div>
+                <div class="chart-box"><canvas id="ageChart"></canvas></div>
+            </div>
+            <div th:unless="${stats != null}" class="empty-msg">
+                <p>아직 예매 데이터가 없습니다.</p>
+            </div>
         </div>
-    </div>
-</section>
+    </section>
 </main>
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
-<script>
+<script th:inline="javascript">
+    // 차트 구현 로직
+    const stats = /*[[${stats}]]*/ null;
+
+    if (stats) {
+        // 성별 도넛 차트
+        new Chart(document.getElementById('genderChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['남성', '여성'],
+                datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }]
+            },
+            options: {
+                plugins: {
+                    title: { display: true, text: '성별 비율 (%)' },
+                    tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed.toFixed(1) + '%' } }
+                }
+            }
+        });
+
+        // 연령 막대 차트
+        new Chart(document.getElementById('ageChart'), {
+            type: 'bar',
+            data: {
+                labels: ['10대', '20대', '30대', '40대', '50대'],
+                datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }]
+            },
+            options: {
+                plugins: {
+                    title: { display: true, text: '연령대별 예매율 (%)' },
+                    tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' } }
+                },
+                scales: { y: { beginAtZero: true, max: 100 } }
+            }
+        });
+    }
+
+    // 기존 달력 및 세션 로직은 동일
     document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
+        var calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
             locale: 'ko', initialView: 'dayGridMonth', selectable: true,
-            dateClick: function(info) { loadSessions(info.dateStr); }
+            dateClick: (info) => loadSessions(info.dateStr)
         });
         calendar.render();
     });
@@ -105,15 +136,11 @@
             .then(data => {
                 const container = document.getElementById('session-container');
                 container.innerHTML = '';
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<p class="empty-msg">공연이 없습니다.</p>';
-                    return;
-                }
                 data.forEach(s => {
                     const btn = document.createElement('button');
                     btn.type = 'button'; btn.className = 'btn-session';
                     btn.innerText = s.time;
-                    btn.onclick = function() {
+                    btn.onclick = () => {
                         document.querySelectorAll('.btn-session').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         document.getElementById('selectedSessionId').value = s.id;

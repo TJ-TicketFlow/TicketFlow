@@ -66,6 +66,9 @@ public class ConcertController {
         Concert concert = concertService.findById(id);
         model.addAttribute("concert", concert);
 
+        // [추가] 통계 데이터 바인딩
+        model.addAttribute("stats", concertService.getStatsData(id));
+
         model.addAttribute("today", LocalDate.now());
 
         String dateRange = concert.getConcertStartDate().equals(concert.getConcertEndDate())
@@ -204,4 +207,5 @@ public class ConcertController {
     public ResponseEntity<?> getAiRecommendations() {
         return ResponseEntity.ok().body(Map.of("aiRecommended", Collections.emptyList()));
     }
+
 }
