@@ -2,6 +2,8 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>공연 상세 정보</title>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -10,6 +12,8 @@
         .stats-chart-wrapper { display: flex; gap: 50px; justify-content: center; align-items: center; padding: 20px; background: #f9f9f9; border-radius: 15px; margin-top: 20px; }
         .chart-box { width: 300px; text-align: center; }
         .chart-box canvas { width: 100% !important; height: auto !important; }
+        /* 위시리스트 스타일 */
+        .wishlist-box { margin-top: 15px; display: flex; align-items: center; cursor: pointer; font-size: 1.1rem; }
     </style>
 </head>
 <body>
@@ -20,6 +24,15 @@
     <div class="detail-grid">
         <div class="info-left">
             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
+            <div class="wishlist-box"
+                 th:data-concert-id="${concert.concertId}"
+                 onclick="toggleWishlist(this.getAttribute('data-concert-id'))">
+
+                <img th:id="'wish-icon-' + ${concert.concertId}"
+                     th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}"
+                     alt="찜" style="width: 24px; margin-right: 8px;">
+                <span th:id="'wish-count-' + ${concert.concertId}" th:text="${concert.concertWishlistCount}">0</span>
+            </div>
         </div>
 
         <div class="info-middle">
@@ -29,7 +42,6 @@
                 <p><strong>공연기간</strong> <span th:text="${dateRange}"></span></p>
                 <p><strong>공연시간</strong> <span th:text="${concert.concertTime}"></span></p>
                 <p><strong>관람연령</strong> <span th:text="${concert.concertAgeLimit}"></span></p>
-
                 <div class="price-section">
                     <p><strong>가격</strong></p>
                     <div class="price-list">
@@ -84,43 +96,59 @@
 <div th:replace="~{fragments/footer :: footer}"></div>
 
 <script th:inline="javascript">
-    // 차트 구현 로직
-    const stats = /*[[${stats}]]*/ null;
+    // 위시리스트 토글 로직
+    function toggleWishlist(concertId) {
+        // 1. 헤더 설정 (CSRF 토큰도 포함)
+        const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
 
+        fetch(`/concert/${concertId}/like`, {
+            method: 'POST',
+            headers: {
+                [csrfHeader]: csrfToken,
+                'Content-Type': 'application/json' // 필요시 추가
+            },
+            credentials: 'include' // ★ 이 옵션이 핵심입니다!
+        })
+            .then(response => {
+                if (response.status === 401) {
+                    alert("로그인이 필요합니다.");
+                    window.location.href = "/login";
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return;
+                const icon = document.getElementById(`wish-icon-${concertId}`);
+                const countSpan = document.getElementById(`wish-count-${concertId}`);
+
+                // 서버 응답에 따라 아이콘 및 숫자 변경
+                if (data.isLiked) {
+                    icon.src = "/images/favicon.png";
+                } else {
+                    icon.src = "/images/notfavicon.png";
+                }
+                countSpan.innerText = data.newCount;
+            });
+    }
+
+    // 차트 및 기존 로직...
+    const stats = /*[[${stats}]]*/ null;
     if (stats) {
-        // 성별 도넛 차트
         new Chart(document.getElementById('genderChart'), {
             type: 'doughnut',
-            data: {
-                labels: ['남성', '여성'],
-                datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }]
-            },
-            options: {
-                plugins: {
-                    title: { display: true, text: '성별 비율 (%)' },
-                    tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed.toFixed(1) + '%' } }
-                }
-            }
+            data: { labels: ['남성', '여성'], datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }] },
+            options: { plugins: { title: { display: true, text: '성별 비율 (%)' }, tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed.toFixed(1) + '%' } } } }
         });
 
-        // 연령 막대 차트
         new Chart(document.getElementById('ageChart'), {
             type: 'bar',
-            data: {
-                labels: ['10대', '20대', '30대', '40대', '50대'],
-                datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }]
-            },
-            options: {
-                plugins: {
-                    title: { display: true, text: '연령대별 예매율 (%)' },
-                    tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' } }
-                },
-                scales: { y: { beginAtZero: true, max: 100 } }
-            }
+            data: { labels: ['10대', '20대', '30대', '40대', '50대'], datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }] },
+            options: { plugins: { title: { display: true, text: '연령대별 예매율 (%)' }, tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' } } }, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
 
-    // 기존 달력 및 세션 로직은 동일
     document.addEventListener('DOMContentLoaded', function() {
         var calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
             locale: 'ko', initialView: 'dayGridMonth', selectable: true,
