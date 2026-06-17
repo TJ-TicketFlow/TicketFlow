@@ -65,13 +65,17 @@ public class ConcertController {
         model.addAttribute("stats", concertService.getStatsData(id));
         model.addAttribute("today", LocalDate.now());
 
-        // [수정] Principal 객체로 로그인 여부 및 아이디 확인
+        // 1. 좋아요 여부 확인
         boolean isLiked = false;
         if (principal != null) {
-            String userId = principal.getName(); // Spring Security가 관리하는 현재 사용자 ID
+            String userId = principal.getName();
             isLiked = concertService.isLiked(id, userId);
         }
         model.addAttribute("isLiked", isLiked);
+
+        // 2. [추가] 실시간 위시리스트 개수 가져오기 (DB에서 직접 조회)
+        int wishCount = concertService.getWishlistCount(id);
+        model.addAttribute("wishCount", wishCount);
 
         // 날짜 및 가격 정보 처리 (기존과 동일)
         String dateRange = concert.getConcertStartDate().equals(concert.getConcertEndDate())

@@ -31,7 +31,7 @@
                 <img th:id="'wish-icon-' + ${concert.concertId}"
                      th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}"
                      alt="찜" style="width: 24px; margin-right: 8px;">
-                <span th:id="'wish-count-' + ${concert.concertId}" th:text="${concert.concertWishlistCount}">0</span>
+                <span th:id="'wish-count-' + ${concert.concertId}" th:text="${wishCount}">0</span>
             </div>
         </div>
 

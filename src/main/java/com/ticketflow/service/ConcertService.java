@@ -68,7 +68,8 @@ public class ConcertService {
 
     // [위시리스트] 개수 조회
     public int getWishlistCount(String concertId) {
-        return findById(concertId).getConcertWishlistCount();
+        // 1. Repository에 countByConcert_ConcertId 메서드가 있어야 함
+        return (int) wishlistRepository.countByConcert_ConcertId(concertId);
     }
 
     // [내부 호출] 공연 엔티티의 카운트 업데이트

@@ -26,4 +26,11 @@ public class WishlistService {
         // long 타입을 int로 변환
         return (int) wishlistRepository.countByUser_UserId(userId);
     }
+
+    // [추가] 선택한 위시리스트 삭제 기능
+    @Transactional
+    public void deleteSelected(String userId, List<String> concertIds) {
+        // DB에서 삭제
+        wishlistRepository.deleteByUser_UserIdAndConcert_ConcertIdIn(userId, concertIds);
+    }
 }

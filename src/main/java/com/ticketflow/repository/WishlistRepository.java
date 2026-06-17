@@ -16,6 +16,9 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
     // 유저의 ID와 공연의 ID를 기준으로 찜 삭제
     void deleteByUser_UserIdAndConcert_ConcertId(String userId, String concertId);
 
+    // 여러 개 삭제를 위해 'In'을 사용한 메서드 추가
+    void deleteByUser_UserIdAndConcert_ConcertIdIn(String userId, List<String> concertIds);
+
     // 상세 조회 시 사용 (필요한 경우)
     Optional<Wishlist> findByUser_UserIdAndConcert_ConcertId(String userId, String concertId);
 
@@ -24,4 +27,6 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     // 2. 유저 ID로 찜 개수 조회 (count 반환)
     long countByUser_UserId(String userId);
+
+    long countByConcert_ConcertId(String concertId);
 }
