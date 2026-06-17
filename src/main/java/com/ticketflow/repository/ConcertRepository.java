@@ -32,4 +32,9 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
             "FROM Concert c " +
             "JOIN c.stats s") // 엔티티 관계(OneToMany 등)가 설정되어 있다면 바로 조인 가능
     List<Object[]> findConcertsByRanking();
+
+    // ConcertRepository.java
+    @Query("SELECT c, RANK() OVER (ORDER BY s.reservationRate DESC) as ranking " +
+            "FROM Concert c JOIN c.stats s WHERE c.concertGenre = :genre")
+    List<Object[]> findConcertsByGenreRanking(@Param("genre") String genre);
 }

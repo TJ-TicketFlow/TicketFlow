@@ -1094,3 +1094,18 @@ aside {
     transition: color 0.2s;
 }
 .back-link:hover { color: var(--primary); }
+
+/* ══════════════════════════════════════
+   랭킹 페이지 관련
+══════════════════════════════════════ */
+
+/* 랭킹 탭 필터 스타일 */
+.genre-tabs { display: flex; justify-content: center; gap: 10px; margin: 30px 0; }
+.tab-link {
+    padding: 10px 20px; border: 1px solid #ddd; border-radius: 20px;
+    text-decoration: none; color: #666; font-size: 0.95rem; transition: all 0.3s;
+}
+.tab-link.active {
+    background-color: #3b6fff; color: white; border-color: #3b6fff; font-weight: bold;
+}
+.tab-link:hover { border-color: #3b6fff; color: #3b6fff; }

@@ -53,6 +53,22 @@ public class ConcertService {
     }
 
     /**
+     * [랭킹 페이지용] 특정 장르의 예매율 기반 랭킹 조회
+     */
+    public List<Map<String, Object>> getRankedConcertsByGenre(String genre) {
+        List<Object[]> results = concertRepository.findConcertsByGenreRanking(genre);
+
+        return results.stream().map(obj -> {
+            Map<String, Object> map = new HashMap<>();
+            Concert concert = (Concert) obj[0];
+            int ranking = ((Number) obj[1]).intValue();
+
+            map.put("concert", concert);
+            map.put("ranking", ranking);
+            return map;
+        }).collect(Collectors.toList());
+    }
+    /**
      * [기존 유지] 특정 날짜를 받아 해당 요일에 맞는 시간만 반환
      */
     public List<String> findSessionsByDate(String id, String selectedDate) {
@@ -75,6 +91,25 @@ public class ConcertService {
                     // 2. 단일 요일 형태 처리: "금요일(20:00)"
                     return time.startsWith(dayOfWeek);
                 })
+                .collect(Collectors.toList());
+    }
+    /**
+     * 진행 예정 공연 조회 (오늘 포함 이후)
+     */
+    public List<Concert> getUpcomingConcerts() {
+        LocalDate today = LocalDate.now();
+        return getAllConcerts().stream()
+                .filter(c -> !c.getConcertEndDate().isBefore(today))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 지난 공연 조회 (오늘 이전)
+     */
+    public List<Concert> getPastConcerts() {
+        LocalDate today = LocalDate.now();
+        return getAllConcerts().stream()
+                .filter(c -> c.getConcertEndDate().isBefore(today))
                 .collect(Collectors.toList());
     }
 }

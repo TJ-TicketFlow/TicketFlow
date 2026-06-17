@@ -34,30 +34,18 @@ public class ConcertController {
 
     @GetMapping("/")
     public String mainPage(@RequestParam(required = false) String genre, Model model) {
-        LocalDate today = LocalDate.now();
-        List<Concert> allConcerts;
-
-        // 1. 장르별 또는 전체 공연 조회
+        // 1. 장르별 필터링이 필요한 경우와 전체 메인 페이지 로직 분리
         if (genre != null && !genre.isEmpty()) {
             String koreanGenre = mapGenreCodeToName(genre);
-            allConcerts = concertService.getConcertsByGenre(koreanGenre);
+            List<Concert> genreConcerts = concertService.getConcertsByGenre(koreanGenre);
+            model.addAttribute("concertList", genreConcerts);
         } else {
-            allConcerts = concertService.getAllConcerts();
+            // 필터가 없을 때는 우리가 새로 만든 서비스 메서드 활용
+            model.addAttribute("upcomingConcerts", concertService.getUpcomingConcerts());
+            model.addAttribute("pastConcerts", concertService.getPastConcerts());
         }
 
-        // 2. 날짜 기준 필터링 (LocalDate 비교)
-        List<Concert> upcoming = allConcerts.stream()
-                .filter(c -> !c.getConcertEndDate().isBefore(today))
-                .collect(Collectors.toList());
-
-        List<Concert> past = allConcerts.stream()
-                .filter(c -> c.getConcertEndDate().isBefore(today))
-                .collect(Collectors.toList());
-
-        model.addAttribute("upcomingConcerts", upcoming);
-        model.addAttribute("pastConcerts", past);
         model.addAttribute("genre", genre);
-
         return "concert/mainpage";
     }
 
@@ -102,17 +90,23 @@ public class ConcertController {
     }
 
     @GetMapping("/ranking")
-    public String rankingPage(Model model) {
-        List<Map<String, Object>> allRankings = concertService.getRankedConcerts();
-
-        // 헤더에서 active 클래스를 부여하기 위해 genre를 'ranking'으로 설정
-        model.addAttribute("genre", "ranking");
-
-        if (allRankings.size() >= 3) {
-            model.addAttribute("top3", allRankings.subList(0, 3));
-            model.addAttribute("restRankings", allRankings.subList(3, allRankings.size()));
+    public String rankingPage(@RequestParam(required = false) String genre, Model model) {
+        // 장르가 있으면 변환 후 필터링, 없으면 전체 랭킹 조회
+        List<Map<String, Object>> rankings;
+        if (genre != null && !genre.isEmpty()) {
+            String koreanGenre = mapGenreCodeToName(genre);
+            rankings = concertService.getRankedConcertsByGenre(koreanGenre);
         } else {
-            model.addAttribute("top3", allRankings);
+            rankings = concertService.getRankedConcerts();
+        }
+
+        model.addAttribute("genre", genre == null ? "all" : genre); // 탭 활성화를 위해 전달
+
+        if (rankings.size() >= 3) {
+            model.addAttribute("top3", rankings.subList(0, 3));
+            model.addAttribute("restRankings", rankings.subList(3, rankings.size()));
+        } else {
+            model.addAttribute("top3", rankings);
             model.addAttribute("restRankings", Collections.emptyList());
         }
         return "concert/ranking";
