@@ -3,6 +3,7 @@ package com.ticketflow.controller;
 import com.ticketflow.dto.UserUpdateDto;
 import com.ticketflow.entity.User;
 import com.ticketflow.service.UserService;
+import com.ticketflow.service.WishlistService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.Collections;
 public class MyPageController {
 
     private final UserService userService;
+    private final WishlistService wishlistService;
 
     @GetMapping
     public String mypage() {
@@ -33,6 +35,7 @@ public class MyPageController {
                                  Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
+        model.addAttribute("wishCount", wishlistService.countByUserId(user.getUserId()));
         model.addAttribute("tickets", Collections.emptyList());
         model.addAttribute("coupons", Collections.emptyList());
         return "mypage/mypage_benefits";
@@ -117,6 +120,7 @@ public class MyPageController {
                                  Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
+        model.addAttribute("wishlist", wishlistService.findWishlistByUserId(user.getUserId()));
         return "mypage/mypage_wishlist";
     }
 

@@ -64,7 +64,7 @@
                 <div class="q-label">보유 쿠폰</div>
             </a>
             <a th:href="@{/mypage/wishlist}" class="quick-card">
-                <div class="q-num">0</div>
+                <div class="q-num" th:text="${wishCount}">0</div>
                 <div class="q-label">위시리스트</div>
             </a>
         </div>

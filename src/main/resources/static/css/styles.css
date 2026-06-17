@@ -1109,3 +1109,20 @@ aside {
     background-color: #3b6fff; color: white; border-color: #3b6fff; font-weight: bold;
 }
 .tab-link:hover { border-color: #3b6fff; color: #3b6fff; }
+
+/* 마이페이지 위시리스트 그리드 고정 설정 */
+.main-content .concert-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+/* 태블릿 이상에서는 3개, 모바일에서는 2개로 반응형 대응 */
+@media (max-width: 1024px) {
+    .main-content .concert-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+@media (max-width: 768px) {
+    .main-content .concert-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}

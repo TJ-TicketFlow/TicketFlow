@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<body>
-<th:block th:replace="~{mypage/mypage_base :: mypageLayout('위시리스트 - 티켓플로우', '위시리스트', 'wishlist', ~{::content})}">
-    <th:block th:fragment="content">
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('위시리스트', '위시리스트', 'wishlist', ~{this :: .main-content-area})}">
 
-        <div class="empty-state">
+    <div class="main-content-area">
+
+        <div class="empty-state" th:if="${#lists.isEmpty(wishlist)}">
             <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
@@ -12,7 +12,21 @@
             <a th:href="@{/}" class="btn-explore">공연 둘러보기</a>
         </div>
 
-    </th:block>
+        <div class="concert-grid" th:if="${not #lists.isEmpty(wishlist)}">
+            <div th:each="wish : ${wishlist}" class="concert-card">
+                <a th:href="@{/concert/{id}/detail-page(id=${wish.concert.concertId})}">
+                    <div class="poster-wrap">
+                        <img th:src="${wish.concert.concertPosterUrl}" alt="포스터" class="poster-img">
+                    </div>
+                    <div class="concert-info">
+                        <div class="concert-genre">공연</div>
+                        <h4 class="concert-name" th:text="${wish.concert.concertName}">공연명</h4>
+                        <p class="concert-hall" th:text="${wish.concert.hall.hallName}">장소</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+    </div>
 </th:block>
-</body>
 </html>
