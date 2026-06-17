@@ -23,6 +23,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/booking/webhooks", "/api/payment/webhook")
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/login", "/register",
@@ -32,7 +35,8 @@ public class SecurityConfig {
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
-                                "/concert/","/concert/**","/concert/{id}/sessions"
+                                "/concert/","/concert/**","/concert/{id}/sessions",
+                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()

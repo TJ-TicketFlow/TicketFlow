@@ -48,12 +48,28 @@ public class WebhookController {
             String eventName = rootNode.path("meta").path("event_name").asText();
 
             if ("order_created".equals(eventName)) {
-                // 3. 커스텀 데이터(merchant_uid)와 레몬스퀴지 주문번호(id) 꺼내기
+
+                // 1. 커스텀 데이터와 레몬스퀴지 기본 주문번호 꺼내기
                 String merchantUid = rootNode.path("meta").path("custom_data").path("merchant_uid").asText();
                 String lsOrderId = rootNode.path("data").path("id").asText();
 
-                // 4. DB 업데이트: 서비스에게 "결제 완료 처리해 줘!" 라고 지시
-                bookingService.completePayment(merchantUid, lsOrderId);
+                // ⭐️ 2. 여기서부터 추가! JSON의 'attributes' (상세 정보) 칸을 엽니다.
+                JsonNode attributes = rootNode.path("data").path("attributes");
+
+                String currency = attributes.path("currency").asText(); // "KRW"
+                String lsCustomerId = attributes.path("customer_id").asText(); // 고객 ID
+                String receiptUrl = attributes.path("urls").path("receipt").asText(); // 영수증 URL
+
+                // 이벤트 ID는 meta 안에 들어있습니다.
+                String lsWebhookEventId = rootNode.path("meta").path("webhook_id").asText();
+
+                // first_order_item 안에 들어있는 순수 price를 꺼냅니다! (3200000)
+                long purePriceCent = attributes.path("first_order_item").path("price").asLong();
+                // 우리가 보낼 때 100을 곱했으니, 비교할 때는 100으로 다시 나눠서 원상복구(32000) 시킵니다!
+                long webhookAmount = purePriceCent / 100;
+
+                // 3. 서비스에게 "이것들도 다 같이 장부에 적어줘!" 라고 넘깁니다.
+                bookingService.completePayment(merchantUid, lsOrderId, currency, lsCustomerId, receiptUrl, lsWebhookEventId, webhookAmount);
             }
 
             // 5. 레몬스퀴즈에게 "알림 잘 받았어! 고마워!" 라고 200 OK 보내기

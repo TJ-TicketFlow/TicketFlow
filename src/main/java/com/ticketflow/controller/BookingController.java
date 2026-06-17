@@ -56,6 +56,11 @@ public class BookingController {
     @ResponseBody // 화면 이동 대신 URL 데이터만 던져줍니다!
     public String createBooking(@RequestBody BookingRequestDto requestDto) {
 
+        // ⭐️ 내 눈으로 직접 백엔드가 받은 금액 확인해보기!
+        System.out.println("=========================================");
+        System.out.println("✅ 프론트에서 무사히 도착한 금액: " + requestDto.getPayAmount());
+        System.out.println("=========================================");
+
         String lemonSqueezyUrl = bookingService.createTemporaryPayment(requestDto);
 
         return lemonSqueezyUrl;

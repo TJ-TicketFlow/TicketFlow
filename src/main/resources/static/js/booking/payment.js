@@ -1,16 +1,61 @@
+// ==========================================
+// 💡 1. 카카오 우편번호 검색 팝업 기능 (바깥에 배치 완료!)
+// ==========================================
+function openAddressSearch() {
+    new daum.Postcode({
+        oncomplete: function(data) {
+            let fullAddress = data.roadAddress;
+            if (data.userSelectedType === 'J') {
+                fullAddress = data.jibunAddress;
+            }
+
+            const zipCodeInput = document.querySelector('input[name="zipCode"]');
+            const addressBaseInput = document.querySelector('input[name="addressBase"]');
+            const addressDetailInput = document.querySelector('input[name="addressDetail"]');
+
+            if (zipCodeInput) zipCodeInput.value = data.zonecode;
+            if (addressBaseInput) addressBaseInput.value = fullAddress;
+
+            if (addressDetailInput) addressDetailInput.focus();
+        }
+    }).open();
+}
+
+// ==========================================
+// 💡 2. 화면이 다 켜진 후 실행될 구역
+// ==========================================
 document.addEventListener("DOMContentLoaded", function() {
 
-    // ==========================================
-    // 💡 1. 기초 설정 (HTML 상자 가져오기)
-    // ==========================================
+    // [타이머 설정]
+    let timeout = 30;
+    let timeLeft = timeout * 60;
+    const timerDisplay = document.getElementById('countdownTimer');
 
-    // 외부 JS 파일이면 타임리프 문법이 안 먹힐 수 있습니다.
-    // HTML에 미리 숨겨두거나, 일단 테스트용으로 false로 지정합니다.
-    const isMember = false; // 타임리프 연동 시 HTML 내부 스크립트로 이동 권장
+    // 1초마다 똑딱거리는 초시계
+    const timerInterval = setInterval(function() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
 
-    // ⭐️ 핵심: Number()로 바꾸지 말고, 'HTML 상자(Element)' 자체를 가져옵니다!
+        const minutesString = String(minutes).padStart(2, '0');
+        const secondsString = String(seconds).padStart(2, '0');
+
+        if (timerDisplay) {
+            timerDisplay.textContent = minutesString + ":" + secondsString;
+        }
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            alert("결제 대기 시간("+ timeout + "분)이 초과되었습니다. 메인 화면으로 돌아갑니다.");
+            window.location.href = '/';
+        }
+        timeLeft--;
+    }, 1000);
+
+    // [기초 HTML 상자들 가져오기]
+    const isMember = false;
     const couponContainer = document.getElementById('couponContainer');
-    const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]');
+    const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]'); // ✨ 이름표는 여기서 딱 한 번만 선언!
+    const deliveryInfoSection = document.getElementById('deliveryInfoSection'); // ✨ 배송지 구역 상자
 
     const deliveryFeeDisplay = document.getElementById('deliveryFeeDisplay');
     const totalPriceDisplay = document.getElementById('totalPriceDisplay');
@@ -19,25 +64,25 @@ document.addEventListener("DOMContentLoaded", function() {
     const couponDiscountDisplay = document.getElementById('couponDiscount');
     const totalDiscountDisplay = document.getElementById('totalDiscount');
 
-    // 계산을 위해 원본 티켓값과 수수료는 상자 안에서 '숫자'만 꺼내옵니다.
     const ticketPriceElement = document.getElementById('TicketPrice');
     const feeElement = document.getElementById('fee');
 
-    // 값이 없을 경우를 대비한 안전한 숫자 변환
     const TicketPrice = ticketPriceElement ? Number(ticketPriceElement.textContent.replace(/,/g,"")) : 20000;
     const fee = feeElement ? Number(feeElement.textContent.replace(/,/g,"")) : 2000;
 
 
     // ==========================================
-    // 💡 2. 쿠폰 목록 가져오기
+    // 💡 기능 함수들 (쿠폰 불러오기, 계산기, 숨김마법사)
     // ==========================================
+
+    // 쿠폰 목록 가져오기
     function loadCoupons() {
-        if (!couponContainer) return; // 상자가 없으면 에러 방지
+        if (!couponContainer) return;
 
         fetch('/booking/checkcoupons')
             .then(response => response.json())
             .then(coupons => {
-                couponContainer.innerHTML = ''; // "불러오는 중..." 지우기
+                couponContainer.innerHTML = '';
 
                 let htmlString = `
                     <div class="radio-box">
@@ -58,13 +103,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 couponContainer.innerHTML = htmlString;
 
-                // 새 라디오 버튼에 이벤트 달아주기
                 const couponRadios = document.querySelectorAll('input[name="couponRate"]');
                 couponRadios.forEach(radio => {
                     radio.addEventListener('change', calculateFinalPrice);
                 });
 
-                // 그리기 완료 후 계산기 한 번 실행
                 calculateFinalPrice();
             })
             .catch(error => {
@@ -73,25 +116,19 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 
-
-    // ==========================================
-    // 💡 3. 결제 가격 계산기
-    // ==========================================
+    // 결제 가격 계산기
     function calculateFinalPrice() {
-        // ① 배송비 확인
         const checkedDelivery = document.querySelector('input[name="deliveryType"]:checked');
         let deliveryFee = 0;
         if (checkedDelivery && checkedDelivery.value === 'POST') {
             deliveryFee = 10000;
         }
 
-        // ② 멤버십 할인 계산
         let membershipDiscountAmt = 0;
         if (isMember) {
-            membershipDiscountAmt = TicketPrice * 0.03; // 3% 할인
+            membershipDiscountAmt = TicketPrice * 0.03;
         }
 
-        // ③ 쿠폰 할인 계산
         let couponDiscountAmt = 0;
         const checkedCoupon = document.querySelector('input[name="couponRate"]:checked');
         if (checkedCoupon) {
@@ -99,12 +136,10 @@ document.addEventListener("DOMContentLoaded", function() {
             couponDiscountAmt = TicketPrice * (discountRate / 100);
         }
 
-        // ④ 최종 계산
         const newTotalPrice = TicketPrice + deliveryFee + fee;
         const totalDiscountAmt = couponDiscountAmt + membershipDiscountAmt;
         const newFinalPrice = newTotalPrice - totalDiscountAmt;
 
-        // ⑤ 화면 업데이트 (쉼표 찍기)
         if (deliveryFeeDisplay) deliveryFeeDisplay.textContent = deliveryFee.toLocaleString();
         if (membershipDiscountDisplay) membershipDiscountDisplay.textContent = membershipDiscountAmt.toLocaleString();
         if (couponDiscountDisplay) couponDiscountDisplay.textContent = couponDiscountAmt.toLocaleString();
@@ -113,32 +148,50 @@ document.addEventListener("DOMContentLoaded", function() {
         if (finalPriceDisplay) finalPriceDisplay.textContent = newFinalPrice.toLocaleString();
     }
 
+    // 배송지 정보 표시/숨김 마법사
+    function toggleDeliveryInfo() {
+        if (!deliveryInfoSection) return;
+
+        const checkedDelivery = document.querySelector('input[name="deliveryType"]:checked');
+
+        if (checkedDelivery && checkedDelivery.value === 'MOBILE') {
+            deliveryInfoSection.style.display = 'none'; // 모바일이면 숨김
+        } else {
+            deliveryInfoSection.style.display = 'block'; // 택배면 보여줌
+        }
+    }
+
+
     // ==========================================
-    // 💡 4. 감시자 설정 및 최초 실행
+    // 💡 감시자(Event Listener) 설정 및 최초 실행
     // ==========================================
     deliveryRadios.forEach(radio => {
         radio.addEventListener('change', calculateFinalPrice);
+        radio.addEventListener('change', toggleDeliveryInfo);
     });
 
-    loadCoupons(); // 쿠폰부터 먼저 불러옵니다.
+    // 최초 1회 실행하여 초기 화면 세팅
+    toggleDeliveryInfo();
+    loadCoupons();
 
 
     // ==========================================
-    // 💡 5. 결제하기 버튼 클릭
+    // 💡 결제하기 버튼 클릭 이벤트
     // ==========================================
     const payButton = document.getElementById('createPayment');
 
     if (payButton) {
         payButton.addEventListener('click', function() {
-            // 정보 가져오기
             const buyerName = document.querySelector('input[name="buyerName"]').value;
             const buyerEmail = document.querySelector('input[name="buyerEmail"]').value;
-            const buyerPhone = document.querySelector('input[name="buyerPhone"]').value; // 💡 누락되었던 폰번호 추가
-
+            const buyerPhone = document.querySelector('input[name="buyerPhone"]').value;
             const receiverName = document.querySelector('input[name="receiverName"]').value;
             const receiverPhone = document.querySelector('input[name="receiverPhone"]').value;
 
-            // 💡 <div>와 <span> 태그에서 텍스트로 읽어오도록 수정
+            const zipCode = document.querySelector('input[name="zipCode"]').value;
+            const addressBase = document.querySelector('input[name="addressBase"]').value;
+            const addressDetail = document.querySelector('input[name="addressDetail"]').value;
+
             const payName = document.getElementById('payNameDisplay').textContent;
             const payAmount = Number(finalPriceDisplay.textContent.replace(/,/g, ""));
 
@@ -146,12 +199,26 @@ document.addEventListener("DOMContentLoaded", function() {
             const usedCouponId = (checkedCoupon && checkedCoupon.value !== "0") ? checkedCoupon.getAttribute('data-id') : null;
 
             // 유효성 검사
-            if(buyerPhone === "" || receiverName === "") {
-                alert("필수 입력 정보를 모두 채워주세요!");
+            if(buyerPhone === "") {
+                alert("구매자의 휴대폰 번호를 입력해주세요!");
                 return;
             }
 
-            // 토큰 가져오기 (오류 방지를 위한 안전장치 추가)
+            const checkedDelivery = document.querySelector('input[name="deliveryType"]:checked');
+            if (checkedDelivery && checkedDelivery.value === 'POST') {
+                if(receiverName === "" || receiverPhone === "" || addressDetail === "") {
+                    alert("택배 수령을 위한 배송지 정보(이름, 연락처, 상세주소)를 모두 채워주세요!");
+                    return;
+                }
+            }
+
+            // [로딩 애니메이션 켜기]
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'flex';
+            payButton.disabled = true;
+            payButton.textContent = '결제 준비 중...';
+
+            // CSRF 토큰 설정
             const csrfMeta = document.querySelector("meta[name='_csrf']");
             const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
             const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : '';
@@ -165,25 +232,22 @@ document.addEventListener("DOMContentLoaded", function() {
                 buyerEmail: buyerEmail,
                 payDelName: receiverName,
                 payDelCall: receiverPhone,
-                userCouponId: usedCouponId
+                userCouponId: usedCouponId,
+                payDelPostcode: zipCode,
+                payDelAddr: addressBase + " " + addressDetail
             };
 
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            if (csrfHeader && csrfToken) {
-                headers[csrfHeader] = csrfToken;
-            }
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
 
+            // 서버 전송
             fetch('/booking/create', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify(requestData)
             })
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('서버 통신 실패 (상태 코드: ' + response.status + ')');
-                    }
+                    if (!response.ok) { throw new Error('서버 통신 실패'); }
                     return response.text();
                 })
                 .then(checkoutUrl => {
@@ -191,6 +255,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 })
                 .catch(error => {
                     console.error('❌ 결제 준비 중 오류 발생:', error);
+                    if (loadingOverlay) loadingOverlay.style.display = 'none';
+                    payButton.disabled = false;
+                    payButton.textContent = '결제하기';
                     alert('결제창을 불러오는 데 실패했습니다.');
                 });
         });

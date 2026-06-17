@@ -6,6 +6,7 @@
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link th:href="@{/css/booking/booking.css}" rel="stylesheet" />
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 </head>
 <body>
     <div class="container">
@@ -42,6 +43,8 @@
 
                     <hr style="border-top: 1px solid #ddd; margin: 15px 0;">
 
+                    <div id="deliveryInfoSection">
+
                     <div class="section-title" style="font-size: 14px;">배송지정보</div>
                     <div class="delivery-row">
                         <div class="delivery-label">받으시는분</div>
@@ -54,6 +57,18 @@
                         <div class="delivery-content">
                             <input type="text" class="input-field" name="receiverPhone">
                         </div>
+                    </div>
+                    <div class="delivery-row">
+                        <div class="delivery-label">주소</div>
+                        <div class="delivery-content">
+                            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                                <input type="text" class="input-field" style="width: 100px;" name="zipCode" placeholder="우편번호">
+                                <button type="button" class="btn-address" onclick="openAddressSearch()">우편번호 찾기</button>
+                            </div>
+                            <input type="text" class="input-field" style="margin-bottom: 5px;" name="addressBase" placeholder="기본주소">
+                            <input type="text" class="input-field" name="addressDetail" placeholder="상세주소 입력">
+                        </div>
+                    </div>
                     </div>
                 </div>
 
@@ -77,6 +92,9 @@
             </div>
 
             <div class="right-panel">
+                <div class="timer-text">
+                    남은 결제 시간 <span id="countdownTimer">30:00</span>
+                </div>
                 <div class="ticket-info-top">
                     <div class="poster">포스터<br>이미지</div>
                     <div>
@@ -122,5 +140,14 @@
         </div>
     </div>
 
-    <script src="/js/booking/payment.js"></script> </body>
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <div class="loading-text">
+            안전한 결제를 위해 준비 중입니다...<br>
+            <span style="font-size: 13px; opacity: 0.8;">창을 닫거나 새로고침하지 마세요.</span>
+        </div>
+    </div>
+
+    <script src="/js/booking/payment.js"></script>
+</body>
 </html>

@@ -1,5 +1,6 @@
 package com.ticketflow.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,7 +10,8 @@ public class BookingRequestDto {
     private long reservationKey;
     private String merchantUid;
     private String payName;
-    private long payAmount;
+    @JsonProperty("payAmount")
+    private Long payAmount;
     private Long userCouponId;
     private String buyerName;
     private String buyerEmail;

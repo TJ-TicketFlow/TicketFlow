@@ -39,7 +39,8 @@ public class BookingService {
     @Value("${lemonsqueezy.store-id2}")
     private String storeId;
 
-    private String variantId = "1792135";
+    @Value("${lemonsqueezy.variant-Id2}")
+    private String variantId;
 
     // ==========================================
     // 💡 1. 멤버십 상태 확인 (기존 기능)
@@ -152,7 +153,8 @@ public class BookingService {
         checkoutData.put("email", payment.getBuyerEmail());
 
         attributes.put("checkout_data", checkoutData);
-        attributes.put("custom_price", payment.getPayAmount());
+        long finalPriceForLemonSqueezy = payment.getPayAmount() * 100;
+        attributes.put("custom_price", finalPriceForLemonSqueezy);
 
         relationships.put("store", Map.of("data", Map.of("type", "stores", "id", storeId)));
         relationships.put("variant", Map.of("data", Map.of("type", "variants", "id", variantId)));
@@ -184,19 +186,36 @@ public class BookingService {
     // 5. 레몬스퀴지 웹훅
     // ==========================================
     @Transactional
-    public void completePayment(String merchantUid, String lsOrderId) {
-        // 1. 주문번호로 우리가 만들어뒀던 결제 장부(READY 상태)를 찾습니다.
+    public void completePayment(String merchantUid, String lsOrderId,
+                                String currency, String lsCustomerId,
+                                String receiptUrl, String lsWebhookEventId,
+                                long webhookAmount) { // ⭐️ 결제 금액을 인자로 받습니다!
+
         Pay payment = payRepository.findByMerchantUid(merchantUid)
-                .orElseThrow(() -> new IllegalArgumentException("해당 주문번호의 결제 내역을 찾을 수 없습니다: " + merchantUid));
+                .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
 
-        // 2. 장부의 상태를 '결제 완료(PAID)'로 도장 찍습니다!
+        // 1. 내가 DB에 저장해둔 결제 예정 금액 (단위 주의: 센트(cent) 등)
+        long expectedAmount = payment.getPayAmount();
+
+        // 2. 금액 비교 (오차가 있으면 결제 완료로 인정하지 않음!)
+        if (expectedAmount != webhookAmount) {
+            payment.setPayStatus("FAILED"); // 금액 불일치! 보안 위협으로 간주
+            System.err.println("🚨 금액 불일치 경고! DB가격: " + expectedAmount + ", 결제된 가격: " + webhookAmount);
+            return; // 여기서 로직 종료
+        }
+
+        // 3. 금액이 일치하면 정상 처리
         payment.setPayStatus("PAID");
-
-        // 3. 레몬스퀴지에서 발급한 진짜 주문번호도 장부에 기록해 둡니다. (나중에 환불할 때 필요함)
         payment.setLsOrderId(lsOrderId);
+        payment.setCurrency(currency);
+        payment.setLsCustomerId(lsCustomerId);
+        payment.setReceiptUrl(receiptUrl);
+        payment.setLsWebhookEventId(lsWebhookEventId);
 
-        System.out.println("✅ 결제 완료 처리 성공! 주문번호: " + merchantUid);
+        // (payMethod는 임의로 고정하거나 비워둡니다)
+        payment.setPayMethod("LemonSqueezy");
 
-        // (참고: 필요하다면 여기서 Reservation 테이블의 상태도 '예매확정'으로 바꾸는 코드를 추가할 수 있습니다.)
+        System.out.println("✅ 결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
+        System.out.println("🧾 영수증 주소: " + receiptUrl);
     }
 }
