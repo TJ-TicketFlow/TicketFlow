@@ -26,6 +26,8 @@ function openAddressSearch() {
 // ==========================================
 document.addEventListener("DOMContentLoaded", function() {
 
+    const reservationMeta = document.querySelector("meta[name='reservation_key']");
+    const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute("content")) : 0;
     // [타이머 설정]
     let timeout = 30;
     let timeLeft = timeout * 60;
@@ -121,7 +123,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const checkedDelivery = document.querySelector('input[name="deliveryType"]:checked');
         let deliveryFee = 0;
         if (checkedDelivery && checkedDelivery.value === 'POST') {
-            deliveryFee = 10000;
+            deliveryFee = 3000;
         }
 
         let membershipDiscountAmt = 0;
@@ -205,6 +207,21 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
             const checkedDelivery = document.querySelector('input[name="deliveryType"]:checked');
+
+            // 💡 [핵심] 여기에 정리 로직 추가!
+            let finalReceiverName = receiverName;
+            let finalReceiverPhone = receiverPhone;
+            let finalZipCode = zipCode;
+            let finalAddr = addressBase + " " + addressDetail;
+
+            // 만약 모바일 티켓이라면? 데이터를 강제로 비워버립니다.
+            if (checkedDelivery && checkedDelivery.value === 'MOBILE') {
+                finalReceiverName = null;
+                finalReceiverPhone = null;
+                finalZipCode = null;
+                finalAddr = null;
+            }
+
             if (checkedDelivery && checkedDelivery.value === 'POST') {
                 if(receiverName === "" || receiverPhone === "" || addressDetail === "") {
                     alert("택배 수령을 위한 배송지 정보(이름, 연락처, 상세주소)를 모두 채워주세요!");
@@ -225,16 +242,16 @@ document.addEventListener("DOMContentLoaded", function() {
             const csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.getAttribute("content") : 'X-CSRF-TOKEN';
 
             const requestData = {
-                reservationKey: 1,
+                reservationKey: realReservationKey,
                 payName: payName,
                 payAmount: payAmount,
                 buyerName: buyerName,
                 buyerEmail: buyerEmail,
-                payDelName: receiverName,
-                payDelCall: receiverPhone,
+                payDelName: finalReceiverName,
+                payDelCall: finalReceiverPhone,
                 userCouponId: usedCouponId,
-                payDelPostcode: zipCode,
-                payDelAddr: addressBase + " " + addressDetail
+                payDelPostcode: finalZipCode,
+                payDelAddr: finalAddr
             };
 
             const headers = { 'Content-Type': 'application/json' };

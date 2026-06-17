@@ -19,22 +19,30 @@ public class BookingController {
     // ==========================================
     // [화면 띄우기 구역]
     // ==========================================
-    //private final PaymentService paymentService;
 
     // 0. 결제 화면 (여기에 쿠폰, 예매 정보가 다 나옴)
     @GetMapping("/payment")
-    public String showPaymentPage(Model model) {
+    public String showPaymentPage(
+            // 💡 수정된 부분: 열쇠가 안 들어오면 에러를 내지 말고, 일단 1번으로 쳐줄게! (테스트용)
+            @RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
+            Model model) {
 
-        // 1. 현재 로그인한 사용자의 아이디를 가져옵니다.
-        // (실제 프로젝트에서는 Spring Security 등을 통해 진짜 아이디를 가져와야 합니다.)
-        // 지금은 연습용으로 "hong123"이라고 가정해 볼게요.
-        String currentUserId = "hong123";
+        // 1. 현재 로그인한 사용자의 고유 번호 (임시 1번)
+        Long currentUserNo = 1L;
 
-        // 2. Service에게 이 사람 아이디를 주면서 멤버십이 맞는지 물어봅니다.
-        boolean isMember = bookingService.checkActiveMembership(currentUserId);
+        // 💡 2. 서비스에게 회원 정보 포장 상자를 가져오라고 시킵니다.
+        Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
+        model.addAttribute("user", buyer);
 
-        // 3. 확인된 결과를 "isMember"라는 이름표를 붙여서 Model에 담습니다.
-        // 이제 타임리프 화면에서 th:if="${isMember}" 를 쓸 수 있게 됩니다!
+        // 💡 3. 서비스에게 티켓 정보 포장 상자를 가져오라고 시킵니다.
+        Map<String, Object> ticket = bookingService.getTicketInfoMap(reservationKey);
+        model.addAttribute("ticket", ticket);
+
+        // 💡 4. 자바스크립트가 fetch 통신할 때 쓸 수 있게 예약 번호도 몰래 넘겨줍니다.
+        model.addAttribute("reservationKey", reservationKey);
+
+        // 5. 멤버십 확인 (추후 currentUserNo와 맞춰서 userId 조회가 필요할 수 있습니다)
+        boolean isMember = bookingService.checkActiveMembership("hong123");
         model.addAttribute("isMember", isMember);
 
         return "booking/payment";
@@ -46,24 +54,19 @@ public class BookingController {
         return "booking/payresult";
     }
 
-
     // ==========================================
     // [데이터만 던져주는 구역 - @ResponseBody 필수!]
     // ==========================================
 
     // 1. 임시 예매 생성 및 레몬스퀴즈 창 띄우기
     @PostMapping("/create")
-    @ResponseBody // 화면 이동 대신 URL 데이터만 던져줍니다!
+    @ResponseBody
     public String createBooking(@RequestBody BookingRequestDto requestDto) {
-
-        // ⭐️ 내 눈으로 직접 백엔드가 받은 금액 확인해보기!
         System.out.println("=========================================");
         System.out.println("✅ 프론트에서 무사히 도착한 금액: " + requestDto.getPayAmount());
         System.out.println("=========================================");
 
-        String lemonSqueezyUrl = bookingService.createTemporaryPayment(requestDto);
-
-        return lemonSqueezyUrl;
+        return bookingService.createTemporaryPayment(requestDto);
     }
 
     // 2. 멤버십 확인
@@ -78,7 +81,6 @@ public class BookingController {
     @ResponseBody
     public List<Map<String, Object>> getCoupons() {
         return List.of(
-                // 💡 discountRate -> couponDiscountRate 로 변경!
                 Map.of("userCouponId", 101, "name", "신규 가입 5% 할인", "couponDiscountRate", 5),
                 Map.of("userCouponId", 102, "name", "멤버십 10% 할인", "couponDiscountRate", 10)
         );

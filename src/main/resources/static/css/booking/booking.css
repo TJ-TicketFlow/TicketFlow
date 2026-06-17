@@ -77,8 +77,17 @@ body {
 
 /* 우측 패널 상세 디자인 */
 .ticket-info-top { display: flex; gap: 15px; border-bottom: 1px solid #ddd; padding-bottom: 15px; margin-bottom: 15px; }
-.poster { width: 70px; height: 95px; background: #333; color: #fff; display: flex; justify-content: center; align-items: center; font-size: 11px; text-align: center; }
-
+/* ==========================================
+   💡 포스터 이미지 전용 스타일
+   ========================================== */
+.poster {
+    width: 70px;
+    height: 95px;
+    background-color: #eee;
+    object-fit: cover; /* 이미지가 찌그러지지 않고 꽉 차게 잘리도록 설정 */
+    border-radius: 4px; /* 모서리 살짝 둥글게 */
+    border: 1px solid #ddd; /* 깔끔한 테두리 */
+}
 .summary-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
 .summary-row.total { font-weight: bold; padding-top: 10px; border-top: 1px dashed #ccc; margin-top: 10px; }
 

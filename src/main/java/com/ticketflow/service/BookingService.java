@@ -5,10 +5,12 @@ import com.ticketflow.entity.Membership;
 import com.ticketflow.entity.Pay;
 import com.ticketflow.entity.Reservation;
 import com.ticketflow.entity.UserCoupon;
+import com.ticketflow.entity.User; // 💡 User 엔티티 임포트 필요!
 import com.ticketflow.repository.MembershipRepository;
 import com.ticketflow.repository.PayRepository;
 import com.ticketflow.repository.ReservationRepository;
 import com.ticketflow.repository.UserCouponRepository;
+import com.ticketflow.repository.UserRepository; // 💡 UserRepository 임포트 필요!
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -32,6 +34,9 @@ public class BookingService {
     private final ReservationRepository reservationRepository;
     private final UserCouponRepository userCouponRepository;
     private final MembershipRepository membershipRepository;
+
+    // 💡 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
+    private final UserRepository userRepository;
 
     @Value("${lemonsqueezy.api-key2}")
     private String apiKey;
@@ -57,64 +62,42 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 2. 내 사용 가능한 쿠폰 목록 가져오기 (새로 추가됨!)
+    // 💡 2. 내 사용 가능한 쿠폰 목록 가져오기
     // ==========================================
     public List<Map<String, Object>> getMyAvailableCoupons(String userId) {
-        // 1. 상태가 0(미사용)인 쿠폰만 찾아옵니다.
-        // (주의: UserCouponRepository에 findByUserNoAndUserCouponStatus 메서드가 만들어져 있어야 합니다!)
         List<UserCoupon> allCoupons = userCouponRepository.findByUser_UserId(userId);
-
-        // 2. 화면에 던져줄 상자를 준비합니다.
         List<Map<String, Object>> resultList = new ArrayList<>();
 
-        // 3. 가져온 쿠폰들을 하나씩 꺼내보면서 검사합니다.
         for (UserCoupon uc : allCoupons) {
-
-            // ⭐️ 핵심: 여기서 조건을 겁니다! "쿠폰 상태가 0(미사용)일 때만 상자에 담아라!"
             if (uc.getUserCouponStatus() != null && uc.getUserCouponStatus() == 0) {
-
                 Map<String, Object> map = new HashMap<>();
                 map.put("userCouponId", uc.getUserCouponId());
                 map.put("name", uc.getCoupon().getCouponName());
                 map.put("couponDiscountRate", uc.getCoupon().getCouponDiscountRate());
-
-                resultList.add(map); // 조건에 맞는 것만 상자에 들어갑니다.
+                resultList.add(map);
             }
         }
-
         return resultList;
     }
 
     // ==========================================
-    // 💡 3. 결제 창 띄우기 및 쿠폰 사용 처리 (수정됨!)
+    // 💡 3. 결제 창 띄우기 및 쿠폰 사용 처리
     // ==========================================
     @Transactional
     public String createTemporaryPayment(BookingRequestDto requestDto) {
-
-        // 1. DTO에 있는 예약 번호(숫자)를 가지고, 진짜 예약 장부(Reservation 객체)를 DB에서 찾아옵니다.
-//        Reservation reservation = reservationRepository.findById(requestDto.getReservationKey())
-//                .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
-
         Long incomingCouponId = requestDto.getUserCouponId();
-        UserCoupon selectedCoupon = null; // 기본값은 '쿠폰 안 씀(null)'
+        UserCoupon selectedCoupon = null;
 
-        // 만약 사용자가 쿠폰을 선택해서 ID가 넘어왔다면?
         if (incomingCouponId != null) {
-            // DB에서 해당 번호의 쿠폰 객체를 통째로 찾아옵니다.
             selectedCoupon = userCouponRepository.findById(incomingCouponId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 쿠폰을 찾을 수 없습니다."));
-
-            // ⭐️ 핵심: 결제를 진행하므로 해당 쿠폰의 상태를 '1 (사용 완료)'로 변경합니다!
-            // 이 메서드가 끝날 때 JPA가 알아서 DB에 UPDATE 쿼리를 날려줍니다.
             selectedCoupon.setUserCouponStatus(1);
         }
 
-        // 2. 빌더를 써서 새로운 결제 장부를 조립합니다.
         Pay newPayment = Pay.builder()
-                //.reservation(reservation)
                 .payName(requestDto.getPayName())
                 .payAmount(requestDto.getPayAmount())
-                .userCoupon(selectedCoupon) // 진짜 쿠폰 객체 연결
+                .userCoupon(selectedCoupon)
                 .buyerName(requestDto.getBuyerName())
                 .buyerEmail(requestDto.getBuyerEmail())
                 .payDelName(requestDto.getPayDelName())
@@ -123,14 +106,12 @@ public class BookingService {
                 .payDelAddr(requestDto.getPayDelAddr())
                 .build();
 
-        // 3. 완성된 장부를 DB에 저장합니다.
         payRepository.save(newPayment);
-
         return getLemonSqueezyUrl(newPayment);
     }
 
     // ==========================================
-    // 4. 레몬스퀴지 통신 로직 (기존 그대로 유지)
+    // 4. 레몬스퀴지 통신 로직
     // ==========================================
     private String getLemonSqueezyUrl(Pay payment) {
         RestTemplate restTemplate = new RestTemplate();
@@ -167,12 +148,7 @@ public class BookingService {
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
         String apiUrl = "https://api.lemonsqueezy.com/v1/checkouts";
-        ResponseEntity<Map> response = restTemplate.exchange(
-                apiUrl,
-                HttpMethod.POST,
-                requestEntity,
-                Map.class
-        );
+        ResponseEntity<Map> response = restTemplate.exchange(apiUrl, HttpMethod.POST, requestEntity, Map.class);
 
         Map<String, Object> responseBody = response.getBody();
         Map<String, Object> responseData = (Map<String, Object>) responseBody.get("data");
@@ -181,7 +157,6 @@ public class BookingService {
         return (String) responseAttributes.get("url");
     }
 
-
     // ==========================================
     // 5. 레몬스퀴지 웹훅
     // ==========================================
@@ -189,33 +164,97 @@ public class BookingService {
     public void completePayment(String merchantUid, String lsOrderId,
                                 String currency, String lsCustomerId,
                                 String receiptUrl, String lsWebhookEventId,
-                                long webhookAmount) { // ⭐️ 결제 금액을 인자로 받습니다!
+                                long webhookAmount) {
 
         Pay payment = payRepository.findByMerchantUid(merchantUid)
                 .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
 
-        // 1. 내가 DB에 저장해둔 결제 예정 금액 (단위 주의: 센트(cent) 등)
         long expectedAmount = payment.getPayAmount();
 
-        // 2. 금액 비교 (오차가 있으면 결제 완료로 인정하지 않음!)
         if (expectedAmount != webhookAmount) {
-            payment.setPayStatus("FAILED"); // 금액 불일치! 보안 위협으로 간주
+            payment.setPayStatus("FAILED");
             System.err.println("🚨 금액 불일치 경고! DB가격: " + expectedAmount + ", 결제된 가격: " + webhookAmount);
-            return; // 여기서 로직 종료
+            return;
         }
 
-        // 3. 금액이 일치하면 정상 처리
         payment.setPayStatus("PAID");
         payment.setLsOrderId(lsOrderId);
         payment.setCurrency(currency);
         payment.setLsCustomerId(lsCustomerId);
         payment.setReceiptUrl(receiptUrl);
         payment.setLsWebhookEventId(lsWebhookEventId);
-
-        // (payMethod는 임의로 고정하거나 비워둡니다)
         payment.setPayMethod("LemonSqueezy");
 
         System.out.println("✅ 결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
-        System.out.println("🧾 영수증 주소: " + receiptUrl);
+    }
+
+    // ==========================================
+    // 💡 6. [새로 추가] 결제 화면용: 구매자 정보 포장하기
+    // ==========================================
+    public Map<String, Object> getUserInfoMap(Long userNo) {
+        User user = userRepository.findById(userNo)
+                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+
+        Map<String, Object> userInfo = new HashMap<>();
+        // 주의: 엔티티의 Getter 이름이 다르면 (예: getName()) 아래 부분을 본인 코드에 맞게 수정하세요!
+        userInfo.put("name", user.getUserName());
+        userInfo.put("email", user.getUserEmail());
+        userInfo.put("phone", user.getUserPhoneNumber());
+        userInfo.put("birthDate", String.valueOf(user.getUserBirth()));
+
+        return userInfo;
+    }
+
+    // ==========================================
+    // 💡 7. [수정] 결제 화면용: 티켓 정보 포장하기 (가짜 데이터 방어막 추가!)
+    // ==========================================
+    public Map<String, Object> getTicketInfoMap(Long reservationKey) {
+        Map<String, Object> ticketInfo = new HashMap<>();
+
+        // 1. 일단 DB에서 예약 정보를 찾아봅니다. (Optional을 써서 에러를 막습니다)
+        Optional<Reservation> optionalReservation = reservationRepository.findById(reservationKey);
+
+        if (optionalReservation.isPresent()) {
+            // ----------------------------------------------------
+            // ✅ DB에 진짜 데이터가 있을 때 (정상 로직)
+            // ----------------------------------------------------
+            Reservation reservation = optionalReservation.get();
+            ticketInfo.put("count", reservation.getReservationCount());
+            ticketInfo.put("date", String.valueOf(reservation.getReservationDate()));
+
+            try {
+                ticketInfo.put("price", reservation.getSelectedSeat().getPrice());
+
+                // 💡 [추가] 진짜 DB에서 포스터 이미지 주소 꺼내기
+                ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
+
+                ticketInfo.put("seatInfo", reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
+                        reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
+                        reservation.getSelectedSeat().getSeat().getSeatCol() + "번");
+                ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
+                ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
+                ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
+            } catch (Exception e) {
+                System.err.println("🚨 조인 오류 발생 (일부 데이터 임시 처리)");
+                ticketInfo.put("price", 20000);
+                ticketInfo.put("title", "데이터 연결 오류");
+                ticketInfo.put("posterUrl", ""); // 에러 시 빈칸
+            }
+        } else {
+            System.out.println("🚨 예약 데이터가 DB에 없습니다. 테스트용 가짜 데이터를 화면에 띄웁니다.");
+            ticketInfo.put("count", 2);
+            ticketInfo.put("date", "2026-12-24");
+            ticketInfo.put("price", 55000);
+
+            // 💡 [추가] 가짜 데이터에도 임시 이미지 주소를 하나 넣어줍니다.
+            ticketInfo.put("posterUrl", "https://via.placeholder.com/70x95/3B82F6/FFFFFF?text=Poster");
+
+            ticketInfo.put("seatInfo", "VIP석 A구역 1열 1번");
+            ticketInfo.put("title", "[테스트] 티켓플로우 크리스마스 콘서트");
+            ticketInfo.put("time", "19:00");
+            ticketInfo.put("venue", "올림픽 체조경기장 (가짜 데이터)");
+        }
+
+        return ticketInfo;
     }
 }

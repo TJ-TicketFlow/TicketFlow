@@ -5,6 +5,7 @@
     <title>티켓결제</title>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="reservation_key" th:content="${reservationKey}"/>
     <link th:href="@{/css/booking/booking.css}" rel="stylesheet" />
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 </head>
@@ -96,10 +97,10 @@
                     남은 결제 시간 <span id="countdownTimer">30:00</span>
                 </div>
                 <div class="ticket-info-top">
-                    <div class="poster">포스터<br>이미지</div>
+                    <img class="poster" th:src="${ticket.posterUrl}" alt="포스터">
                     <div>
-                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;" id="payNameDisplay" th:text="${ticket != null ? ticket.title : '콘서트 이름'}">콘서트 이름</div>
-                        <div style="font-size: 12px; color: #555;" th:text="${ticket != null ? ticket.venue : '극장 이름'}">극장 이름</div>
+                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;" id="payNameDisplay" th:text="${ticket.title}">콘서트 이름</div>
+                        <div style="font-size: 12px; color: #555;" th:text="${ticket.venue}">극장 이름</div>
                     </div>
                 </div>
 
@@ -115,10 +116,13 @@
 
                 <div class="section-title" style="font-size: 14px;">결제내역</div>
                 <div style="margin-bottom: 20px;">
-                    <div class="summary-row"><span>티켓금액</span><span id="TicketPrice">20,000</span></div>
+                    <div class="summary-row">
+                        <span>티켓금액</span>
+                        <span id="TicketPrice" th:text="${ticket.price}">0</span>
+                    </div>
                     <div class="summary-row"><span>예매수수료</span><span id="fee">2,000</span></div>
                     <div class="summary-row"><span>배송료</span><span id="deliveryFeeDisplay">3,000</span></div>
-                    <div class="summary-row total"><span>총금액(+)</span><span id="totalPriceDisplay">25,000</span></div>
+                    <div class="summary-row total"><span>총금액(+)</span><span id="totalPriceDisplay">0</span></div>
                 </div>
 
                 <div style="margin-bottom: 20px;">
@@ -129,7 +133,7 @@
 
                 <div class="final-price-box">
                     <span style="font-weight: bold; font-size: 14px;">최종 결제금액</span>
-                    <span class="final-price" id="finalPriceDisplay">25,000</span>
+                    <span class="final-price" id="finalPriceDisplay">2000</span>
                 </div>
 
                 <div class="btn-group">
