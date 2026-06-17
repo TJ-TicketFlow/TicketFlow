@@ -19,7 +19,7 @@ public class SeatService {
         공연 조회
      */
     public Concert getConcert(
-            Long concertId
+            String concertId
     ) {
 
         return concertRepository
@@ -38,7 +38,7 @@ public class SeatService {
         공연ID → 좌석배치도 결정
      */
     public String getSeatMapType(
-            Long concertId
+            String concertId
     ) {
 
         Concert concert =
@@ -77,7 +77,7 @@ public class SeatService {
      */
     public List<List<String>>
     getSeatLayout(
-            Long concertId
+            String concertId
     ) {
 
         String seatMap =
@@ -163,7 +163,7 @@ public class SeatService {
         좌석 선택
      */
     public void selectSeat(
-            Long concertId,
+            String concertId,
             String seatId,
             Long userNo
     ) {

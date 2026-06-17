@@ -155,33 +155,60 @@ body {
 .concert-hall { font-size: 12px; color: var(--text-muted); }
 
 /* ══════════════════════════════════════
-   6. CONCERT DETAIL
+   6. CONCERT DETAIL (전체 통합 코드)
 ══════════════════════════════════════ */
-.detail-wrap { max-width: 1200px; margin: 0 auto; padding: 40px; }
-.detail-grid { display: grid; grid-template-columns: 280px 1fr; gap: 48px; }
-.detail-poster { width: 100%; border-radius: var(--radius); box-shadow: var(--shadow-md); }
-.detail-title { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
-.detail-badge {
-    display: inline-block; font-size: 12px; padding: 4px 10px; border-radius: 20px;
-    background: var(--primary-light); color: var(--primary); font-weight: 600; margin-bottom: 16px;
-}
-.detail-meta { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; font-size: 14px; color: var(--text-sub); }
-.detail-meta span { display: flex; align-items: center; gap: 8px; }
-.detail-actions { display: flex; gap: 12px; }
-.btn-primary {
-    background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm);
-    padding: 14px 32px; font-size: 15px; font-weight: 600; cursor: pointer;
-    transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
-}
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-outline {
-    background: var(--white); color: var(--text-sub); border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm); padding: 14px 24px; font-size: 15px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s;
-}
-.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-.btn-wishlist.active { color: var(--error); border-color: var(--error); }
+.detail-wrap { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
 
+.detail-grid {
+    display: grid !important;
+    grid-template-columns: 300px 1fr 340px !important;
+    gap: 40px !important;
+    align-items: start !important;
+}
+
+/* 포스터 및 상세 정보 */
+.detail-poster { width: 100%; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+.detail-title { font-size: 32px; font-weight: 800; margin-bottom: 20px; color: #111; }
+
+.detail-meta { display: flex; flex-direction: column; gap: 15px; font-size: 15px; color: #4b5563; }
+.detail-meta p { margin: 0; display: flex; gap: 10px; line-height: 1.6; }
+
+/* 가격 영역 (한 줄 유지) */
+.price-section { margin-top: 10px; width: 100%; }
+.price-list { display: flex; flex-direction: column; }
+.price-list span {
+    font-size: 14px; color: #4b5563; margin-bottom: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 혜택 영역 */
+.benefit-section { margin-top: 20px; }
+.benefit-box {
+    border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px;
+    background: #f9fafb; display: flex; justify-content: space-between; align-items: center;
+}
+.benefit-box a { font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 600; }
+
+/* 예매 영역 및 캘린더 */
+.booking-right { display: flex; flex-direction: column; gap: 15px; width: 340px; }
+#calendar { width: 340px !important; height: 320px !important; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
+
+/* 버튼 */
+.btn-session { padding: 8px 16px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; border-radius: 6px; }
+.btn-session.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+.btn-primary { background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 16px; font-weight: 700; cursor: pointer; width: 100%; }
+
+/* 하단 영역 */
+.bottom-section { margin-top: 80px; border-top: 1px solid #eee; padding-top: 40px; }
+.empty-msg { padding: 40px; text-align: center; color: #9ca3af; background: #f9fafb; border: 1px dashed #ddd; border-radius: 12px; }
+.stats-chart { height: 200px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+
+/* 모바일 */
+@media (max-width: 992px) {
+    .detail-grid { grid-template-columns: 1fr !important; }
+    .booking-right { width: 100%; }
+    #calendar { width: 100% !important; }
+}
 /* ══════════════════════════════════════
    7. AUTH 공통 (회원가입 등)
 ══════════════════════════════════════ */
