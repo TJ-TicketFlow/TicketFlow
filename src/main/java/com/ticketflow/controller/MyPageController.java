@@ -2,10 +2,15 @@ package com.ticketflow.controller;
 
 import com.ticketflow.dto.UserUpdateDto;
 import com.ticketflow.entity.User;
+import com.ticketflow.service.BookingService;
 import com.ticketflow.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
@@ -14,7 +19,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/mypage")
@@ -22,6 +29,7 @@ import java.util.Collections;
 public class MyPageController {
 
     private final UserService userService;
+    private final BookingService bookingService;
 
     @GetMapping
     public String mypage() {
@@ -70,10 +78,28 @@ public class MyPageController {
 
     @GetMapping("/tickets")
     public String mypageTickets(@AuthenticationPrincipal UserDetails userDetails,
+                                @RequestParam(value = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+                                @RequestParam(value = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+                                @PageableDefault(size = 10) Pageable pageable, // 💡 한 페이지에 10개씩!
                                 Model model) {
-        User user = userService.findByUserId(userDetails.getUsername());
-        model.addAttribute("user", user);
-        model.addAttribute("tickets", Collections.emptyList());
+
+        // 💡 1. 날짜 기본값 세팅 (1달 전 ~ 오늘)
+        if (endDate == null) endDate = LocalDate.now();
+        if (startDate == null) startDate = endDate.minusMonths(1);
+
+        String userId = userDetails.getUsername();
+        model.addAttribute("user", userService.findByUserId(userId));
+
+        // 💡 2. 진짜 페이징된 데이터 가져오기
+        Page<Map<String, Object>> ticketPage = bookingService.getMyTicketHistory(userId, startDate, endDate, pageable);
+
+        model.addAttribute("tickets", ticketPage.getContent()); // 실제 데이터 목록
+        model.addAttribute("page", ticketPage);                 // 페이지네이션용 정보 (총 페이지 수 등)
+
+        // 💡 3. 화면(JS)이 날짜를 기억할 수 있게 도로 넘겨줍니다.
+        model.addAttribute("startDate", startDate);
+        model.addAttribute("endDate", endDate);
+
         return "mypage/mypage_tickets";
     }
 

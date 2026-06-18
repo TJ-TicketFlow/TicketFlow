@@ -24,6 +24,7 @@ public class BookingController {
     @GetMapping("/payment")
     public String showPaymentPage(
             @RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
+            //(실제로 테스트할때)@RequestParam(value = "reservationKey", required = true) Long reservationKey,
             java.security.Principal principal, // 💡 [핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
             Model model) {
 

@@ -1,11 +1,7 @@
 package com.ticketflow.service;
 
 import com.ticketflow.dto.BookingRequestDto;
-import com.ticketflow.entity.Membership;
-import com.ticketflow.entity.Pay;
-import com.ticketflow.entity.Reservation;
-import com.ticketflow.entity.UserCoupon;
-import com.ticketflow.entity.User; // 💡 User 엔티티 임포트 필요!
+import com.ticketflow.entity.*;
 import com.ticketflow.repository.MembershipRepository;
 import com.ticketflow.repository.PayRepository;
 import com.ticketflow.repository.ReservationRepository;
@@ -13,6 +9,8 @@ import com.ticketflow.repository.UserCouponRepository;
 import com.ticketflow.repository.UserRepository; // 💡 UserRepository 임포트 필요!
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -21,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -380,4 +381,79 @@ public class BookingService {
         }
     }
 
+    // BookingService.java 내부에 추가 (기존 코드 유지)
+
+    // 💡 1. [핵심] 예쁜 예매번호 생성기 (엔티티 수정 X)
+    public String generateReadableOrderNo(Long payNo) {
+        // TF-000087 형태로 만들어줍니다.
+        return String.format("TF-%06d", payNo);
+    }
+
+    // 💡 2. 내 예매 내역 가져오기 (화면 전달용)
+    public Page<Map<String, Object>> getMyTicketHistory(String userId, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+
+        // 1. 날짜를 시간(00:00:00 ~ 23:59:59)까지 꽉 채워줍니다.
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+
+        // 2. Repository에서 List가 아닌 Page 객체로 받아옵니다.
+        Page<Pay> payPage = payRepository.findMyPaymentsByDateRange(userId, startDateTime, endDateTime, pageable);
+
+        // 3. Page 안의 데이터(Pay)를 화면에 뿌리기 좋은 Map으로 변환해서 그대로 다시 Page로 묶어 반환합니다.
+        return payPage.map(pay -> {
+            Map<String, Object> map = new HashMap<>();
+
+            map.put("booking_no", pay.getPayNo());
+            map.put("display_no", generateReadableOrderNo(pay.getPayNo()));
+
+            // 공연명
+            String showName = "알 수 없는 공연";
+            if (pay.getReservation() != null && pay.getReservation().getSelectedSeat() != null && pay.getReservation().getSelectedSeat().getSeat() != null && pay.getReservation().getSelectedSeat().getSeat().getConcert() != null) {
+                showName = pay.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
+            }
+            map.put("show_name", showName);
+
+            // 관람일시
+            String date = "-";
+            if (pay.getReservation() != null
+                    && pay.getReservation().getSelectedSeat() != null
+                    && pay.getReservation().getSelectedSeat().getConcert() != null) {
+
+                Concert concert = pay.getReservation().getSelectedSeat().getConcert();
+
+                // 1) getConcertStartDate()가 LocalDate를 반환하므로, null인지 먼저 체크합니다.
+                if (concert.getConcertStartDate() != null) {
+
+                    // 2) .toString()을 붙여서 날짜를 문자열("2026-05-18")로 바꿔줍니다!
+                    String startDateStr = concert.getConcertStartDate().toString();
+                    String timeStr = concert.getConcertTime(); // 시간은 String이라고 가정합니다.
+
+                    date = startDateStr;
+
+                    // 3) 시간 데이터가 있다면 날짜 뒤에 띄어쓰기 한 칸 하고 붙여줍니다.
+                    if (timeStr != null && !timeStr.isBlank()) {
+                        date += " " + timeStr; // 결과 예시: "2026-05-18 18:00"
+                    }
+                }
+            }
+            map.put("date", date);
+
+            // 매수
+            int count = 1;
+            if (pay.getReservation() != null && pay.getReservation().getReservationCount() != null) {
+                count = pay.getReservation().getReservationCount();
+            }
+            map.put("count", count);
+            // 만약 개별 좌석 수를 세어야 한다면 이 방식이 더 정확할 수도 있습니다!
+            // int count = pay.getReservation().getSelectedSeats().size();
+
+            // 예매상태
+            String statusStr = "진행중";
+            if ("PAID".equals(pay.getPayStatus())) statusStr = "예매완료";
+            else if ("FAILED".equals(pay.getPayStatus())) statusStr = "취소/환불";
+            map.put("status", statusStr);
+
+            return map;
+        });
+    }
 }
