@@ -2,17 +2,26 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>좌석 선택</title>
 
-    <!-- CSS 연결 -->
     <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
+<h1>
+    공연번호 : [[${concertId}]]
+</h1>
 
-<div id="seatMap"></div>
+<div id="seat-container"
+     th:data-concert-id="${concertId}">
+</div>
 
-<!-- JS 연결 -->
+
+<script th:inline="javascript">
+    const concertId = [[${concertId}]];
+</script>
 <script src="/js/seatmap.js"></script>
+
 
 </body>
 </html>

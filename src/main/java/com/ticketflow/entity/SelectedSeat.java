@@ -27,6 +27,10 @@ public class SelectedSeat {
     @JoinColumn(name = "seat_id", nullable = false)
     private Seat seat;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "concert_id", nullable = false)
+    private Concert concert;
+
     // 0: 미선택, 1: 선택/결제중, 2: 선택완료
     @Column(name = "seat_state", nullable = false)
     @Builder.Default

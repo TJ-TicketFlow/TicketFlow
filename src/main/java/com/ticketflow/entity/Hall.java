@@ -23,7 +23,7 @@ public class Hall {
     @Column(name = "hall_name", length = 1000, nullable = false)
     private String hallName;
 
-// SQL에 있는 hall_address 필드 추가
+    // SQL에 있는 hall_address 필드 추가
     @Column(name = "hall_address", length = 1000)
     private String hallAddress;
 
