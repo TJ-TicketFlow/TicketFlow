@@ -25,8 +25,17 @@
     <div class="detail-grid">
         <div class="info-left">
             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
-            <div class="wishlist-box" th:data-concert-id="${concert.concertId}" onclick="toggleWishlist(this.getAttribute('data-concert-id'))">
-                <img th:id="'wish-icon-' + ${concert.concertId}" th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}" alt="찜" style="width: 24px; margin-right: 8px;">
+
+            <div class="wishlist-box"
+                 th:data-concert-id="${concert.concertId}"
+                 onclick="toggleWishlist(this.getAttribute('data-concert-id'))"
+                 style="display: flex; align-items: center; justify-content: flex-start; cursor: pointer; margin-top: 10px;">
+
+                <img th:id="'wish-icon-' + ${concert.concertId}"
+                     th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}"
+                     alt="찜" style="width: 24px; margin-right: 8px;">
+
+                <span style="margin-right: 8px; font-weight: 500;">위시리스트</span>
                 <span th:id="'wish-count-' + ${concert.concertId}" th:text="${wishCount}">0</span>
             </div>
         </div>
