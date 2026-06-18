@@ -47,6 +47,12 @@ public class BookingService {
     @Value("${lemonsqueezy.variant-Id2}")
     private String variantId;
 
+    @Value("${naverCaptcha.client-id}")
+    private String clientId;
+
+    @Value("${naverCaptcha.client-secret}")
+    private String clientSecret;
+
     // ==========================================
     // 💡 1. 멤버십 상태 확인 (기존 기능)
     // ==========================================
@@ -81,20 +87,58 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 3. 결제 창 띄우기 및 쿠폰 사용 처리
+    // 💡 3. 결제 창 띄우기
     // ==========================================
     @Transactional
     public String createTemporaryPayment(BookingRequestDto requestDto) {
+
+        // ----------------------------------------------------
+        // 🛡️ [매크로 방어 1단계] 네이버 캡차 채점 로직
+        // ----------------------------------------------------
+
+        RestTemplate restTemplate = new RestTemplate();
+        // 채점을 요청하는 네이버 주소 (code=1은 결과 확인을 의미함)
+        String apiURL = "https://openapi.naver.com/v1/captcha/nkey?code=1&key="
+                + requestDto.getCaptchaKey()
+                + "&value=" + requestDto.getCaptchaValue();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Naver-Client-Id", this.clientId);
+        headers.set("X-Naver-Client-Secret", this.clientSecret);
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            // 💡 [핵심 1] 에러의 원인이었던 Map.class를 String.class로 바꿨습니다!
+            ResponseEntity<String> response = restTemplate.exchange(apiURL, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
+
+            System.out.println("✅ 네이버 채점 응답 원본: " + responseBody);
+
+            // 💡 [핵심 2] JSON 객체 대신 무식하고 안전하게 텍스트로 잘라냅니다.
+            // 네이버가 {"result":true, ...} 라고 보내주면 통과입니다.
+            if (responseBody == null || !responseBody.contains("\"result\":true")) {
+                throw new IllegalArgumentException("자동주문 방지 글자가 틀렸습니다. 다시 확인해주세요.");
+            }
+        } catch (Exception e) {
+            // 🚨 네이버 통신 오류 등
+            throw new IllegalArgumentException("캡차 검증에 실패했습니다: " + e.getMessage());
+        }
+        System.out.println("✅ 네이버 캡차 검증 완벽하게 통과!");
+
+        Reservation reservation = reservationRepository.findById(requestDto.getReservationKey())
+                .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
+
         Long incomingCouponId = requestDto.getUserCouponId();
         UserCoupon selectedCoupon = null;
 
         if (incomingCouponId != null) {
             selectedCoupon = userCouponRepository.findById(incomingCouponId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 쿠폰을 찾을 수 없습니다."));
-            selectedCoupon.setUserCouponStatus(1);
         }
 
         Pay newPayment = Pay.builder()
+                .reservation(reservation)
                 .payName(requestDto.getPayName())
                 .payAmount(requestDto.getPayAmount())
                 .userCoupon(selectedCoupon)
@@ -185,6 +229,38 @@ public class BookingService {
         payment.setLsWebhookEventId(lsWebhookEventId);
         payment.setPayMethod("LemonSqueezy");
 
+        if (payment.getUserCoupon() != null) {
+            // 이 결제에 쿠폰이 쓰였다면, 상태를 1(사용함)로 바꿔줍니다!
+            payment.getUserCoupon().setUserCouponStatus(1);
+            System.out.println("✅ 쿠폰 사용 완료 처리됨!");
+        }
+
+        try {
+            // 1. 장부에 연결해둔 예약 정보를 꺼냅니다.
+            Reservation reservation = payment.getReservation();
+
+            // 2. 예약에 연결된 임시 선택 좌석(Selected_Seat)을 꺼냅니다.
+            var selectedSeat = reservation.getSelectedSeat();
+
+            // 3. 임시 선택 좌석에 연결된 진짜 물리 좌석(Seat)을 꺼냅니다.
+            var seat = selectedSeat.getSeat();
+
+            // --------------------------------------------------
+            // 💡 여기서 상태 값을 바꿔줍니다! (@Transactional 덕분에 자동 저장됨)
+            // --------------------------------------------------
+
+            // ① Selected_Seat 테이블 상태 변경: 1(결제중) -> 2(선택완료)
+            selectedSeat.setSeatState((short) 2);
+
+            // ② Seat 테이블 상태 변경: 1(사용가능) -> 0(사용불가=팔림)
+            seat.setSeatStatus((short) 0);
+
+            System.out.println("✅ " + seat.getSeatId() + "번 좌석 완벽하게 예매 확정(DB 업데이트) 완료!");
+
+        } catch (Exception e) {
+            System.err.println("🚨 좌석 확정 로직을 처리할 수 없습니다: " + e.getMessage());
+        }
+
         System.out.println("✅ 결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
     }
 
@@ -200,7 +276,8 @@ public class BookingService {
         userInfo.put("name", user.getUserName());
         userInfo.put("email", user.getUserEmail());
         userInfo.put("phone", user.getUserPhoneNumber());
-        userInfo.put("birthDate", String.valueOf(user.getUserBirth()));
+        Object birth = user.getUserBirth();
+        userInfo.put("birthDate", birth != null ? String.valueOf(birth) : "-");
 
         return userInfo;
     }
@@ -247,7 +324,7 @@ public class BookingService {
             ticketInfo.put("price", 55000);
 
             // 💡 [추가] 가짜 데이터에도 임시 이미지 주소를 하나 넣어줍니다.
-            ticketInfo.put("posterUrl", "https://via.placeholder.com/70x95/3B82F6/FFFFFF?text=Poster");
+            ticketInfo.put("posterUrl", "https://dummyimage.com/210x297/3b82f6/fff.png&text=Poster");
 
             ticketInfo.put("seatInfo", "VIP석 A구역 1열 1번");
             ticketInfo.put("title", "[테스트] 티켓플로우 크리스마스 콘서트");
@@ -257,4 +334,50 @@ public class BookingService {
 
         return ticketInfo;
     }
+
+    // ==========================================
+    // 💡 8. [새로 추가] 문자 아이디로 회원 고유 번호(user_no) 찾기
+    // ==========================================
+    public Long getUserNoById(String userId) {
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+
+        // 엔티티에 만들어두신 getter 이름에 맞춰주세요! (예: getUserNo())
+        return user.getUserNo();
+    }
+
+    // ==========================================
+    // 💡 [네이버 캡차 1] 캡차 열쇠 발급받기
+    // ==========================================
+    public String getNaverCaptchaKey() {
+        RestTemplate restTemplate = new RestTemplate();
+        String apiURL = "https://openapi.naver.com/v1/captcha/nkey?code=0";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Naver-Client-Id", this.clientId);
+        headers.set("X-Naver-Client-Secret", this.clientSecret);
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(apiURL, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
+
+            System.out.println("✅ 네이버 응답 성공: " + responseBody);
+
+            // 💡 핵심 2: 받아온 문자열 (예: {"key":"요청키값"}) 에서 키값만 잘라냅니다.
+            // (JSON 파싱 라이브러리인 Jackson을 써도 되지만, 에러 방지를 위해 가장 원초적인 방법으로 자릅니다)
+            if (responseBody != null && responseBody.contains("\"key\"")) {
+                int startIndex = responseBody.indexOf("\"key\":\"") + 7;
+                int endIndex = responseBody.indexOf("\"", startIndex);
+                return responseBody.substring(startIndex, endIndex);
+            }
+            return null;
+
+        } catch (Exception e) {
+            System.err.println("🚨 네이버 캡차 키 발급 실패: " + e.getMessage());
+            return null;
+        }
+    }
+
 }

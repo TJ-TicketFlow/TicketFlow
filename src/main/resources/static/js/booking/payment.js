@@ -54,7 +54,8 @@ document.addEventListener("DOMContentLoaded", function() {
     }, 1000);
 
     // [기초 HTML 상자들 가져오기]
-    const isMember = false;
+    const memberMeta = document.querySelector("meta[name='is_member']");
+    const isMember = memberMeta ? (memberMeta.getAttribute("content") === 'true') : false;
     const couponContainer = document.getElementById('couponContainer');
     const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]'); // ✨ 이름표는 여기서 딱 한 번만 선언!
     const deliveryInfoSection = document.getElementById('deliveryInfoSection'); // ✨ 배송지 구역 상자
@@ -84,8 +85,16 @@ document.addEventListener("DOMContentLoaded", function() {
         fetch('/booking/checkcoupons')
             .then(response => response.json())
             .then(coupons => {
-                couponContainer.innerHTML = '';
+                couponContainer.innerHTML = ''; // "불러오는 중..." 지우기
 
+                // 💡 [핵심] 만약 서버에서 가져온 쿠폰이 하나도 없다면?
+                if (!coupons || coupons.length === 0) {
+                    couponContainer.innerHTML = '<span style="font-size:13px; color:#666; margin-left: 5px;">보유하신 쿠폰이 없습니다.</span>';
+                    calculateFinalPrice(); // 쿠폰 0원 기준으로 가격 계산 한 번 돌려주기
+                    return; // 여기서 함수를 끝냅니다!
+                }
+
+                // 💡 쿠폰이 존재할 경우에만 아래 로직이 실행됩니다.
                 let htmlString = `
                     <div class="radio-box">
                         <label><input type="radio" name="couponRate" value="0" checked> 쿠폰 적용 안 함</label>
@@ -105,16 +114,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 couponContainer.innerHTML = htmlString;
 
+                // 새 라디오 버튼에 계산기 이벤트 달아주기
                 const couponRadios = document.querySelectorAll('input[name="couponRate"]');
                 couponRadios.forEach(radio => {
                     radio.addEventListener('change', calculateFinalPrice);
                 });
 
+                // 그리기 완료 후 계산기 한 번 실행
                 calculateFinalPrice();
             })
             .catch(error => {
                 console.error("쿠폰을 불러오는데 실패했습니다.", error);
-                couponContainer.innerHTML = '<span style="color:red; font-size:13px;">쿠폰을 불러올 수 없습니다.</span>';
+                couponContainer.innerHTML = '<span style="color:red; font-size:13px; margin-left: 5px;">쿠폰 정보를 확인할 수 없습니다.</span>';
             });
     }
 
@@ -176,6 +187,29 @@ document.addEventListener("DOMContentLoaded", function() {
     toggleDeliveryInfo();
     loadCoupons();
 
+    // ==========================================
+    // 💡 1. 네이버 캡차 불러오기 함수 (새로 추가)
+    // ==========================================
+    function loadCaptcha() {
+        fetch('/booking/captcha-key')
+            .then(response => response.json())
+            .then(data => {
+                // 서버가 준 열쇠와 이미지 주소를 HTML에 세팅합니다.
+                document.getElementById('captchaKey').value = data.key;
+                document.getElementById('captchaImage').src = data.imageUrl;
+                document.getElementById('captchaInput').value = ''; // 입력창 비우기
+            })
+            .catch(error => console.error("캡차 로딩 실패:", error));
+    }
+
+    // 화면 켜지자마자 캡차 한번 불러오기 (loadCoupons(); 밑에 추가)
+    loadCaptcha();
+
+    // 새로고침 버튼 누르면 다시 불러오기
+    const refreshBtn = document.getElementById('refreshCaptcha');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadCaptcha);
+    }
 
     // ==========================================
     // 💡 결제하기 버튼 클릭 이벤트
@@ -184,6 +218,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     if (payButton) {
         payButton.addEventListener('click', function() {
+            const captchaKey = document.getElementById('captchaKey').value;
+            const captchaInput = document.getElementById('captchaInput').value;
             const buyerName = document.querySelector('input[name="buyerName"]').value;
             const buyerEmail = document.querySelector('input[name="buyerEmail"]').value;
             const buyerPhone = document.querySelector('input[name="buyerPhone"]').value;
@@ -203,6 +239,12 @@ document.addEventListener("DOMContentLoaded", function() {
             // 유효성 검사
             if(buyerPhone === "") {
                 alert("구매자의 휴대폰 번호를 입력해주세요!");
+                return;
+            }
+
+            // 방어 로직! 입력 안 했으면 막습니다.
+            if (captchaInput.trim() === "") {
+                alert("자동주문 방지 글자를 입력해주세요!");
                 return;
             }
 
@@ -251,7 +293,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 payDelCall: finalReceiverPhone,
                 userCouponId: usedCouponId,
                 payDelPostcode: finalZipCode,
-                payDelAddr: finalAddr
+                payDelAddr: finalAddr,
+                captchaKey: captchaKey,
+                captchaValue: captchaInput
             };
 
             const headers = { 'Content-Type': 'application/json' };

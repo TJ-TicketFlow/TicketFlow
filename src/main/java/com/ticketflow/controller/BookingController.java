@@ -23,12 +23,21 @@ public class BookingController {
     // 0. 결제 화면 (여기에 쿠폰, 예매 정보가 다 나옴)
     @GetMapping("/payment")
     public String showPaymentPage(
-            // 💡 수정된 부분: 열쇠가 안 들어오면 에러를 내지 말고, 일단 1번으로 쳐줄게! (테스트용)
             @RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
+            java.security.Principal principal, // 💡 [핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
             Model model) {
 
-        // 1. 현재 로그인한 사용자의 고유 번호 (임시 1번)
-        Long currentUserNo = 1L;
+        // 🚨 1. 로그인 상태 확인 (방어 로직)
+        if (principal == null) {
+            // 로그인을 안 하고 결제창 주소를 직접 치고 들어왔다면? 로그인 페이지로 쫓아냅니다!
+            return "redirect:/login";
+        }
+
+        // 💡 2. 진짜 로그인한 사람의 아이디 가져오기 (예: "hong123"이 진짜로 들어옴)
+        String currentUserId = principal.getName();
+
+        // 💡 3. 문자 아이디를 서비스에 주고, 고유 번호(user_no)를 받아옵니다.
+        Long currentUserNo = bookingService.getUserNoById(currentUserId);
 
         // 💡 2. 서비스에게 회원 정보 포장 상자를 가져오라고 시킵니다.
         Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
@@ -69,28 +78,21 @@ public class BookingController {
         return bookingService.createTemporaryPayment(requestDto);
     }
 
-    // 2. 멤버십 확인
-    @GetMapping("/checkmembership")
-    @ResponseBody
-    public String checkMembership() {
-        return "VIP";
-    }
-
     // 3. 쿠폰 목록 가져오기
     @GetMapping("/checkcoupons")
     @ResponseBody
-    public List<Map<String, Object>> getCoupons() {
-        return List.of(
-                Map.of("userCouponId", 101, "name", "신규 가입 5% 할인", "couponDiscountRate", 5),
-                Map.of("userCouponId", 102, "name", "멤버십 10% 할인", "couponDiscountRate", 10)
-        );
-    }
+    public List<Map<String, Object>> getCoupons(java.security.Principal principal) { // 💡 여기도 Principal 추가!
 
-    // 5. 결제 확인
-    @GetMapping("/paycheck")
-    @ResponseBody
-    public Boolean checkPay() {
-        return true;
+        // 🚨 로그인을 안 했으면 빈 상자(쿠폰 없음)를 던져줍니다.
+        if (principal == null) {
+            return List.of();
+        }
+
+        // 💡 진짜 로그인한 아이디 추출
+        String currentUserId = principal.getName();
+
+        // 진짜 아이디로 쿠폰 검색 후 반환
+        return bookingService.getMyAvailableCoupons(currentUserId);
     }
 
     // 9. 예매 취소 가능 여부 확인
@@ -112,5 +114,21 @@ public class BookingController {
     @ResponseBody
     public String sendNotification() {
         return "예매 완료 이메일 및 알림을 전송합니다.";
+    }
+
+    // ==========================================
+    // 💡 [네이버 캡차 2] 프론트엔드에 열쇠 던져주기
+    // ==========================================
+    @GetMapping("/captcha-key")
+    @ResponseBody
+    public Map<String, String> getCaptchaKey() {
+        // 서비스에서 열쇠를 받아옵니다.
+        String key = bookingService.getNaverCaptchaKey();
+
+        // 프론트엔드가 이미지 주소를 바로 조립할 수 있도록 함께 넘겨줍니다.
+        return Map.of(
+                "key", key,
+                "imageUrl", "https://openapi.naver.com/v1/captcha/ncaptcha.bin?key=" + key
+        );
     }
 }

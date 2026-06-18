@@ -20,4 +20,6 @@ public class BookingRequestDto {
     private String payDelPostcode;
     private String payDelAddr;
     private String payStatus;
+    private String captchaKey;
+    private String captchaValue;
 }
