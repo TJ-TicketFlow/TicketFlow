@@ -4,6 +4,7 @@ import com.ticketflow.dto.WebhookRequestDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class MembershipService {
     private final MembershipPaymentRepository paymentRepository;
     private final MembershipHistoryRepository historyRepository;
     private final UserCouponRepository userCouponRepository;
+    private final CouponRepository couponRepository;
 
     public void processPaymentWebhook(WebhookRequestDto dto) {
         if (dto.getData() == null || dto.getData().getAttributes() == null) {
@@ -40,7 +43,6 @@ public class MembershipService {
         }
 
         switch (eventName) {
-            // 구독 상태 자체가 바뀌는 이벤트들 → attrs.status를 그대로 신뢰해서 멤버십 상태 갱신
             case "subscription_created":
             case "subscription_updated":
             case "subscription_cancelled":
@@ -51,7 +53,6 @@ public class MembershipService {
                 handleSubscriptionStatusEvent(user, dto, attrs);
                 break;
 
-            // 결제가 성공/회복된 이벤트 → 결제 내역만 기록 (상태는 위 이벤트들이 따로 갱신해줌)
             case "subscription_payment_success":
             case "subscription_payment_recovered":
                 handlePaymentEvent(user, dto, attrs, "PAID");
@@ -65,10 +66,9 @@ public class MembershipService {
                 handlePaymentEvent(user, dto, attrs, "REFUNDED");
                 break;
 
-            // Order 이벤트는 구독 결제(subscription_payment_*)와 중복되므로 로그만 남김
             case "order_created":
             case "order_refunded":
-                System.out.println("ℹ️ Order 이벤트는 참고용으로만 로그 처리 (구독 결제는 subscription_payment_* 이벤트가 담당): " + eventName);
+                System.out.println("ℹ️ Order 이벤트는 참고용으로만 로그 처리: " + eventName);
                 break;
 
             default:
@@ -130,6 +130,61 @@ public class MembershipService {
                 .newStatus(newStatus)
                 .historyNote("구독 상태 변경: " + oldStatus + " → " + newStatus)
                 .build());
+
+        // ── 마이페이지 등급(User.membership) 동기화 + 가입 쿠폰 발급 ──
+        if ("ACTIVE".equals(newStatus) && !"premium".equals(user.getMembership())) {
+            user.setMembership("premium");
+            user.setMembershipStart(LocalDate.now());
+            user.setMembershipEnd(membershipPeriodEnd.toLocalDate());
+            userRepository.save(user);
+            issuePremiumSignupCouponsIfNeeded(user);
+        } else if (("CANCELLED".equals(newStatus) || "EXPIRED".equals(newStatus)) && "premium".equals(user.getMembership())) {
+            user.setMembership("basic");
+            user.setMembershipEnd(LocalDate.now());
+            userRepository.save(user);
+        }
+    }
+
+    private void issuePremiumSignupCouponsIfNeeded(User user) {
+        Coupon checkCoupon = couponRepository.findByCouponName("프리미엄 가입 쿠폰")
+                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 프리미엄 가입 쿠폰"));
+
+        if (userCouponRepository.existsByUserAndCoupon(user, checkCoupon)) {
+            System.out.println("ℹ️ 이미 프리미엄 가입 쿠폰을 받은 유저라 건너뜁니다. (user: " + user.getUserEmail() + ")");
+            return;
+        }
+
+        issueCoupon(user, "프리미엄 가입 쿠폰");
+        issueCoupon(user, "프리미엄 가입 쿠폰");
+        issueCoupon(user, "프리미엄 가입 스페셜 쿠폰");
+        System.out.println("🎁 프리미엄 가입 쿠폰 3장 발급 완료! (user: " + user.getUserEmail() + ")");
+    }
+
+    // ── 3개월 유지 보상 쿠폰 발급 (스케줄러에서 호출) ──
+    public void issueLoyaltyCouponIfNeeded(Membership membership) {
+        User user = membership.getUser();
+        Coupon loyaltyCoupon = couponRepository.findByCouponName("프리미엄 3개월 유지 쿠폰")
+                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 프리미엄 3개월 유지 쿠폰"));
+
+        if (userCouponRepository.existsByUserAndCoupon(user, loyaltyCoupon)) {
+            return;
+        }
+
+        issueCoupon(user, "프리미엄 3개월 유지 쿠폰");
+        System.out.println("🎁 3개월 유지 보상 쿠폰 발급! (user: " + user.getUserEmail() + ")");
+    }
+
+    private void issueCoupon(User user, String couponName) {
+        Coupon coupon = couponRepository.findByCouponName(couponName)
+                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: " + couponName));
+
+        UserCoupon userCoupon = UserCoupon.builder()
+                .user(user)
+                .coupon(coupon)
+                .userCouponStatus(0)
+                .userCouponExpireAt(LocalDateTime.now().plusDays(coupon.getCouponValidDays()))
+                .build();
+        userCouponRepository.save(userCoupon);
     }
 
     // ── 결제 관련 이벤트 처리 ──
@@ -157,7 +212,6 @@ public class MembershipService {
             orderRef = dto.getData().getId();
         }
 
-        // 카드 정보가 없는 이벤트를 대비한 폴백
         String cardBrand = attrs.getCard_brand() != null ? attrs.getCard_brand() : "UNKNOWN";
         String cardLastFour = attrs.getCard_last_four() != null ? attrs.getCard_last_four() : "0000";
 
@@ -200,6 +254,17 @@ public class MembershipService {
         } catch (Exception e) {
             System.err.println("⚠️ 날짜 파싱 실패: " + value);
             return null;
+        }
+    }
+
+    @Scheduled(cron = "0 0 3 * * *")
+    public void expireOldCoupons() {
+        List<UserCoupon> expiredCoupons = userCouponRepository
+                .findByUserCouponStatusAndUserCouponExpireAtBefore(0, LocalDateTime.now());
+
+        for (UserCoupon coupon : expiredCoupons) {
+            coupon.setUserCouponStatus(2);
+            userCouponRepository.save(coupon);
         }
     }
 }
