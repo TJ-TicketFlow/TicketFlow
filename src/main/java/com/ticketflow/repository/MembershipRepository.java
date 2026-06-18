@@ -11,4 +11,5 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
     Optional<Membership> findTopByUser_UserIdOrderByMembershipCreatedAtDesc(String userId);
     List<Membership> findByUser(User user);
     Optional<Membership> findByUser_UserEmail(String userEmail);
+    List<Membership> findByMembershipStatus(String membershipStatus);
 }
