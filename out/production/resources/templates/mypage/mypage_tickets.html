@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('티켓 예매 내역 - 티켓플로우', '티켓 예매 내역', 'tickets', ~{::content})}">
+    <th:block th:fragment="content">
+
+        <div class="filter-row">
+            <button class="filter-btn active" onclick="setFilter(this,'전체')">전체</button>
+            <button class="filter-btn" onclick="setFilter(this,'예매완료')">예매완료</button>
+            <button class="filter-btn" onclick="setFilter(this,'관람완료')">관람완료</button>
+            <button class="filter-btn" onclick="setFilter(this,'취소')">취소/환불</button>
+        </div>
+
+        <div class="date-filter">
+            <label>날짜 조회</label>
+            <div class="custom-date-wrap" id="wrap-from">
+                <div class="custom-date-input" id="input-from" onclick="toggleCalendar(event,'from')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <span class="date-text" id="text-from">2026-01-01</span>
+                </div>
+                <div class="calendar-popup" id="cal-from" onclick="event.stopPropagation()"></div>
+            </div>
+            <span class="date-sep">~</span>
+            <div class="custom-date-wrap" id="wrap-to">
+                <div class="custom-date-input" id="input-to" onclick="toggleCalendar(event,'to')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <span class="date-text" id="text-to">2026-12-31</span>
+                </div>
+                <div class="calendar-popup" id="cal-to" onclick="event.stopPropagation()"></div>
+            </div>
+            <button class="btn-date-search" onclick="searchByDate()">조회</button>
+            <button class="btn-date-reset" onclick="resetDate()">초기화</button>
+        </div>
+
+        <div class="ticket-table-wrap">
+            <table class="ticket-table" style="border-bottom: 1px solid #e5e7eb;">
+                <thead>
+                <tr>
+                    <th>예매번호</th>
+                    <th>공연명</th>
+                    <th>관람일시</th>
+                    <th>매수</th>
+                    <th>예매상태</th>
+                </tr>
+                </thead>
+                <tbody id="ticket-tbody">
+                <th:block th:if="${tickets != null and !tickets.isEmpty()}">
+                    <tr th:each="ticket : ${tickets}"
+                        th:data-url="@{/mypage/tickets/} + ${ticket['booking_no']}"
+                        onclick="location.href=this.dataset.url"
+                        style="cursor:pointer;">
+                        <td th:text="${ticket['booking_no']}"></td>
+                        <td class="col-name" th:text="${ticket['show_name']}"></td>
+                        <td th:text="${ticket['date']}"></td>
+                        <td th:text="${ticket['count']}"></td>
+                        <td>
+                                <span class="ticket-status"
+                                      th:classappend="${ticket['status'] == '취소'} ? ' status-cancel' : ' status-booked'"
+                                      th:text="${ticket['status']}"></span>
+                        </td>
+                    </tr>
+                </th:block>
+                <th:block th:if="${tickets == null or tickets.isEmpty()}">
+                    <td colspan="5" style="text-align: center; padding: 20px;">
+                        예매 내역이 없습니다.
+                    </td>
+                </th:block>
+                </tbody>
+            </table>
+            <div class="pagination" th:if="${page.totalPages > 0}">
+
+                <a class="page-btn"
+                   th:if="${!page.first}"
+                   th:href="@{/mypage/tickets(page=${page.number - 1}, startDate=${startDate}, endDate=${endDate})}">&lt;</a>
+
+                <a class="page-btn"
+                   th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}"
+                   th:href="@{/mypage/tickets(page=${i}, startDate=${startDate}, endDate=${endDate})}"
+                   th:text="${i + 1}"
+                   th:classappend="${i == page.number} ? 'active'">1</a>
+
+                <a class="page-btn"
+                   th:if="${!page.last}"
+                   th:href="@{/mypage/tickets(page=${page.number + 1}, startDate=${startDate}, endDate=${endDate})}">&gt;</a>
+
+            </div>
+        </div>
+
+    </th:block>
+</th:block>
+<script th:inline="javascript">
+    const serverStartDate = /*[[${startDate}]]*/ '2026-01-01';
+    const serverEndDate = /*[[${endDate}]]*/ '2026-12-31';
+</script>
+<script src="/js/booking/mypage_tickets.js"></script>
+</body>
+</html>

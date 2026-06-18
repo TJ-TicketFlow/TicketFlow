@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>공연 상세 정보</title>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="detail-wrap">
+    <div class="detail-grid">
+        <div class="info-left">
+            <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
+        </div>
+
+        <div class="info-middle">
+            <h1 class="detail-title" th:text="${concert.concertName}"></h1>
+            <div class="detail-meta">
+                <p><strong>장소</strong> <span th:text="${concert.hall.hallName}"></span></p>
+                <p><strong>공연기간</strong> <span th:text="${dateRange}"></span></p>
+                <p><strong>공연시간</strong> <span th:text="${concert.concertTime}"></span></p>
+                <p><strong>관람연령</strong> <span th:text="${concert.concertAgeLimit}"></span></p>
+
+                <div class="price-section">
+                    <p><strong>가격</strong></p>
+                    <div class="price-list">
+                        <span th:each="price : ${priceList}" th:text="${price}"></span>
+                    </div>
+                </div>
+
+                <div class="benefit-section">
+                    <p><strong>혜택</strong></p>
+                    <div class="benefit-box">
+                        <span>기본할인 3%</span>
+                        <a href="#">내 쿠폰 확인하기 ></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-right">
+            <div th:with="isEnded=${concert.concertEndDate < today}">
+
+                <div th:if="${isEnded}" class="sold-out-box" style="border: 2px solid #eee; padding: 30px; text-align: center; border-radius: 15px; background: #fafafa; color: #666;">
+                    <h3 style="margin-top: 0; color: #333;">판매종료</h3>
+                    <p>본 상품은 판매가 종료되었어요</p>
+                    <button type="button" class="btn-primary" disabled style="background-color: #bbbbbb; border: none; width: 100%; padding: 12px; color: #fff; border-radius: 5px; cursor: not-allowed;">예매하기</button>
+                </div>
+
+                <div th:unless="${isEnded}">
+                    <h3>관람일 선택</h3>
+                    <div id="calendar"></div>
+                    <h3>회차 선택</h3>
+                    <div id="session-container" class="session-wrapper">
+                        <p class="empty-msg">달력에서 날짜를 선택하세요.</p>
+                    </div>
+                    <form th:action="@{/seat/__${concert.concertId}__}" method="get">
+                        <input type="hidden" name="sessionId" id="selectedSessionId">
+                        <button type="submit" class="btn-primary">예매하기</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="bottom-section">
+        <div class="info-images-section">
+            <h3>공연 상세 정보</h3>
+            <div th:if="${not #lists.isEmpty(concert.concertInfoImages)}" th:each="imgUrl : ${concert.concertInfoImages}">
+                <img th:src="${imgUrl}" alt="상세 정보">
+            </div>
+            <p th:if="${#lists.isEmpty(concert.concertInfoImages)}" class="empty-msg">등록된 상세 이미지가 없습니다.</p>
+        </div>
+
+        <div class="stats-section">
+            <h3>예매자 통계</h3>
+            <div th:if="${stats != null}" class="stats-chart">
+                <p>성별/연령 통계 그래프 영역</p>
+            </div>
+            <div th:if="${stats == null}" class="empty-msg">
+                <p>아직 예매 데이터가 없습니다.</p>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- concertId를 JS 변수로 주입 -->
+<script th:inline="javascript">
+    const concertId = [[${concert.concertId}]];
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            locale: 'ko',
+            initialView: 'dayGridMonth',
+            selectable: true,
+            dateClick: function(info) {
+                loadSessions(info.dateStr);
+            }
+        });
+        calendar.render();
+    });
+
+    function loadSessions(date) {
+        fetch(`/concert/${concertId}/sessions?date=${date}`)
+            .then(res => {
+                if (!res.ok) throw new Error('서버 오류: ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                const container = document.getElementById('session-container');
+                container.innerHTML = '';
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p class="empty-msg">공연이 없습니다.</p>';
+                    return;
+                }
+                data.forEach(s => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn-session';
+                    btn.innerText = s.time;
+                    btn.onclick = function() {
+                        document.querySelectorAll('.btn-session').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        document.getElementById('selectedSessionId').value = s.id;
+                    };
+                    container.appendChild(btn);
+                });
+            })
+            .catch(err => {
+                console.error('세션 로딩 실패:', err);
+            });
+    }
+</script>
+</body>
+</html>

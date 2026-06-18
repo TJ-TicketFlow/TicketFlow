@@ -1,0 +1,101 @@
+/* ==========================================
+   💡 전체 화면 레이아웃 설정
+   ========================================== */
+body {
+    font-family: 'Malgun Gothic', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+
+    /* 헤더-본문-푸터 구조에서 푸터를 바닥에 붙이기 위한 마법의 설정입니다 */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ==========================================
+   💡 메인 컨텐츠 영역
+   ========================================== */
+.result-container {
+    /* flex: 1을 주면 남는 공간을 애가 전부 차지해서 푸터가 바닥으로 밀려납니다 */
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* 화면 정중앙에 배치 */
+    padding: 200px 20px;
+}
+
+.result-content {
+    position: relative; /* 워터마크 로고의 기준점이 됩니다 */
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+    z-index: 1;
+}
+
+/* ==========================================
+   💡 배경 워터마크 로고 (가장 중요한 부분!)
+   ========================================== */
+.result-content::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* 정확히 가운데 정렬 */
+
+    /* 💡 여기에 티켓플로우 로고 이미지 경로를 넣어주세요! */
+    background-image: url('/images/ticketflow-background-logo.png');
+
+    width: 1200px;
+    height: 1000px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    /* 투명도를 10~20%로 낮춰서 배경처럼 보이게 만듭니다 */
+    opacity: 0.15;
+
+    /* 글씨나 버튼을 가리지 않도록 뒤로 뺍니다 */
+    z-index: -1;
+}
+
+/* ==========================================
+   💡 내부 요소 디자인 (아이콘, 글씨, 버튼)
+   ========================================== */
+.check-icon {
+    width: 130px;
+    height: 130px;
+    margin: 0 auto 30px;
+}
+
+.result-title {
+    font-size: 26px;
+    font-weight: bold;
+    color: #000;
+    margin-top: 25px;
+    margin-bottom: 50px !important;
+}
+
+.btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 35px; /* 버튼 사이 간격 */
+}
+
+/* 두 버튼의 공통 스타일 */
+.btn {
+    text-decoration: none;
+    padding: 15px 25px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #3B82F6; /* 스크린샷과 비슷한 파란색 */
+    transition: background-color 0.2s ease; /* 마우스 올렸을 때 부드럽게 색 변함 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* 살짝 그림자 */
+}
+
+/* 마우스를 올렸을 때 살짝 진해짐 */
+.btn:hover {
+    background-color: #2563EB;
+}
