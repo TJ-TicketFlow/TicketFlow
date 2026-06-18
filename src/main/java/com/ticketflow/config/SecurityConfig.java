@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
-                                "/concert/","/concert/**","/concert/{id}/sessions"
+                                "/concert/","/concert/**","/concert/{id}/sessions","/search"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()

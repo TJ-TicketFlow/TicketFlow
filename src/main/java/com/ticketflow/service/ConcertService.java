@@ -113,15 +113,28 @@ public class ConcertService {
 
     public List<String> findSessionsByDate(String id, String selectedDate) {
         Concert concert = findById(id);
+        LocalDate date = LocalDate.parse(selectedDate);
+
+        // 1. 공연 기간 검증 (선택한 날짜가 범위 내에 없으면 바로 종료)
+        if (date.isBefore(concert.getConcertStartDate()) || date.isAfter(concert.getConcertEndDate())) {
+            return Collections.emptyList();
+        }
+
         String allTimes = concert.getConcertTime();
         if (allTimes == null || allTimes.isEmpty()) return Collections.emptyList();
-        LocalDate date = LocalDate.parse(selectedDate);
+
+        // 2. 선택한 날짜의 요일 구하기 (예: "금요일")
         String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
+
         return Arrays.stream(allTimes.split(","))
                 .map(String::trim)
                 .filter(time -> {
-                    if (time.contains("~")) return time.split("\\(")[0].contains(dayOfWeek.substring(0, 1));
-                    return time.startsWith(dayOfWeek);
+                    // time 예시: "금요일(20:00)" 또는 "토요일~일요일(14:00)"
+                    // 요일 부분만 추출 (괄호 앞 부분)
+                    String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
+
+                    // 해당 요일이 포함되어 있는지 확인
+                    return targetPart.contains(dayOfWeek);
                 })
                 .collect(Collectors.toList());
     }
@@ -134,5 +147,13 @@ public class ConcertService {
     public List<Concert> getPastConcerts() {
         LocalDate today = LocalDate.now();
         return getAllConcerts().stream().filter(c -> c.getConcertEndDate().isBefore(today)).collect(Collectors.toList());
+    }
+    // ConcertService.java 내부
+    public List<Concert> search(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        // Repository에 있는 메서드 호출 (LIKE %keyword% 방식)
+        return concertRepository.findByConcertNameContaining(keyword);
     }
 }

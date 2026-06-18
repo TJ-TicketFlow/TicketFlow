@@ -88,6 +88,21 @@ public class ConcertController {
             model.addAttribute("priceList", Arrays.stream(prices).map(String::trim).collect(Collectors.toList()));
         }
 
+        if (principal != null) {
+            // 로그인 상태: 멤버십 혜택 표시
+            model.addAttribute("isLoggedIn", true);
+            model.addAttribute("isMember", true); // 멤버십 가입자라고 가정
+
+            // 쿠폰 0장으로 초기화 (나중에 서비스 로직으로 대체 가능)
+            Map<Integer, Integer> coupons = new TreeMap<>();
+            coupons.put(5, 0);
+            coupons.put(10, 0);
+            coupons.put(15, 0);
+            model.addAttribute("coupons", coupons);
+        } else {
+            model.addAttribute("isLoggedIn", false);
+        }
+
         return "concert/concert_detail";
     }
 
@@ -148,9 +163,19 @@ public class ConcertController {
     }
 
     @GetMapping("/search")
-    @ResponseBody
-    public ResponseEntity<?> searchConcerts(@RequestParam(required = false) String keyword, @RequestParam(required = false) String category, @RequestParam(required = false) String sort, @RequestParam(defaultValue = "0") int from, @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok().body(Map.of("message", "공연 검색 결과 반환"));
+    public String searchConcerts(@RequestParam(required = false) String keyword, Model model) {
+        if (keyword == null || keyword.isEmpty()) {
+            return "redirect:/concert/";
+        }
+
+        List<Concert> concertList = concertService.search(keyword);
+
+        // [수정] 현재 날짜를 모델에 추가
+        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("concertList", concertList);
+        model.addAttribute("keyword", keyword);
+
+        return "concert/search_results";
     }
 
     @GetMapping("/suggest")
