@@ -37,7 +37,18 @@ public class ConcertController {
         if (genre != null && !genre.isEmpty()) {
             String koreanGenre = mapGenreCodeToName(genre);
             List<Concert> genreConcerts = concertService.getConcertsByGenre(koreanGenre);
-            model.addAttribute("concertList", genreConcerts);
+
+            // 날짜 기준 분류 (오늘 날짜와 비교)
+            LocalDate today = LocalDate.now();
+            List<Concert> upcoming = genreConcerts.stream()
+                    .filter(c -> c.getConcertEndDate().isAfter(today) || c.getConcertEndDate().isEqual(today))
+                    .collect(Collectors.toList());
+            List<Concert> past = genreConcerts.stream()
+                    .filter(c -> c.getConcertEndDate().isBefore(today))
+                    .collect(Collectors.toList());
+
+            model.addAttribute("upcomingConcerts", upcoming);
+            model.addAttribute("pastConcerts", past);
         } else {
             model.addAttribute("upcomingConcerts", concertService.getUpcomingConcerts());
             model.addAttribute("pastConcerts", concertService.getPastConcerts());
@@ -210,4 +221,14 @@ public class ConcertController {
     @GetMapping("/ai-recommend")
     @ResponseBody
     public ResponseEntity<?> getAiRecommendations() { return ResponseEntity.ok().body(Map.of("aiRecommended", Collections.emptyList())); }
+
+    @GetMapping("/{id}/stats-json")
+    @ResponseBody
+    public ResponseEntity<?> getStatsJson(@PathVariable String id) {
+        // 기존에 model에 담아주던 데이터를 그대로 가져옵니다.
+        Object stats = concertService.getStatsData(id);
+        if (stats == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        return ResponseEntity.ok(stats);
+    }
+
 }

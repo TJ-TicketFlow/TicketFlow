@@ -13,7 +13,6 @@
         .chart-box-doughnut { width: 330px; text-align: center; }
         .chart-box-bar { width: 450px; text-align: center; }
         .chart-box-doughnut canvas, .chart-box-bar canvas { width: 100% !important; height: auto !important; }
-        /* 판매 종료 시 비활성화 스타일 */
         .disabled-box { opacity: 0.6; pointer-events: none; }
     </style>
 </head>
@@ -66,13 +65,11 @@
 
         <div class="booking-right">
             <div th:with="isEnded=${concert.concertEndDate.isBefore(today)}">
-
                 <div th:if="${isEnded}" class="disabled-box">
                     <h3>관람일 선택</h3>
                     <div class="concert-calendar"></div>
                     <button type="button" class="btn-primary" style="background-color: #ccc; border-color: #ccc; cursor: not-allowed; width: 100%; margin-top: 20px;" disabled>판매종료</button>
                 </div>
-
                 <div th:unless="${isEnded}" style="display: flex; flex-direction: column; gap: 24px;">
                     <div>
                         <h3>관람일 선택</h3>
@@ -113,10 +110,57 @@
 <div th:replace="~{fragments/footer :: footer}"></div>
 
 <script th:inline="javascript">
+    let genderChart, ageChart;
+
+    // 1. 초기 데이터 로드 및 차트 생성
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialStats = /*[[${stats}]]*/ null;
+        if (initialStats) {
+            initCharts(initialStats);
+            // 3초마다 데이터 업데이트 (폴링)
+            setInterval(pollStats, 3000);
+        }
+
+        var calendarEl = document.querySelector('.concert-calendar');
+        if (calendarEl) {
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'ko', initialView: 'dayGridMonth', selectable: true,
+                dateClick: (info) => loadSessions(info.dateStr)
+            });
+            calendar.render();
+        }
+    });
+
+    function initCharts(stats) {
+        genderChart = new Chart(document.getElementById('genderChart'), {
+            type: 'doughnut',
+            data: { labels: ['남성', '여성'], datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }] }
+        });
+        ageChart = new Chart(document.getElementById('ageChart'), {
+            type: 'bar',
+            data: { labels: ['10대', '20대', '30대', '40대', '50대'], datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }] },
+            options: { scales: { y: { beginAtZero: true, max: 100 } } }
+        });
+    }
+
+    function pollStats() {
+        const concertId = /*[[${concert.concertId}]]*/ null;
+        fetch(`/concert/${concertId}/stats-json`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && genderChart && ageChart) {
+                    genderChart.data.datasets[0].data = data.genderData;
+                    ageChart.data.datasets[0].data = data.ageData;
+                    genderChart.update();
+                    ageChart.update();
+                }
+            })
+            .catch(err => console.error("통계 업데이트 실패", err));
+    }
+
     function toggleWishlist(concertId) {
         const csrfToken = document.querySelector('meta[name="_csrf"]').content;
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
-
         fetch(`/concert/${concertId}/like`, {
             method: 'POST',
             headers: { [csrfHeader]: csrfToken, 'Content-Type': 'application/json' },
@@ -129,31 +173,6 @@
                 document.getElementById(`wish-count-${concertId}`).innerText = data.newCount;
             });
     }
-
-    const stats = /*[[${stats}]]*/ null;
-    if (stats) {
-        new Chart(document.getElementById('genderChart'), {
-            type: 'doughnut',
-            data: { labels: ['남성', '여성'], datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }] }
-        });
-        new Chart(document.getElementById('ageChart'), {
-            type: 'bar',
-            data: { labels: ['10대', '20대', '30대', '40대', '50대'], datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }] },
-            options: { scales: { y: { beginAtZero: true, max: 100 } } }
-        });
-    }
-
-    // 달력 클래스 선택자로 변경
-    document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.querySelector('.concert-calendar');
-        if (calendarEl) {
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                locale: 'ko', initialView: 'dayGridMonth', selectable: true,
-                dateClick: (info) => loadSessions(info.dateStr)
-            });
-            calendar.render();
-        }
-    });
 
     function loadSessions(date) {
         const concertId = document.querySelector('input[name="concertId"]').value;
@@ -175,23 +194,19 @@
                 });
             });
     }
-    function openCouponPopup() { document.getElementById('couponPopup').style.display = 'block'; document.getElementById('popupOverlay').style.display = 'block'; }
-    function closeCouponPopup() { document.getElementById('couponPopup').style.display = 'none'; document.getElementById('popupOverlay').style.display = 'none'; }
+    function openCouponPopup() { document.getElementById('couponPopup').style.display = 'block'; }
+    function closeCouponPopup() { document.getElementById('couponPopup').style.display = 'none'; }
 </script>
 
 <div id="couponPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#ffffff; padding:30px; border-radius:24px; z-index:1001; width:360px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); border: 1px solid #eee;">
     <h3 style="margin: 0 0 20px 0; text-align: center; font-size: 1.3rem;">보유 쿠폰</h3>
-
-    <div th:each="entry : ${coupons}" style="background: #fdfdfd; margin-bottom: 12px; padding: 12px; border-radius: 16px; display:flex; align-items:center; border: 1px solid #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-        <img th:src="@{'/images/' + ${entry.key} + 'percent.png'}"
-             style="width: 50px; height: 50px; object-fit: contain; margin-right: 15px;">
-
+    <div th:each="entry : ${coupons}" style="background: #fdfdfd; margin-bottom: 12px; padding: 12px; border-radius: 16px; display:flex; align-items:center; border: 1px solid #f0f0f0;">
+        <img th:src="@{'/images/' + ${entry.key} + 'percent.png'}" style="width: 50px; height: 50px; object-fit: contain; margin-right: 15px;">
         <div style="display:flex; flex-direction: column;">
             <span style="font-weight: bold; font-size: 1rem;" th:text="${entry.key} + '% 할인권'"></span>
             <span style="font-size: 0.85rem; color: #666;" th:text="'소지개수 : ' + ${entry.value} + '매'"></span>
         </div>
     </div>
-
     <button onclick="closeCouponPopup()" style="width:100%; padding:14px; margin-top:20px; cursor:pointer; background:#111; color:white; border:none; border-radius:12px; font-weight:bold; font-size: 1rem;">닫기</button>
 </div>
 </body>
