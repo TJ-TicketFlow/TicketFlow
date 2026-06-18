@@ -77,6 +77,10 @@ public class ConcertController {
         model.addAttribute("stats", concertService.getStatsData(id));
         model.addAttribute("today", LocalDate.now());
 
+        // [추가] 전체 매진 여부 확인 (서비스에 해당 로직 구현 필요)
+        boolean isAllSoldOut = concertService.isAllSoldOut(id);
+        model.addAttribute("isAllSoldOut", isAllSoldOut);
+
         // 1. 좋아요 여부 확인
         boolean isLiked = false;
         if (principal != null) {
