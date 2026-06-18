@@ -57,18 +57,17 @@
           <div class="concert-card"
                th:each="concert : ${concertList}"
                th:data-status="${concert.concertEndDate.isBefore(today) ? 'past' : 'upcoming'}"
-               th:data-genre="${concert.concertGenre}">
-            <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-              <div class="poster-wrap">
-                <img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img">
-              </div>
-              <div class="concert-info">
-                <div class="concert-genre" th:text="${concert.concertGenre}">장르</div>
-                <div class="concert-name" th:text="${concert.concertName}">공연명</div>
-                <div class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</div>
-                <div class="concert-hall" th:text="${concert.hall.hallName}">공연장</div>
-              </div>
-            </a>
+               th:data-genres="${concert.concertGenre}"> <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
+            <div class="poster-wrap">
+              <img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img">
+            </div>
+            <div class="concert-info">
+              <div class="concert-genre" th:text="${concert.concertGenre}">장르</div>
+              <div class="concert-name" th:text="${concert.concertName}">공연명</div>
+              <div class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</div>
+              <div class="concert-hall" th:text="${concert.hall.hallName}">공연장</div>
+            </div>
+          </a>
           </div>
         </div>
       </section>
@@ -81,9 +80,15 @@
   function applyFilters() {
     const status = document.getElementById('statusFilter').value;
     const genre = document.getElementById('genreFilter').value;
+
     document.querySelectorAll('.concert-card').forEach(card => {
+      // 상태 필터 체크
       const matchStatus = (status === 'all' || card.dataset.status === status);
-      const matchGenre = (genre === 'all' || card.dataset.genre === genre);
+
+      // 장르 필터 체크 (쉼표로 구분된 문자열을 배열로 변환 후 포함 여부 확인)
+      const genresArray = card.dataset.genres.split(',').map(g => g.trim());
+      const matchGenre = (genre === 'all' || genresArray.includes(genre));
+
       card.style.display = (matchStatus && matchGenre) ? 'block' : 'none';
     });
   }

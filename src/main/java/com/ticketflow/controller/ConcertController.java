@@ -34,12 +34,13 @@ public class ConcertController {
 
     @GetMapping("/")
     public String mainPage(@RequestParam(required = false) String genre, Model model) {
+        LocalDate today = LocalDate.now(); // 추가
+        model.addAttribute("today", today); // 추가
+
         if (genre != null && !genre.isEmpty()) {
             String koreanGenre = mapGenreCodeToName(genre);
             List<Concert> genreConcerts = concertService.getConcertsByGenre(koreanGenre);
 
-            // 날짜 기준 분류 (오늘 날짜와 비교)
-            LocalDate today = LocalDate.now();
             List<Concert> upcoming = genreConcerts.stream()
                     .filter(c -> c.getConcertEndDate().isAfter(today) || c.getConcertEndDate().isEqual(today))
                     .collect(Collectors.toList());

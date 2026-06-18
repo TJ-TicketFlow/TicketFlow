@@ -16,7 +16,7 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertId = :id")
     Optional<Concert> findById(@Param("id") String id);
 
-    @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertGenre = :genre")
+    @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertGenre LIKE %:genre%")
     List<Concert> findByConcertGenre(@Param("genre") String genre);
 
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertName LIKE %:keyword%")
