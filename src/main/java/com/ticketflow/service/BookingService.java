@@ -216,16 +216,40 @@ public class BookingService {
     public void completePayment(String merchantUid, String lsOrderId,
                                 String currency, String lsCustomerId,
                                 String receiptUrl, String lsWebhookEventId,
-                                long webhookAmount) {
+                                long webhookAmount, String payStatus, String failReason) {
 
+        // 1. 주문 번호로 DB에서 결제 대기 중인 장부를 찾습니다.
         Pay payment = payRepository.findByMerchantUid(merchantUid)
                 .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
 
-        long expectedAmount = payment.getPayAmount();
+        // ----------------------------------------------------
+        // 🚨 [1단계 방어막] 레몬스퀴지 자체에서 결제가 실패(failed)해서 넘어온 경우
+        // ----------------------------------------------------
+        if ("failed".equalsIgnoreCase(payStatus)) {
+            payment.setPayStatus("FAILED");
+            // 💡 개발자님이 만들어두신 컬럼에 실패 사유를 쏙 적어줍니다!
+            payment.setPayFailReason(failReason != null ? failReason : "카드 한도 초과 또는 잔액 부족 등 결제 실패");
 
+            // 결제가 실패했으므로 묶여있던 좌석을 다른 사람도 살 수 있게 즉시 풀어줍니다.
+            if (payment.getReservation() != null) {
+                releaseUnpaidSeat(payment.getReservation().getReservationKey());
+            }
+            System.out.println("❌ 레몬스퀴지 결제 실패 기록 완료: " + payment.getPayFailReason());
+            return; // 실패했으므로 아래 성공 로직을 타지 않고 여기서 함수를 끝냅니다.
+        }
+
+        // ----------------------------------------------------
+        // 🚨 [2단계 방어막] 금액 위조 검사 (기존 코드 유지)
+        // ----------------------------------------------------
+        long expectedAmount = payment.getPayAmount();
         if (expectedAmount != webhookAmount) {
             payment.setPayStatus("FAILED");
-            System.err.println("🚨 금액 불일치 경고! DB가격: " + expectedAmount + ", 결제된 가격: " + webhookAmount);
+            payment.setPayFailReason("🚨 서버 금액(" + expectedAmount + "원)과 실결제 금액(" + webhookAmount + "원)이 일치하지 않음 (위조 위험)");
+
+            if (payment.getReservation() != null) {
+                releaseUnpaidSeat(payment.getReservation().getReservationKey());
+            }
+            System.err.println("🚨 금액 불일치 사고 발생! 실패 사유 기록 완료.");
             return;
         }
 

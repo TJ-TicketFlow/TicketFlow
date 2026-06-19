@@ -63,14 +63,24 @@ public class WebhookController {
                 // 이벤트 ID는 meta 안에 들어있습니다.
                 String lsWebhookEventId = rootNode.path("meta").path("webhook_id").asText();
 
+                // 레몬스퀴지가 보내준 진짜 결제 상태(예: "paid", "failed", "pending")를 꺼냅니다.
+                String payStatus = attributes.path("status").asText();
+
+                // 레몬스퀴지가 보내준 에러 메시지가 있는지 확인합니다. (없으면 빈칸)
+                String failReason = attributes.path("error_message").asText("");
+
+                // 만약 에러 메시지는 안 왔는데 상태가 failed 라면, 우리가 직접 사유를 적어줍니다.
+                if (failReason.isEmpty() && "failed".equalsIgnoreCase(payStatus)) {
+                    failReason = "카드 한도 초과 또는 해외 결제 차단으로 인한 실패";
+                }
+
                 // first_order_item 안에 들어있는 순수 price를 꺼냅니다! (3200000)
                 long purePriceCent = attributes.path("first_order_item").path("price").asLong();
                 // 우리가 보낼 때 100을 곱했으니, 비교할 때는 100으로 다시 나눠서 원상복구(32000) 시킵니다!
                 long webhookAmount = purePriceCent / 100;
 
                 // 3. 서비스에게 "이것들도 다 같이 장부에 적어줘!" 라고 넘깁니다.
-                bookingService.completePayment(merchantUid, lsOrderId, currency, lsCustomerId, receiptUrl, lsWebhookEventId, webhookAmount);
-            }
+                bookingService.completePayment(merchantUid, lsOrderId, currency, lsCustomerId, receiptUrl, lsWebhookEventId, webhookAmount, payStatus, failReason);            }
 
             // 5. 레몬스퀴즈에게 "알림 잘 받았어! 고마워!" 라고 200 OK 보내기
             return ResponseEntity.ok("Success");
