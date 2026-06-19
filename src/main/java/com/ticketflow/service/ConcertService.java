@@ -1,8 +1,11 @@
 package com.ticketflow.service;
 
+import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ public class ConcertService {
     private final UserRepository userRepository;         // User 엔티티 조회를 위해 추가
     private final SelectedSeatRepository selectedSeatRepository;
     private final SeatRepository seatRepository;
+    private final ReservationRepository reservationRepository;
 
     public List<Concert> getAllConcerts() {
         return concertRepository.findAll();
@@ -169,13 +173,95 @@ public class ConcertService {
         return totalSeats > 0 && reservedSeats >= totalSeats;
     }
 
+    // ConcertService.java
     public boolean isSessionSoldOut(String concertId, String sessionTime) {
-        // 특정 회차의 좌석 수 대비 예매된 좌석 수 계산이 필요합니다.
-        // 회차(sessionTime)별로 좌석이 구분되어 있다면 이 로직을 사용하세요.
-        long totalSeats = seatRepository.countByConcert_ConcertId(concertId); // 필요 시 회차 조건 추가
-        long reservedSeats = selectedSeatRepository.countByConcert_ConcertIdAndSessionTime(concertId, sessionTime);
+        // 1. 해당 공연의 총 좌석 수 (Seat 엔티티 활용)
+        long totalSeats = seatRepository.countByConcert_ConcertId(concertId);
+        // 2. 해당 회차에 예약된 좌석 수 (Reservation 엔티티 활용)
+        long reservedSeats = reservationRepository.countBySelectedSeat_Concert_ConcertIdAndSessionTime(concertId, sessionTime);
 
         return reservedSeats >= totalSeats;
+    }
+
+    public List<ConcertResponseDto> getPopularConcerts(int limit) {
+        LocalDate today = LocalDate.now();
+
+        // 1. 모든 공연을 가져와서 필터링 및 정렬 수행
+        return concertRepository.findAll().stream()
+                // 1) 지난 공연 제외 (종료일이 오늘 이전인 것 제외)
+                .filter(c -> !c.getConcertEndDate().isBefore(today))
+                // 2) 정렬: 찜 개수 내림차순, 같다면 종료일 오름차순(임박순)
+                .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed()
+                        .thenComparing(Concert::getConcertEndDate))
+                // 3) 개수 제한
+                .limit(limit)
+                .map(ConcertResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<ConcertResponseDto> getRecommendedConcerts(String userId) {
+        // 1. 유저가 선호하는 장르 목록 추출 (기존 로직 유지)
+        List<String> preferredGenres = wishlistRepository.findByUser_UserId(userId).stream()
+                .map(wish -> wish.getConcert().getConcertGenre())
+                .filter(Objects::nonNull)
+                .flatMap(g -> Arrays.stream(g.split(","))) // 쉼표 기준 분리
+                .map(String::trim)
+                .filter(g -> !g.isEmpty())
+                .collect(Collectors.groupingBy(g -> g, Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(2)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        if (preferredGenres.isEmpty()) {
+            // 선호 장르가 없으면 인기순으로 기본 추천
+            return concertRepository.findPopularAndUpcoming(PageRequest.of(0, 3)).stream()
+                    .map(ConcertResponseDto::new).collect(Collectors.toList());
+        }
+
+        // 2. 서비스단에서 유연한 필터링 수행 (방법 B)
+        LocalDate today = LocalDate.now();
+        return concertRepository.findAll().stream() // 전체 공연을 가져옴 (데이터가 아주 많다면 JPQL로 페이징 필요)
+                .filter(c -> !c.getConcertEndDate().isBefore(today)) // 마감 안 된 공연
+                .filter(c -> {
+                    String[] concertGenres = c.getConcertGenre().split(","); // DB의 다중 장르 분리
+                    return Arrays.stream(concertGenres)
+                            .map(String::trim)
+                            .anyMatch(preferredGenres::contains); // 취향 장르가 하나라도 포함되면 True
+                })
+                .limit(3)
+                .map(ConcertResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<String> findAvailableDates(String id) {
+        Concert concert = findById(id);
+        LocalDate startDate = concert.getConcertStartDate();
+        LocalDate endDate = concert.getConcertEndDate();
+        String allTimes = concert.getConcertTime();
+
+        if (allTimes == null || allTimes.isEmpty()) return Collections.emptyList();
+
+        List<String> availableDates = new ArrayList<>();
+
+        // 공연 기간(startDate ~ endDate)을 하루씩 증가시키며 루프
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
+
+            // 해당 요일에 공연이 있는지 확인 (기존 findSessionsByDate와 동일한 로직)
+            boolean hasPerformance = Arrays.stream(allTimes.split(","))
+                    .map(String::trim)
+                    .anyMatch(time -> {
+                        String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
+                        return targetPart.contains(dayOfWeek);
+                    });
+
+            if (hasPerformance) {
+                availableDates.add(date.toString()); // "2026-06-20" 형식으로 저장
+            }
+        }
+        return availableDates;
     }
 
 }

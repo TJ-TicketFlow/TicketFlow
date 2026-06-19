@@ -112,34 +112,92 @@
 <script th:inline="javascript">
     let genderChart, ageChart;
 
-    // 1. 초기 데이터 로드 및 차트 생성
     document.addEventListener('DOMContentLoaded', function() {
         const initialStats = /*[[${stats}]]*/ null;
         if (initialStats) {
             initCharts(initialStats);
-            // 3초마다 데이터 업데이트 (폴링)
             setInterval(pollStats, 3000);
         }
 
-        var calendarEl = document.querySelector('.concert-calendar');
+        const calendarEl = document.querySelector('.concert-calendar');
+        const concertId = /*[[${concert.concertId}]]*/ null;
+
         if (calendarEl) {
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                locale: 'ko', initialView: 'dayGridMonth', selectable: true,
-                dateClick: (info) => loadSessions(info.dateStr)
-            });
-            calendar.render();
+            // 공연 가능 날짜를 서버에서 가져온 뒤 달력 생성
+            fetch(`/concert/${concertId}/available-dates`)
+                .then(res => res.json())
+                .then(availableDates => {
+                    var calendar = new FullCalendar.Calendar(calendarEl, {
+                        locale: 'ko',
+                        initialView: 'dayGridMonth',
+                        selectable: true,
+                        dateClick: (info) => {
+                            if (availableDates.includes(info.dateStr)) {
+                                loadSessions(info.dateStr);
+                            } else {
+                                alert("해당 날짜에는 공연이 없습니다.");
+                            }
+                        },
+                        dayCellDidMount: (info) => {
+                            if (availableDates.includes(info.dateStr)) {
+                                info.el.style.backgroundColor = '#f0f7ff';
+                            }
+                        }
+                    });
+                    calendar.render();
+                });
         }
     });
 
     function initCharts(stats) {
         genderChart = new Chart(document.getElementById('genderChart'), {
             type: 'doughnut',
-            data: { labels: ['남성', '여성'], datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }] }
+            data: {
+                labels: ['남성', '여성'],
+                datasets: [{
+                    data: stats.genderData,
+                    backgroundColor: ['#3b82f6', '#f43f5e']
+                }]
+            },
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw;
+                                return `${label}: ${value}%`;
+                            }
+                        }
+                    }
+                }
+            }
         });
+
         ageChart = new Chart(document.getElementById('ageChart'), {
             type: 'bar',
-            data: { labels: ['10대', '20대', '30대', '40대', '50대'], datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }] },
-            options: { scales: { y: { beginAtZero: true, max: 100 } } }
+            data: {
+                labels: ['10대', '20대', '30대', '40대', '50대'],
+                datasets: [{
+                    label: '연령대별 예매율',
+                    data: stats.ageData,
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { callback: (val) => val + '%' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw}%`;
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 

@@ -1,6 +1,7 @@
 package com.ticketflow.repository;
 
 import com.ticketflow.entity.Concert;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,4 +38,17 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
     @Query("SELECT c, RANK() OVER (ORDER BY s.reservationRate DESC) as ranking " +
             "FROM Concert c JOIN c.stats s WHERE c.concertGenre = :genre")
     List<Object[]> findConcertsByGenreRanking(@Param("genre") String genre);
+
+    // 1. 인기 공연 조회 (Wishlist 테이블과 조인)
+    @Query("SELECT c FROM Concert c JOIN Wishlist w ON c.concertId = w.concert.concertId " +
+            "GROUP BY c.concertId ORDER BY COUNT(w) DESC")
+    List<Concert> findTopPopular(Pageable pageable);
+
+    // 2. 선호 장르 공연 조회
+    @Query("SELECT c FROM Concert c WHERE c.concertGenre IN :genres ORDER BY c.concertStartDate ASC")
+    List<Concert> findByGenreInOrderByStartDateAsc(@Param("genres") List<String> genres, Pageable pageable);
+
+    @Query("SELECT c FROM Concert c WHERE c.concertEndDate >= CURRENT_DATE " +
+            "ORDER BY c.concertWishlistCount DESC, c.concertEndDate ASC")
+    List<Concert> findPopularAndUpcoming(Pageable pageable);
 }

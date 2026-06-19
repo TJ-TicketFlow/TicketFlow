@@ -1,5 +1,6 @@
 package com.ticketflow.controller;
 
+import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.Concert;
 import com.ticketflow.service.ConcertService;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,9 @@ public class ConcertController {
     // =========================================================================
 
     @GetMapping("/")
-    public String mainPage(@RequestParam(required = false) String genre, Model model) {
+    public String mainPage(@RequestParam(required = false) String genre, Model model, Principal principal) {
+        // [중요] 로그인 여부를 모델에 전달 (이게 없으면 JS에서 isLoggedIn이 null/false로 인식됨)
+        model.addAttribute("isLoggedIn", (principal != null));
         LocalDate today = LocalDate.now(); // 추가
         model.addAttribute("today", today); // 추가
 
@@ -219,13 +222,26 @@ public class ConcertController {
         return ResponseEntity.ok().body(Map.of("likedConcerts", Collections.emptyList()));
     }
 
+    // 1. 기존 메서드: 로그인 여부와 관계없이 '일반적인 추천(인기순)' 반환
     @GetMapping("/recommended")
     @ResponseBody
-    public ResponseEntity<?> getColdStartRecommendations() { return ResponseEntity.ok().body(Map.of("recommended", Collections.emptyList())); }
+    public ResponseEntity<?> getGeneralRecommendations() {
+        // 예: 전체 공연 중 가장 찜이 많은 공연 TOP 3
+        List<ConcertResponseDto> popular = concertService.getPopularConcerts(3);
+        return ResponseEntity.ok(Map.of("recommended", popular));
+    }
 
+    // 2. 새 메서드: 로그인한 유저만 위한 '개인화 추천'
     @GetMapping("/ai-recommend")
     @ResponseBody
-    public ResponseEntity<?> getAiRecommendations() { return ResponseEntity.ok().body(Map.of("aiRecommended", Collections.emptyList())); }
+    public ResponseEntity<?> getPersonalizedRecommendations(Principal principal) {
+        if (principal == null) {
+            // 로그인 안 했으면 그냥 일반 추천을 호출하거나 빈 리스트 반환
+            return getGeneralRecommendations();
+        }
+        List<ConcertResponseDto> personalized = concertService.getRecommendedConcerts(principal.getName());
+        return ResponseEntity.ok(Map.of("aiRecommended", personalized));
+    }
 
     @GetMapping("/{id}/stats-json")
     @ResponseBody
@@ -234,6 +250,14 @@ public class ConcertController {
         Object stats = concertService.getStatsData(id);
         if (stats == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/{id}/available-dates")
+    @ResponseBody
+    public ResponseEntity<List<String>> getAvailableDates(@PathVariable String id) {
+        // 예: concertService에 findAvailableDatesByConcertId(id) 메서드 추가 필요
+        List<String> dates = concertService.findAvailableDates(id);
+        return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
     }
 
 }
