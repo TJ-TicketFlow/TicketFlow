@@ -15,43 +15,41 @@
 
 <div class="main-layout">
 
-    <div class="sidebar">
-
-        <div class="popup">
-            <div class="title" id="concert-name">공연명 기본값</div>
-            <img class="poster" id="concert-poster" src="" alt="공연 포스터">
-            <div class="info-box">
-                <div class="info-item">
-                    <div class="label">공연날짜</div>
-                    <div class="value" id="concert-date">날짜를 불러오는 중...</div>
-                </div>
-                <div class="info-item">
-                    <div class="label">시작시간</div>
-                    <div class="value" id="concert-runtime">시간을 불러오는 중...</div>
-                </div>
+    <div class="popup-box left-sidebar">
+        <div class="title" id="concert-name">공연명 기본값</div>
+        <img class="poster" id="concert-poster" src="" alt="공연 포스터">
+        <div class="info-box">
+            <div class="info-item">
+                <div class="label">공연날짜</div>
+                <div class="value" id="concert-date">날짜 로딩 중...</div>
+            </div>
+            <div class="info-item">
+                <div class="label">시작시간</div>
+                <div class="value" id="concert-runtime">시간 로딩 중...</div>
             </div>
         </div>
-
-        <div class="popup">
-            <div class="selection-title">선택한 좌석</div>
-
-            <div class="selected-seats-list" id="selected-seats-display">
-                <span class="no-seat-msg">좌석을 선택해 주세요. (최대 4개)</span>
-            </div>
-
-            <button class="booking-btn" id="booking-submit-btn">작성 완료 및 예매하기</button>
-        </div>
-
-    </div> <div class="seat-page">
-    <div id="seat-container">
     </div>
+
+    <div class="seat-page">
+        <div id="seat-container">
+        </div>
+    </div>
+
+    <div class="popup-box right-sidebar">
+        <div class="selection-title">선택한 좌석</div>
+
+        <div class="selected-seats-list" id="selected-seats-display">
+            <span class="no-seat-msg">좌석을 선택해 주세요. (최대 4개)</span>
+        </div>
+
+        <button class="booking-btn" id="booking-submit-btn">작성 완료 및 예매하기</button>
+    </div>
+
 </div>
 
-</div> <script src="/js/seatmap.js"></script>
+<script src="/js/seatmap.js"></script>
 
 </body>
 
 </html>
 
-
-</html>
