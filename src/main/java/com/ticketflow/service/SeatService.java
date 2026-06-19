@@ -1,246 +1,298 @@
 package com.ticketflow.service;
 
+
 import com.ticketflow.entity.Concert;
+import com.ticketflow.entity.Seat;
 import com.ticketflow.repository.ConcertRepository;
+
+import com.ticketflow.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import java.util.List;
-import java.util.Map;
+
+
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class SeatService {
+
+
+
+    private final SeatRepository seatRepository;
 
     private final ConcertRepository concertRepository;
 
-
     /*
-        공연 조회
-     */
-    public Concert getConcert(
-            String concertId
-    ) {
+    공연 가격정보 기반 좌석 타입 판단
+*/
+    public String getSeatLayoutType(String concertId){
 
-        return concertRepository
-                .findById(concertId)
-                .orElseThrow(
-                        () ->
-                                new RuntimeException(
-                                        "공연 없음"
-                                )
-                );
-
-    }
-
-
-    /*
-        공연ID → 좌석배치도 결정
-     */
-    public String getSeatMapType(
-            String concertId
-    ) {
 
         Concert concert =
-                getConcert(
-                        concertId
-                );
+                concertRepository
+                        .findById(concertId)
+                        .orElseThrow(
+                                () ->
+                                        new RuntimeException(
+                                                "공연 없음"
+                                        )
+                        );
 
-        Long hallId =
-                concert
-                        .getHall()
-                        .getHallId();
+
+        String priceInfo =
+                concert.getConcertPriceInfo();
 
 
 
-        if (hallId == 1L) {
+    /*
+       예:
+       VIP 200000,R 150000,S 100000
 
-            // 선착순
-            return "FIRST_COME";
+       또는
 
-        }
+       스탠딩 99000
+    */
 
-        if (hallId == 2L) {
+        if (priceInfo.contains("스탠딩"))
+            return "SEAT_B";
+        else
+            return "SEAT_A";
 
-            // 배치도 A
-            return "LAYOUT_A";
-
-        }
-
-        return "LAYOUT_B";
 
     }
 
 
     /*
-        실제 좌석 배치도 반환
-     */
-    public List<List<String>>
-    getSeatLayout(
+        1. 좌석 조회
+    */
+    @Transactional(readOnly = true)
+    public List<Seat> getSeats(
             String concertId
-    ) {
+    ){
 
-        String seatMap =
-                getSeatMapType(
+
+        return seatRepository
+                .findByConcert_ConcertId(
                         concertId
                 );
 
 
-
-        if (
-                seatMap.equals(
-                        "LAYOUT_A"
-                )
-        ) {
-
-            return List.of(
-
-                    List.of(
-                            "A",
-                            "A",
-                            "A",
-                            "N"
-                    ),
-
-                    List.of(
-                            "A",
-                            "A",
-                            "A",
-                            "A"
-                    ),
-
-                    List.of(
-                            "A",
-                            "A",
-                            "A",
-                            "A"
-                    )
-
-            );
-
-        }
-
-
-
-        if (
-                seatMap.equals(
-                        "LAYOUT_B"
-                )
-        ) {
-
-            return List.of(
-
-                    List.of(
-                            "A",
-                            "A"
-                    ),
-
-                    List.of(
-                            "A",
-                            "N"
-                    ),
-
-                    List.of(
-                            "A",
-                            "A"
-                    )
-
-            );
-
-        }
-
-
-
-        // 선착순
-
-        return List.of();
-
     }
 
 
-
     /*
-        좌석 선택
-     */
+        2. 좌석 선택
+    */
     public void selectSeat(
-            String concertId,
             String seatId,
             Long userNo
-    ) {
-
-    }
+    ){
 
 
 
-    /*
-        요금 계산
-     */
-    public int calculatePrice(
-            String concertId,
-            String seatId
-    ) {
+        Seat seat =
+                seatRepository
+                        .findById(
+                                seatId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new RuntimeException(
+                                                "좌석 없음"
+                                        )
+                        );
 
-        return 150000;
-
-    }
 
 
+        /*
+            1 = 가능
+            0 = 불가능
+        */
+        if(
+                seat.getSeatStatus() == 0
+        ){
 
-    /*
-        좌석 상태
-     */
-    public Object getSeatStatus(
-            Long concertId
-    ) {
+            throw new RuntimeException(
+                    "이미 선택된 좌석"
+            );
 
-        return List.of(
-                Map.of(
-                        "seatId",
-                        "A1",
-                        "state",
-                        "RESERVED"
-                )
+        }
+
+
+
+        // 좌석 선점
+        seat.setSeatStatus(
+                (short)0
         );
 
+
+
+        seatRepository.save(
+                seat
+        );
+
+
     }
 
 
 
-    public boolean isSelected(
-            Long concertId,
-            String seatId
-    ) {
-
-        return false;
-
-    }
 
 
 
+
+
+
+    /*
+        3. 좌석 취소
+    */
     public void cancelSeat(
-            Long concertId,
+            String seatId
+    ){
+
+
+
+        Seat seat =
+                seatRepository
+                        .findById(
+                                seatId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new RuntimeException(
+                                                "좌석 없음"
+                                        )
+                        );
+
+
+
+        seat.setSeatStatus(
+                (short)1
+        );
+
+
+
+        seatRepository.save(
+                seat
+        );
+
+
+    }
+
+    /*
+        4. 예약 상태 변경
+    */
+    public void updateSeatStatus(
             String seatId,
-            Long userNo
-    ) {
+            Short status
+    ){
+
+
+
+        Seat seat =
+                seatRepository
+                        .findById(
+                                seatId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new RuntimeException(
+                                                "좌석 없음"
+                                        )
+                        );
+
+
+
+        seat.setSeatStatus(
+                status
+        );
+
+
+        seatRepository.save(
+                seat
+        );
+
 
     }
 
+    /*
+    5. 가격 계산
+*/
+    public int calculatePrice(
+            String concertId,
+            String seatClass
+    ){
 
 
-    public int getRemainSeat(
-            Long concertId
-    ) {
+        Concert concert =
+                concertRepository
+                        .findById(
+                                concertId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new RuntimeException(
+                                                "공연 없음"
+                                        )
+                        );
 
-        return 100;
 
-    }
+        String priceInfo =
+                concert.getConcertPriceInfo();
 
 
 
-    public void sendPaymentInfo(
-            Map<String,Object> data
-    ) {
+        if(priceInfo == null){
+            throw new RuntimeException(
+                    "가격 정보 없음"
+            );
+        }
 
-    }
 
-}
+
+        String[] prices =
+                priceInfo.split(",");
+
+
+
+        for(String price : prices){
+
+
+            String[] data =
+                    price.split(":");
+
+
+
+            String grade =
+                    data[0];
+
+
+            int amount =
+                    Integer.parseInt(
+                            data[1]
+                    );
+
+
+
+            if(
+                    grade.equals(seatClass)
+            ){
+
+                return amount;
+
+            }
+
+        }
+
+
+
+        throw new RuntimeException(
+                "해당 좌석 등급 없음"
+        );
+
+
+    }}
