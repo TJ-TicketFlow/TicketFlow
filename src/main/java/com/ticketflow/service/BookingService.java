@@ -94,6 +94,13 @@ public class BookingService {
     public String createTemporaryPayment(BookingRequestDto requestDto) {
 
         // ----------------------------------------------------
+        // 🚨 [새로 추가된 핵심 방어막] 레몬스퀴지로 넘어가기 전 최종 이중결제 체크!
+        // ----------------------------------------------------
+        if (isAlreadyPaid(requestDto.getReservationKey())) {
+            System.err.println("🚨 API 이중 결제 시도 거부: 예약번호 " + requestDto.getReservationKey());
+            throw new IllegalStateException("이미 결제가 완료된 예매건입니다.");
+        }
+        // ----------------------------------------------------
         // 🛡️ [매크로 방어 1단계] 네이버 캡차 채점 로직
         // ----------------------------------------------------
 
@@ -305,8 +312,16 @@ public class BookingService {
             throw new IllegalStateException("본인의 예매 내역만 결제할 수 있습니다.");
         }
         // ----------------------------------------------------
+        // 🚨 [새로 추가된 핵심 방어막] 이미 돈을 지불한 예약건인지 검사!
+        // ----------------------------------------------------
+        if (isAlreadyPaid(reservationKey)) {
+            System.err.println("🚨 이중 결제 시도 차단: 예약번호(" + reservationKey + ")는 이미 결제가 완료된 상태입니다.");
+            // 이미 결제가 끝났다면 에러를 던져서 결제창 화면이 열리지 못하게 막아버립니다.
+            throw new IllegalStateException("이미 결제가 완료된 예매건입니다. 마이페이지에서 확인해주세요.");
+        }
+        // ----------------------------------------------------
 
-        // 2. 주인이 맞다면, 기존처럼 안심하고 데이터를 채워서 넘겨줍니다.
+        // 2. 모든 검사를 통과했다면 안전하게 데이터를 채워서 넘겨줍니다.
         ticketInfo.put("count", reservation.getReservationCount());
         ticketInfo.put("date", String.valueOf(reservation.getReservationDate()));
 
@@ -736,6 +751,14 @@ public class BookingService {
             // 결제사 통신에 실패하면 우리 DB 취소도 멈추도록 에러를 던집니다.
             throw new IllegalStateException("결제사(레몬스퀴지) 환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
+    }
+
+    // ==========================================
+    // 💡 [새로 추가] 이중 결제 확인용 헬퍼 메서드
+    // ==========================================
+    public boolean isAlreadyPaid(Long reservationKey) {
+        // PayRepository에 추가했던 메서드를 사용하여 PAID(결제완료)된 내역이 있는지 검사합니다.
+        return payRepository.existsByReservation_ReservationKeyAndPayStatus(reservationKey, "PAID");
     }
 
     // ==========================================

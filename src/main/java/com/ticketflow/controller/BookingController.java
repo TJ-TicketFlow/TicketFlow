@@ -42,26 +42,18 @@ public class BookingController {
         Long currentUserNo = bookingService.getUserNoById(currentUserId);
 
         try {
-            // 💡 서비스를 부를 때, 예약 번호와 함께 '내 고유번호(currentUserNo)'도 같이 넘겨서 검사를 받습니다.
+            // 티켓 정보를 가져오면서, 남의 것이거나 이미 결제된 것이면 에러를 던집니다.
             Map<String, Object> ticket = bookingService.getTicketInfoMap(reservationKey, currentUserNo);
             model.addAttribute("ticket", ticket);
 
+            // 유저 정보 가져오기
+            Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
+            model.addAttribute("user", buyer);
+
         } catch (IllegalStateException | IllegalArgumentException e) {
-            // 만약 남의 번호를 쳤거나 없는 번호라면, 이 안으로 빠지게 됩니다.
             System.out.println("🚨 잘못된 결제창 접근 차단 완료: " + e.getMessage());
-
-            // TODO: 프론트엔드에 에러 메시지를 띄우고 싶다면 model.addAttribute로 넘기고,
-            // 지금은 가장 확실하게 메인 홈페이지("/")로 강제로 쫓아냅니다.
-            return "redirect:/";
+            return "redirect:/"; // 문제 있으면 즉시 메인으로 쫓아냄
         }
-
-        // 💡 2. 서비스에게 회원 정보 포장 상자를 가져오라고 시킵니다.
-        Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
-        model.addAttribute("user", buyer);
-
-        // 💡 3. 서비스에게 티켓 정보 포장 상자를 가져오라고 시킵니다.
-        Map<String, Object> ticket = bookingService.getTicketInfoMap(reservationKey, currentUserNo);
-        model.addAttribute("ticket", ticket);
 
         // 💡 4. 자바스크립트가 fetch 통신할 때 쓸 수 있게 예약 번호도 몰래 넘겨줍니다.
         model.addAttribute("reservationKey", reservationKey);
@@ -86,12 +78,26 @@ public class BookingController {
     // 1. 임시 예매 생성 및 레몬스퀴즈 창 띄우기
     @PostMapping("/create")
     @ResponseBody
-    public String createBooking(@RequestBody BookingRequestDto requestDto) {
+    public ResponseEntity<String> createBooking(@RequestBody BookingRequestDto requestDto, java.security.Principal principal) {
+
         System.out.println("=========================================");
         System.out.println("✅ 프론트에서 무사히 도착한 금액: " + requestDto.getPayAmount());
         System.out.println("=========================================");
 
-        return bookingService.createTemporaryPayment(requestDto);
+        // 🚨 1. 로그인 안 한 사람 차단
+        if (principal == null) {
+            return ResponseEntity.status(401).body("로그인이 필요합니다.");
+        }
+
+        // 🚨 2. [핵심 방어막] 이미 결제된 티켓을 자바스크립트로 강제로 결제하려는 해커 차단!
+        if (bookingService.isAlreadyPaid(requestDto.getReservationKey())) {
+            System.out.println("🚨 API 통신을 통한 이중 결제 시도 차단됨!");
+            return ResponseEntity.status(400).body("이미 결제가 완료된 예매건입니다.");
+        }
+
+        // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
+        String checkoutUrl = bookingService.createTemporaryPayment(requestDto);
+        return ResponseEntity.ok(checkoutUrl);
     }
 
     // 3. 쿠폰 목록 가져오기

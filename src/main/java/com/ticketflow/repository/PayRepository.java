@@ -22,4 +22,6 @@ public interface PayRepository extends JpaRepository<Pay, Long> {
                                         @Param("startDate") LocalDateTime startDate,
                                         @Param("endDate") LocalDateTime endDate,
                                         Pageable pageable);
+
+    boolean existsByReservation_ReservationKeyAndPayStatus(Long reservationKey, String payStatus);
 }
