@@ -1,8 +1,11 @@
 package com.ticketflow.service;
 
+import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -178,6 +181,48 @@ public class ConcertService {
         long reservedSeats = reservationRepository.countBySelectedSeat_Concert_ConcertIdAndSessionTime(concertId, sessionTime);
 
         return reservedSeats >= totalSeats;
+    }
+
+    public List<ConcertResponseDto> getPopularConcerts(int limit) {
+        LocalDate today = LocalDate.now();
+
+        // 1. 모든 공연을 가져와서 필터링 및 정렬 수행
+        return concertRepository.findAll().stream()
+                // 1) 지난 공연 제외 (종료일이 오늘 이전인 것 제외)
+                .filter(c -> !c.getConcertEndDate().isBefore(today))
+                // 2) 정렬: 찜 개수 내림차순, 같다면 종료일 오름차순(임박순)
+                .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed()
+                        .thenComparing(Concert::getConcertEndDate))
+                // 3) 개수 제한
+                .limit(limit)
+                .map(ConcertResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<ConcertResponseDto> getRecommendedConcerts(String userId) {
+        // 1. 선호 장르 분석 (기존 로직 유지)
+        List<String> preferredGenres = wishlistRepository.findByUser_UserId(userId).stream()
+                .map(wish -> wish.getConcert().getConcertGenre())
+                .filter(Objects::nonNull)
+                .flatMap(g -> Arrays.stream(((String) g).split(",")))
+                .map(String::trim)
+                .collect(Collectors.groupingBy(g -> g, Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(2)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        if (preferredGenres.isEmpty()) return getPopularConcerts(3);
+
+        // 2. [수정] 공연 조회 후 '오늘 이후 종료'되는 공연만 필터링
+        LocalDate today = LocalDate.now();
+        return concertRepository.findByGenreInOrderByStartDateAsc(preferredGenres, PageRequest.of(0, 10)) // 여유 있게 더 가져옴
+                .stream()
+                .filter(c -> !c.getConcertEndDate().isBefore(today)) // 종료일이 오늘보다 이전이 아닌 것만 남김
+                .limit(3) // 필터링 후 다시 3개만 제한
+                .map(ConcertResponseDto::new)
+                .collect(Collectors.toList());
     }
 
 }
