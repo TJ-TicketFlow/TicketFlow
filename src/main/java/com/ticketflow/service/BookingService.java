@@ -284,53 +284,45 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 7. [수정] 결제 화면용: 티켓 정보 포장하기 (가짜 데이터 방어막 추가!)
+    // 💡 [수정] 결제 화면용: 티켓 정보 포장하기 (+ 보안 검증 추가)
     // ==========================================
-    public Map<String, Object> getTicketInfoMap(Long reservationKey) {
+    // 💡 기존 파라미터(Long reservationKey) 옆에 로그인한 유저의 번호(Long currentUserNo)를 추가로 받습니다.
+    public Map<String, Object> getTicketInfoMap(Long reservationKey, Long currentUserNo) {
         Map<String, Object> ticketInfo = new HashMap<>();
 
-        // 1. 일단 DB에서 예약 정보를 찾아봅니다. (Optional을 써서 에러를 막습니다)
-        Optional<Reservation> optionalReservation = reservationRepository.findById(reservationKey);
+        // 1. DB에서 예약 정보를 찾습니다. (없으면 바로 에러 발생)
+        Reservation reservation = reservationRepository.findById(reservationKey)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약 정보입니다."));
 
-        if (optionalReservation.isPresent()) {
-            // ----------------------------------------------------
-            // ✅ DB에 진짜 데이터가 있을 때 (정상 로직)
-            // ----------------------------------------------------
-            Reservation reservation = optionalReservation.get();
-            ticketInfo.put("count", reservation.getReservationCount());
-            ticketInfo.put("date", String.valueOf(reservation.getReservationDate()));
+        // ----------------------------------------------------
+        // 🚨 [핵심 보안 방어막] 로그인한 사람과 예약한 사람이 같은지 검사!
+        // ----------------------------------------------------
+        Long ownerNo = reservation.getSelectedSeat().getUser().getUserNo();
 
-            try {
-                ticketInfo.put("price", reservation.getSelectedSeat().getPrice());
+        if (!ownerNo.equals(currentUserNo)) {
+            // 주인이 다르면 가차 없이 에러를 던져버립니다.
+            System.err.println("🚨 비정상적인 접근 감지: 로그인유저(" + currentUserNo + ")가 남의 예약건(" + ownerNo + ")에 접근 시도함.");
+            throw new IllegalStateException("본인의 예매 내역만 결제할 수 있습니다.");
+        }
+        // ----------------------------------------------------
 
-                // 💡 [추가] 진짜 DB에서 포스터 이미지 주소 꺼내기
-                ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
+        // 2. 주인이 맞다면, 기존처럼 안심하고 데이터를 채워서 넘겨줍니다.
+        ticketInfo.put("count", reservation.getReservationCount());
+        ticketInfo.put("date", String.valueOf(reservation.getReservationDate()));
 
-                ticketInfo.put("seatInfo", reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
-                        reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
-                        reservation.getSelectedSeat().getSeat().getSeatCol() + "번");
-                ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
-                ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
-                ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
-            } catch (Exception e) {
-                System.err.println("🚨 조인 오류 발생 (일부 데이터 임시 처리)");
-                ticketInfo.put("price", 20000);
-                ticketInfo.put("title", "데이터 연결 오류");
-                ticketInfo.put("posterUrl", ""); // 에러 시 빈칸
-            }
-        } else {
-            System.out.println("🚨 예약 데이터가 DB에 없습니다. 테스트용 가짜 데이터를 화면에 띄웁니다.");
-            ticketInfo.put("count", 2);
-            ticketInfo.put("date", "2026-12-24");
-            ticketInfo.put("price", 55000);
-
-            // 💡 [추가] 가짜 데이터에도 임시 이미지 주소를 하나 넣어줍니다.
-            ticketInfo.put("posterUrl", "https://dummyimage.com/210x297/3b82f6/fff.png&text=Poster");
-
-            ticketInfo.put("seatInfo", "VIP석 A구역 1열 1번");
-            ticketInfo.put("title", "[테스트] 티켓플로우 크리스마스 콘서트");
-            ticketInfo.put("time", "19:00");
-            ticketInfo.put("venue", "올림픽 체조경기장 (가짜 데이터)");
+        try {
+            ticketInfo.put("price", reservation.getSelectedSeat().getPrice());
+            ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
+            ticketInfo.put("seatInfo", reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
+                    reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
+                    reservation.getSelectedSeat().getSeat().getSeatCol() + "번");
+            ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
+            ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
+            ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
+        } catch (Exception e) {
+            System.err.println("🚨 조인 오류 발생 (일부 데이터 임시 처리)");
+            ticketInfo.put("price", 0);
+            ticketInfo.put("title", "데이터 연결 오류");
         }
 
         return ticketInfo;
@@ -415,24 +407,19 @@ public class BookingService {
 
             // 관람일시
             String date = "-";
-            if (pay.getReservation() != null
-                    && pay.getReservation().getSelectedSeat() != null
-                    && pay.getReservation().getSelectedSeat().getConcert() != null) {
+            if (pay.getReservation() != null) {
+                Reservation reservation = pay.getReservation();
 
-                Concert concert = pay.getReservation().getSelectedSeat().getConcert();
+                // 1) reservationDate(LocalDate)가 null인지 확인하고 문자열로 바꿉니다.
+                if (reservation.getReservationDate() != null) {
+                    String dateStr = reservation.getReservationDate().toString();
+                    date = dateStr;
 
-                // 1) getConcertStartDate()가 LocalDate를 반환하므로, null인지 먼저 체크합니다.
-                if (concert.getConcertStartDate() != null) {
-
-                    // 2) .toString()을 붙여서 날짜를 문자열("2026-05-18")로 바꿔줍니다!
-                    String startDateStr = concert.getConcertStartDate().toString();
-                    String timeStr = concert.getConcertTime(); // 시간은 String이라고 가정합니다.
-
-                    date = startDateStr;
-
-                    // 3) 시간 데이터가 있다면 날짜 뒤에 띄어쓰기 한 칸 하고 붙여줍니다.
+                    // 2) sessionTime(String)을 확인하고 뒤에 띄어쓰기와 함께 붙여줍니다.
+                    // 🚨 주의: 엔티티에 만들어두신 getter 이름에 맞게 getSessionTime()을 수정해 주세요!
+                    String timeStr = reservation.getSessionTime();
                     if (timeStr != null && !timeStr.isBlank()) {
-                        date += " " + timeStr; // 결과 예시: "2026-05-18 18:00"
+                        date += " " + timeStr; // 결과 예시: "2026-06-18 19:00"
                     }
                 }
             }
@@ -449,11 +436,329 @@ public class BookingService {
 
             // 예매상태
             String statusStr = "진행중";
-            if ("PAID".equals(pay.getPayStatus())) statusStr = "예매완료";
-            else if ("FAILED".equals(pay.getPayStatus())) statusStr = "취소/환불";
+            String currentStatus = pay.getPayStatus();
+
+            if ("PAID".equals(currentStatus)) {
+                statusStr = "예매완료";
+            } else if ("CANCELLED".equals(currentStatus)) {
+                statusStr = "결제 취소";
+            } else if ("FAILED".equals(currentStatus)) {
+                statusStr = "결제 실패";
+            }
             map.put("status", statusStr);
 
             return map;
         });
+    }
+
+    // ==========================================
+    // 💡 9. 예매 상세 내역 단건 조회 (상세 페이지용)
+    // ==========================================
+    public Map<String, Object> getTicketDetail(Long payNo, Long currentUserNo) {
+        // 1. 넘어온 결제 번호(payNo)로 DB에서 데이터를 찾습니다.
+        Pay pay = payRepository.findById(payNo)
+                .orElseThrow(() -> new IllegalArgumentException("해당 예매 내역을 찾을 수 없습니다."));
+
+        // ----------------------------------------------------
+        // 🚨 [핵심 보안 방어막] 이 영수증의 주인이 로그인한 사람이 맞는지 대조
+        // ----------------------------------------------------
+        if (pay.getReservation() != null && pay.getReservation().getSelectedSeat() != null) {
+            Long ownerNo = pay.getReservation().getSelectedSeat().getUser().getUserNo();
+
+            if (!ownerNo.equals(currentUserNo)) {
+                System.err.println("🚨 경고: 유저(" + currentUserNo + ")가 남의 영수증(" + payNo + ", 주인:" + ownerNo + ") 조회를 시도함.");
+                throw new IllegalStateException("본인의 예매 내역만 조회할 수 있습니다.");
+            }
+        }
+
+        Map<String, Object> map = new HashMap<>();
+
+        // 2. 기본 결제/예매자 정보
+        map.put("display_no", generateReadableOrderNo(pay.getPayNo())); // TF-000001
+        map.put("buyer", pay.getBuyerName() != null ? pay.getBuyerName() : "알 수 없음");
+
+        // 결제일시 (날짜만 잘라서 보여주기 위해 포맷팅)
+        String orderDate = "-";
+        if (pay.getPayCreatedAt() != null) {
+            // "2026-06-18 14:30:00" 형태에서 앞의 날짜와 시간만 예쁘게 자릅니다.
+            orderDate = pay.getPayCreatedAt().toString().substring(0, 16).replace("T", " ");
+        }
+        map.put("order_date", orderDate);
+
+        // 3. 공연, 좌석, 예약 정보 깊게 탐색하기
+        if (pay.getReservation() != null && pay.getReservation().getSelectedSeat() != null
+                && pay.getReservation().getSelectedSeat().getSeat() != null) {
+
+            Reservation reservation = pay.getReservation();
+            Seat seat = reservation.getSelectedSeat().getSeat();
+            Concert concert = seat.getConcert();
+
+            // 공연명
+            map.put("title", concert != null ? concert.getConcertName() : "알 수 없는 공연");
+
+            // 포스터 이미지 URL 가져오기
+            String posterUrl = "";
+            if (concert != null && concert.getConcertPosterUrl() != null) {
+                posterUrl = concert.getConcertPosterUrl(); // 엔티티 Getter 이름 확인!
+            }
+            map.put("poster_url", posterUrl);
+
+            // 공연장 (Hall)
+            String venue = "-";
+            if (concert != null && concert.getHall() != null) {
+                venue = concert.getHall().getHallName();
+            }
+            map.put("venue", venue);
+
+            // 좌석 정보 (예: VIP석 1열 5번)
+            map.put("seat", seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번");
+
+            // 관람일시 (List 페이지와 동일한 방식 적용)
+            String viewDate = "-";
+            if (reservation.getReservationDate() != null) {
+                viewDate = reservation.getReservationDate().toString();
+                String sessionTime = reservation.getSessionTime(); // 주의: Getter 이름 확인!
+                if (sessionTime != null && !sessionTime.isBlank()) {
+                    viewDate += " " + sessionTime;
+                }
+            }
+            map.put("date", viewDate);
+            map.put("count", reservation.getReservationCount());
+
+            // 💡 취소 마감시간 (관람일 하루 전 17:00로 계산)
+            if (reservation.getReservationDate() != null) {
+                map.put("cancel_deadline", reservation.getReservationDate().minusDays(1).toString() + " 17:00");
+            } else {
+                map.put("cancel_deadline", "-");
+            }
+
+        } else {
+            // 에러 방지용 기본값
+            map.put("title", "데이터 연결 오류");
+            map.put("venue", "-");
+            map.put("seat", "-");
+            map.put("date", "-");
+            map.put("count", 0);
+            map.put("cancel_deadline", "-");
+        }
+
+        // 4. 기타 부가 정보
+        String delivery_status = "모바일 티켓";
+        if(pay.getPayDelPostcode()!=null && pay.getPayDelAddr() != null) delivery_status = "배송";
+        map.put("delivery", delivery_status);
+        map.put("pay_method", pay.getPayMethod() != null ? pay.getPayMethod() : "신용카드");
+
+        // 가격 (150000 -> "150,000" 형태로 콤마 찍기)
+        java.text.DecimalFormat df = new java.text.DecimalFormat("###,###");
+        map.put("total_price", df.format(pay.getPayAmount() != null ? pay.getPayAmount() : 0));
+
+        // 결제 상태
+        String statusStr = "진행중";
+        String currentStatus = pay.getPayStatus();
+        if ("PAID".equals(currentStatus)) statusStr = "예매완료";
+        else if ("CANCELLED".equals(currentStatus)) statusStr = "결제 취소";
+        else if ("FAILED".equals(currentStatus)) statusStr = "결제 실패";
+        map.put("status", statusStr);
+
+        map.put("pay_no", pay.getPayNo());
+
+        return map;
+    }
+
+    // ==========================================
+    // 💡 10. 예매 취소 수수료 계산기
+    // ==========================================
+    public int calculateCancelFee(Pay pay, LocalDateTime cancelTime) {
+
+        // 1. 기준 날짜들 가져오기
+        LocalDateTime bookedTime = pay.getPayCreatedAt(); // 예매(결제)한 시간
+        LocalDate concertDate = pay.getReservation().getReservationDate(); // 공연 날짜
+
+        // 취소 마감시간: 관람일 하루 전 17시
+        LocalDateTime deadline = concertDate.atTime(17, 0).minusDays(1);
+
+        // 🚨 방어 로직: 취소 마감시간이 지났으면 에러 발생!
+        if (cancelTime.isAfter(deadline)) {
+            throw new IllegalArgumentException("취소 마감시간이 지나 취소할 수 없습니다.");
+        }
+
+        // 💡 규칙 1: 예매 당일 밤 12시 이전 취소 시 무조건 수수료 0원
+        if (bookedTime.toLocalDate().isEqual(cancelTime.toLocalDate())) {
+            return 0;
+        }
+
+        // 2. 날짜 차이 계산하기 (며칠 남았나? 며칠 지났나?)
+        long daysToConcert = java.time.temporal.ChronoUnit.DAYS.between(cancelTime.toLocalDate(), concertDate);
+        long daysSinceBooking = java.time.temporal.ChronoUnit.DAYS.between(bookedTime.toLocalDate(), cancelTime.toLocalDate());
+
+        // 계산을 위한 가격 데이터 준비
+        int totalPayAmount = pay.getPayAmount().intValue();
+        int count = pay.getReservation().getReservationCount();
+        int ticketPrice = totalPayAmount / count; // 티켓 1장당 가격
+        int fee = 0;
+
+        // 💡 핵심 규칙: 관람일 10일 이내라면, '예매 후 7일 이내' 규칙보다 우선 적용됩니다.
+        if (daysToConcert <= 9) {
+
+            if (daysToConcert >= 7) { // 9일 전 ~ 7일 전
+                fee = (int) (totalPayAmount * 0.1); // 10%
+            } else if (daysToConcert >= 3) { // 6일 전 ~ 3일 전
+                fee = (int) (totalPayAmount * 0.2); // 20%
+            } else { // 2일 전 ~ 마감일시
+                fee = (int) (totalPayAmount * 0.3); // 30%
+            }
+
+        } else {
+            // 관람일이 10일 이상 남았을 때
+            if (daysSinceBooking <= 7) {
+                // 💡 규칙 2: 예매 후 7일 이내 (수수료 없음)
+                fee = 0;
+            } else {
+                // 💡 규칙 3: 예매 후 8일 이상 지남 (장당 4,000원, 단 10% 이내)
+                int maxFeePerTicket = (int) (ticketPrice * 0.1);
+                int feePerTicket = Math.min(4000, maxFeePerTicket); // 4000원과 10% 중 더 작은 금액 선택
+                fee = feePerTicket * count; // 티켓 장수만큼 곱해줌
+            }
+        }
+
+        return fee;
+    }
+
+    // ==========================================
+    // 💡 11. 예매 취소 및 좌석 원상복구 로직
+    // ==========================================
+    @Transactional
+    public void cancelTicket(Long payNo) {
+
+        Pay pay = payRepository.findById(payNo)
+                .orElseThrow(() -> new IllegalArgumentException("결제 내역을 찾을 수 없습니다."));
+
+        if (!"PAID".equals(pay.getPayStatus())) {
+            throw new IllegalStateException("이미 취소되었거나 결제 완료 상태가 아닙니다.");
+        }
+
+        // 1. 수수료 계산 및 환불 금액 확정
+        LocalDateTime now = LocalDateTime.now();
+        int cancelFee = calculateCancelFee(pay, now);
+        long refundAmount = pay.getPayAmount() - cancelFee;
+
+        System.out.println("✅ 취소수수료: " + cancelFee + "원, 실제 환불될 금액: " + refundAmount + "원");
+
+        // 🚨 레몬스퀴지 환불 API 연동이 필요하다면 이 자리에서 호출합니다!
+        callLemonSqueezyRefund(pay.getLsOrderId(), refundAmount);
+
+        // 2. 결제 상태 취소로 변경
+        pay.setPayStatus("CANCELLED");
+
+        // 3. 사용했던 쿠폰 돌려주기 (다시 쓸 수 있게 상태를 0으로)
+        if (pay.getUserCoupon() != null) {
+            pay.getUserCoupon().setUserCouponStatus(0);
+        }
+
+        // 4. 좌석을 다시 [예매 가능] 상태로 풀어주기
+        Reservation reservation = pay.getReservation();
+        if (reservation != null && reservation.getSelectedSeat() != null) {
+            var selectedSeat = reservation.getSelectedSeat();
+            var seat = selectedSeat.getSeat();
+
+            // 임시 선택 상태 해제(0) 및 실제 좌석 사용가능(1) 처리
+            selectedSeat.setSeatState((short) 0);
+            seat.setSeatStatus((short) 1);
+        }
+    }
+
+    // ==========================================
+    // 💡 12. 취소 수수료 및 환불 금액 미리보기 (새로 추가)
+    // ==========================================
+    public Map<String, Object> getCancelFeeInfo(Long payNo) {
+        Pay pay = payRepository.findById(payNo)
+                .orElseThrow(() -> new IllegalArgumentException("결제 내역을 찾을 수 없습니다."));
+
+        if (!"PAID".equals(pay.getPayStatus())) {
+            throw new IllegalStateException("이미 취소되었거나 취소할 수 없는 상태입니다.");
+        }
+
+        // 이전에 만든 calculateCancelFee 메서드 활용
+        int fee = calculateCancelFee(pay, LocalDateTime.now());
+        long refundAmount = pay.getPayAmount() - fee;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("cancelable", true);
+        result.put("fee", fee);
+        result.put("refundAmount", refundAmount);
+
+        return result;
+    }
+
+    // ==========================================
+    // 💡 13. 레몬스퀴지 환불(Refund) API 통신 (최신 API 적용!)
+    // ==========================================
+    private void callLemonSqueezyRefund(String lsOrderId, long refundAmount) {
+        if (lsOrderId == null || lsOrderId.isBlank()) {
+            System.out.println("🚨 레몬스퀴지 주문 번호가 없어서 환불 API를 호출할 수 없습니다. (더미 데이터일 확률 높음)");
+            return;
+        }
+
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + apiKey);
+        headers.set("Accept", "application/vnd.api+json");
+        headers.set("Content-Type", "application/vnd.api+json");
+
+        // 센트 단위로 변환
+        long finalRefundAmount = refundAmount * 100;
+
+        Map<String, Object> body = new HashMap<>();
+        Map<String, Object> data = new HashMap<>();
+        Map<String, Object> attributes = new HashMap<>();
+
+        // 💡 [핵심 수정 1] 레몬스퀴지 최신 규격에 맞게 데이터 포장 변경
+        attributes.put("amount", finalRefundAmount);
+
+        data.put("type", "orders"); // 'refunds'가 아니라 'orders' 타입으로 보냅니다.
+        data.put("id", lsOrderId);  // 어떤 주문을 취소할지 주문 번호를 직접 명시합니다.
+        data.put("attributes", attributes);
+
+        body.put("data", data);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        try {
+            // 💡 [핵심 수정 2] 환불 요청 주소를 최신 규격으로 변경
+            // 예: https://api.lemonsqueezy.com/v1/orders/12345/refund
+            String apiUrl = "https://api.lemonsqueezy.com/v1/orders/" + lsOrderId + "/refund";
+
+            ResponseEntity<Map> response = restTemplate.exchange(apiUrl, HttpMethod.POST, requestEntity, Map.class);
+            System.out.println("✅ 레몬스퀴지 결제 취소(환불) 완벽하게 성공! 환불 요청 금액: " + refundAmount);
+
+        } catch (Exception e) {
+            System.err.println("🚨 레몬스퀴지 환불 API 호출 실패: " + e.getMessage());
+            // 결제사 통신에 실패하면 우리 DB 취소도 멈추도록 에러를 던집니다.
+            throw new IllegalStateException("결제사(레몬스퀴지) 환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        }
+    }
+
+    // ==========================================
+    // 💡 14. 결제 이탈 시 좌석 락(Lock) 해제하기
+    // ==========================================
+    @Transactional
+    public void releaseUnpaidSeat(Long reservationKey) {
+        // 1. 임시 예약 장부를 찾습니다.
+        Reservation reservation = reservationRepository.findById(reservationKey).orElse(null);
+
+        // 예약 장부가 없거나, 이미 선택된 좌석이 없다면 무시합니다.
+        if (reservation == null || reservation.getSelectedSeat() == null) {
+            return;
+        }
+
+        SelectedSeat selectedSeat = reservation.getSelectedSeat();
+        Seat seat = selectedSeat.getSeat();
+
+        // 3. 결제가 안 된 좀비 좌석이라면 다시 세상에 풀어줍니다!
+        if (selectedSeat.getSeatState() == 1 || selectedSeat.getSeatState() == 2) {
+            selectedSeat.setSeatState((short) 0); // 선택 상태 해제
+            seat.setSeatStatus((short) 1);        // 1: 다시 누구나 예매 가능 상태로 복구
+            System.out.println("✅ " + seat.getSeatId() + " 좌석이 결제창 이탈로 인해 다시 예매 가능 상태로 풀렸습니다.");
+        }
     }
 }

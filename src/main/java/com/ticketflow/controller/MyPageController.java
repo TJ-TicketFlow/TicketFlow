@@ -95,8 +95,6 @@ public class MyPageController {
 
         model.addAttribute("tickets", ticketPage.getContent()); // 실제 데이터 목록
         model.addAttribute("page", ticketPage);                 // 페이지네이션용 정보 (총 페이지 수 등)
-
-        // 💡 3. 화면(JS)이 날짜를 기억할 수 있게 도로 넘겨줍니다.
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
 
@@ -104,13 +102,25 @@ public class MyPageController {
     }
 
     @GetMapping("/tickets/{bookingNo}")
-    public String mypageTicketDetail(@PathVariable String bookingNo,
+    public String mypageTicketDetail(@PathVariable("bookingNo") String bookingNo,
                                      @AuthenticationPrincipal UserDetails userDetails,
                                      Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
-        model.addAttribute("ticket", Collections.emptyMap());
-        return "mypage/mypage_ticket_detail";
+        Long payNo = Long.valueOf(bookingNo);
+        try {
+            // 💡 서비스에 결제 번호와 함께 '내 고유 번호(user.getUserNo())'도 같이 보냅니다!
+            Map<String, Object> ticketDetail = bookingService.getTicketDetail(payNo, user.getUserNo());
+            model.addAttribute("ticket", ticketDetail);
+
+            return "mypage/mypage_ticket_detail";
+
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            System.out.println("🚨 잘못된 예매 상세 접근 차단: " + e.getMessage());
+
+            // 남의 내역을 훔쳐보려고 주소창을 장난쳤다면, 마이페이지 리스트 페이지로 강제 추방합니다.
+            return "redirect:/";
+        }
     }
 
     @GetMapping("/membership")

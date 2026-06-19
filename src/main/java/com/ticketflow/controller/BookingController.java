@@ -3,6 +3,7 @@ package com.ticketflow.controller;
 import com.ticketflow.dto.BookingRequestDto;
 import com.ticketflow.service.BookingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -40,12 +41,26 @@ public class BookingController {
         // 💡 3. 문자 아이디를 서비스에 주고, 고유 번호(user_no)를 받아옵니다.
         Long currentUserNo = bookingService.getUserNoById(currentUserId);
 
+        try {
+            // 💡 서비스를 부를 때, 예약 번호와 함께 '내 고유번호(currentUserNo)'도 같이 넘겨서 검사를 받습니다.
+            Map<String, Object> ticket = bookingService.getTicketInfoMap(reservationKey, currentUserNo);
+            model.addAttribute("ticket", ticket);
+
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // 만약 남의 번호를 쳤거나 없는 번호라면, 이 안으로 빠지게 됩니다.
+            System.out.println("🚨 잘못된 결제창 접근 차단 완료: " + e.getMessage());
+
+            // TODO: 프론트엔드에 에러 메시지를 띄우고 싶다면 model.addAttribute로 넘기고,
+            // 지금은 가장 확실하게 메인 홈페이지("/")로 강제로 쫓아냅니다.
+            return "redirect:/";
+        }
+
         // 💡 2. 서비스에게 회원 정보 포장 상자를 가져오라고 시킵니다.
         Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
         model.addAttribute("user", buyer);
 
         // 💡 3. 서비스에게 티켓 정보 포장 상자를 가져오라고 시킵니다.
-        Map<String, Object> ticket = bookingService.getTicketInfoMap(reservationKey);
+        Map<String, Object> ticket = bookingService.getTicketInfoMap(reservationKey, currentUserNo);
         model.addAttribute("ticket", ticket);
 
         // 💡 4. 자바스크립트가 fetch 통신할 때 쓸 수 있게 예약 번호도 몰래 넘겨줍니다.
@@ -96,20 +111,32 @@ public class BookingController {
         return bookingService.getMyAvailableCoupons(currentUserId);
     }
 
-    // 9. 예매 취소 가능 여부 확인
+    // 9. 예매 취소 가능 여부 (수수료 및 환불금액 미리보기)
     @GetMapping("/{id}/cancelable")
     @ResponseBody
-    public Boolean checkCancelable(@PathVariable("id") Long id) {
-        return true;
+    public ResponseEntity<Map<String, Object>> checkCancelable(@PathVariable("id") Long id) {
+        try {
+            // 서비스에서 수수료 정보를 받아옵니다.
+            Map<String, Object> feeInfo = bookingService.getCancelFeeInfo(id);
+            return ResponseEntity.ok(feeInfo);
+        } catch (Exception e) {
+            // 에러가 나면 프론트엔드에 에러 메시지를 보냅니다.
+            return ResponseEntity.badRequest().body(Map.of("cancelable", false, "message", e.getMessage()));
+        }
     }
 
-    // 10. 예매 취소
+    // 10. 예매 취소 (진짜 취소 실행!)
     @PostMapping("/{id}/cancel")
     @ResponseBody
-    public String cancelBooking(@PathVariable("id") Long id) {
-        return "예매가 성공적으로 취소 되었습니다";
+    public ResponseEntity<String> cancelBooking(@PathVariable("id") Long id) {
+        try {
+            // 이전에 만들었던 취소(상태변경+좌석복구) 로직 실행
+            bookingService.cancelTicket(id);
+            return ResponseEntity.ok("성공적으로 취소되었습니다.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
-
     // 11. 예매 완료 이메일/알림
     @PostMapping("/notification")
     @ResponseBody
@@ -131,5 +158,21 @@ public class BookingController {
                 "key", key,
                 "imageUrl", "https://openapi.naver.com/v1/captcha/ncaptcha.bin?key=" + key
         );
+    }
+
+    // ==========================================
+    // 💡 12. 결제창 이탈 시 좌석 해제 API
+    // ==========================================
+    @PostMapping("/release-seat")
+    @ResponseBody
+    public ResponseEntity<String> releaseSeat(@RequestBody Map<String, Long> payload, java.security.Principal principal) {
+        if (principal == null) return ResponseEntity.badRequest().build();
+
+        Long reservationKey = payload.get("reservationKey");
+        if (reservationKey != null) {
+            // 서비스 로직 실행
+            bookingService.releaseUnpaidSeat(reservationKey);
+        }
+        return ResponseEntity.ok("Seat released");
     }
 }

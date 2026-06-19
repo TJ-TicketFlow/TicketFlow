@@ -1,3 +1,16 @@
+// 결제창 내의 [이전 단계로] 버튼에 달아줄 함수
+// 💡 [추가] 결제창으로 넘어가는 중인지 확인하는 스위치
+let preserveSeat = false;
+
+function goBackToSeats() {
+    // 🚨 매우 중요: 우리가 만든 '이탈 감지 스위치'를 켜줍니다.
+    // 이렇게 해야 화면을 나갈 때 '위에서 만든 좌석 해제 기능(sendReleaseRequest)'이 발동하지 않습니다!
+    preserveSeat = true;
+
+    // 좌석 선택 페이지로 이동
+    history.back();
+}
+
 // ==========================================
 // 💡 1. 카카오 우편번호 검색 팝업 기능 (바깥에 배치 완료!)
 // ==========================================
@@ -28,8 +41,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const reservationMeta = document.querySelector("meta[name='reservation_key']");
     const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute("content")) : 0;
+
     // [타이머 설정]
-    let timeout = 30;
+    let timeout = 30; // 현재 30분으로 설정되어 있네요!
     let timeLeft = timeout * 60;
     const timerDisplay = document.getElementById('countdownTimer');
 
@@ -48,6 +62,9 @@ document.addEventListener("DOMContentLoaded", function() {
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             alert("결제 대기 시간("+ timeout + "분)이 초과되었습니다. 메인 화면으로 돌아갑니다.");
+
+            // 💡 [추가] 시간이 다 되면 메인으로 쫓아내기 전에 좌석부터 풉니다!
+            sendReleaseRequest();
             window.location.href = '/';
         }
         timeLeft--;
@@ -312,6 +329,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     return response.text();
                 })
                 .then(checkoutUrl => {
+                    // 💡 [핵심 추가] 진짜 결제하러 가는 거니까 화면을 나가도 좌석 풀지 마! (스위치 ON)
+                    preserveSeat = true;
                     window.location.href = checkoutUrl;
                 })
                 .catch(error => {
@@ -322,5 +341,38 @@ document.addEventListener("DOMContentLoaded", function() {
                     alert('결제창을 불러오는 데 실패했습니다.');
                 });
         });
+    }
+
+    // ==========================================
+    // 💡 [새로 추가된 구역] 창 닫기 감지 및 좀비 좌석 해제
+    // ==========================================
+
+    // 1. 사용자가 탭을 닫거나, 뒤로가기를 누르거나, 새로고침을 할 때 발동
+    window.addEventListener('visibilitychange', function() {
+        // 화면이 안 보이게 되었는데(hidden), 결제 버튼을 눌러서 넘어간 게 아니라면 도망친 것!
+        if (document.visibilityState === 'hidden' && !preserveSeat) {
+            sendReleaseRequest();
+        }
+    });
+
+    // 2. 백엔드로 "이 좌석 결제 취소됐으니 풀어주세요!" 라고 던지는 함수
+    function sendReleaseRequest() {
+        if (realReservationKey === 0) return; // 예약 번호가 없으면 실행 안 함
+
+        const csrfMeta = document.querySelector("meta[name='_csrf']");
+        const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
+        const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : '';
+        const csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.getAttribute("content") : 'X-CSRF-TOKEN';
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
+
+        // 브라우저가 닫히는 죽는 순간에도 서버에 끝까지 메시지를 보내는 강력한 옵션(keepalive)
+        fetch('/booking/release-seat', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ reservationKey: realReservationKey }),
+            keepalive: true
+        }).catch(err => console.error("좌석 해제 요청 실패", err));
     }
 });

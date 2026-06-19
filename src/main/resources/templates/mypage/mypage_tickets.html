@@ -55,13 +55,13 @@
                         th:data-url="@{/mypage/tickets/} + ${ticket['booking_no']}"
                         onclick="location.href=this.dataset.url"
                         style="cursor:pointer;">
-                        <td th:text="${ticket['booking_no']}"></td>
+                        <td th:text="${ticket['display_no']}"></td>
                         <td class="col-name" th:text="${ticket['show_name']}"></td>
                         <td th:text="${ticket['date']}"></td>
                         <td th:text="${ticket['count']}"></td>
                         <td>
                                 <span class="ticket-status"
-                                      th:classappend="${ticket['status'] == '취소'} ? ' status-cancel' : ' status-booked'"
+                                      th:classappend="${ticket['status'] == '결제 취소' or ticket['status'] == '결제 실패'} ? ' status-cancel' : ' status-booked'"
                                       th:text="${ticket['status']}"></span>
                         </td>
                     </tr>
