@@ -14,7 +14,7 @@
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
             <p>관심 있는 공연을 위시리스트에 추가해보세요!</p>
-            <a th:href="@{/}" class="btn-explore">공연 둘러보기</a>
+            <a th:href="@{/concert/}" class="btn-explore">공연 둘러보기</a>
         </div>
 
         <th:block th:if="${not #lists.isEmpty(wishlist)}">
