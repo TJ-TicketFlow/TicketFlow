@@ -13,6 +13,8 @@
 <div class="content-wrap">
     <div class="card">
 
+        <div th:if="${errorMessage}" class="flash-msg" th:text="${errorMessage}"></div>
+
         <!-- 입력 단계 -->
         <th:block th:if="${step == 'input'}">
             <h1>아이디 찾기</h1>
@@ -35,10 +37,15 @@
                     <input type="text" name="code" placeholder="인증번호 (6자리)" maxlength="6" required>
                     <div class="timer-row">
                         <span class="timer" id="timer">02:59</span>
-                        <a class="resend" href="#">인증번호 재발송</a>
+                        <button type="submit" form="resendIdForm" class="resend" style="border:none;background:none;padding:0;cursor:pointer;font-family:inherit;">인증번호 재발송</button>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary">다음</button>
+            </form>
+            <!-- 재발송: 입력 단계와 동일한 엔드포인트로 다시 보내 새 인증번호를 발급받음 -->
+            <form id="resendIdForm" th:action="@{/find-id/verify}" method="post" style="display:none;">
+                <input type="hidden" name="name" th:value="${name}">
+                <input type="hidden" name="email" th:value="${email}">
             </form>
         </th:block>
 

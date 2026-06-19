@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -20,6 +21,11 @@ public class EmailVerificationService {
 
     // 인증번호 저장 (email → {code, expiry})
     private final Map<String, VerificationEntry> store = new ConcurrentHashMap<>();
+
+    // 인증 완료된 이메일 (서버단에서 "인증 완료 여부"를 다시 확인할 때 사용)
+    // - 회원가입: 클라이언트 JS의 emailVerified 플래그만으로는 검증을 우회할 수 있으므로
+    //   서버에서도 verify()가 성공한 이메일인지 다시 확인한다.
+    private final Set<String> verifiedEmails = ConcurrentHashMap.newKeySet();
 
     /**
      * 6자리 인증번호 생성 후 이메일 발송
@@ -53,7 +59,22 @@ public class EmailVerificationService {
         }
         if (!entry.code().equals(code)) return false;
         store.remove(email); // 사용 후 삭제
+        verifiedEmails.add(email);
         return true;
+    }
+
+    /**
+     * 이메일이 인증 완료 상태인지 확인 (회원가입 시 서버단에서 한 번 더 검증)
+     */
+    public boolean isVerified(String email) {
+        return verifiedEmails.contains(email);
+    }
+
+    /**
+     * 인증 완료 상태 초기화 (회원가입 완료 후 등 더 이상 필요하지 않을 때)
+     */
+    public void clearVerified(String email) {
+        verifiedEmails.remove(email);
     }
 
     private String generateCode() {

@@ -23,6 +23,9 @@ public class RegisterRequestDto {
     )
     private String password;
 
+    @NotBlank(message = "비밀번호 확인을 입력해주세요.")
+    private String confirmPassword;
+
     @NotBlank(message = "이메일을 입력해주세요.")
     @Email(message = "올바른 이메일 형식이 아닙니다.")
     private String email;
@@ -43,10 +46,14 @@ public class RegisterRequestDto {
     private String phoneMid;
     private String phoneEnd;
 
-    /** 전화번호 조합 */
+    /** 전화번호 조합 (일부라도 비어있으면 null 반환 → 서비스 레이어에서 기본값 처리) */
     public String getPhoneNumber() {
-        if (phonePrefix == null || phoneMid == null || phoneEnd == null) return null;
+        if (isBlank(phonePrefix) || isBlank(phoneMid) || isBlank(phoneEnd)) return null;
         return phonePrefix + "-" + phoneMid + "-" + phoneEnd;
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     /** * HTML에서 넘어온 성별 문자열을 DB(User 엔티티) 형식에 맞게 변환

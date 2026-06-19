@@ -5,11 +5,13 @@ import com.ticketflow.dto.UserUpdateDto;
 import com.ticketflow.entity.User;
 import com.ticketflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -74,7 +76,12 @@ public class UserService {
                 .userSex(dto.getGenderInt())
                 .build();
 
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            // 두 요청이 동시에 들어와 existsBy 체크를 모두 통과한 뒤 저장 시점에 충돌한 경우
+            throw new IllegalArgumentException("이미 사용 중인 아이디 또는 이메일입니다.");
+        }
     }
 
     // ───────────────────────────────────────────────
@@ -120,5 +127,35 @@ public class UserService {
     public User findByUserId(String userId) {
         return userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    }
+
+    // ───────────────────────────────────────────────
+    // 아이디 찾기 / 비밀번호 찾기
+    // ───────────────────────────────────────────────
+
+    /**
+     * 이름 + 이메일로 사용자 조회 (아이디 찾기)
+     */
+    @Transactional(readOnly = true)
+    public Optional<User> findByNameAndEmail(String name, String email) {
+        return userRepository.findByUserNameAndUserEmail(name, email);
+    }
+
+    /**
+     * 아이디 + 이메일로 사용자 조회 (비밀번호 찾기 - 본인 확인)
+     */
+    @Transactional(readOnly = true)
+    public Optional<User> findByUserIdAndEmail(String userId, String email) {
+        return userRepository.findByUserIdAndUserEmail(userId, email);
+    }
+
+    /**
+     * 비밀번호 재설정 (이메일 인증 완료 후 호출)
+     */
+    @Transactional
+    public void resetPassword(String userId, String newPassword) {
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        user.setUserPw(passwordEncoder.encode(newPassword));
     }
 }
