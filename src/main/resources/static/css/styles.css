@@ -1104,3 +1104,29 @@ aside {
     transition: color 0.2s;
 }
 .back-link:hover { color: var(--primary); }
+
+/* vip석 색상 표기 코드 */
+.vip{
+
+    background:#FFD700;
+
+}
+
+
+.normal{
+
+    background:#4CAF50;
+
+}
+.reserved{
+
+    background:#FF9800;
+
+}
+
+
+.selected{
+
+    background:#2196F3;
+
+}

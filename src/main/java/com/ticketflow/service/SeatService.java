@@ -27,7 +27,44 @@ public class SeatService {
 
     private final ConcertRepository concertRepository;
 
+    /*
+    공연 가격정보 기반 좌석 타입 판단
+*/
+    public String getSeatLayoutType(String concertId){
 
+
+        Concert concert =
+                concertRepository
+                        .findById(concertId)
+                        .orElseThrow(
+                                () ->
+                                        new RuntimeException(
+                                                "공연 없음"
+                                        )
+                        );
+
+
+        String priceInfo =
+                concert.getConcertPriceInfo();
+
+
+
+    /*
+       예:
+       VIP 200000,R 150000,S 100000
+
+       또는
+
+       스탠딩 99000
+    */
+
+        if (priceInfo.contains("스탠딩"))
+                return "SEAT_B";
+            else
+                return "SEAT_A";
+
+
+    }
 
 
     /*
@@ -46,11 +83,6 @@ public class SeatService {
 
 
     }
-
-
-
-
-
 
 
     /*
@@ -151,14 +183,6 @@ public class SeatService {
 
     }
 
-
-
-
-
-
-
-
-
     /*
         4. 예약 상태 변경
     */
@@ -195,22 +219,13 @@ public class SeatService {
 
     }
 
-
-
-
-
-
-
-
-
     /*
-        5. 가격 계산
-    */
-    public String calculatePrice(
+    5. 가격 계산
+*/
+    public int calculatePrice(
             String concertId,
             String seatClass
     ){
-
 
 
         Concert concert =
@@ -226,18 +241,17 @@ public class SeatService {
                         );
 
 
-
         String priceInfo =
                 concert.getConcertPriceInfo();
 
 
 
-        /*
-            예:
+        if(priceInfo == null){
+            throw new RuntimeException(
+                    "가격 정보 없음"
+            );
+        }
 
-            VIP:200000,R:150000,S:100000
-
-        */
 
 
         String[] prices =
@@ -253,12 +267,22 @@ public class SeatService {
 
 
 
+            String grade =
+                    data[0];
+
+
+            int amount =
+                    Integer.parseInt(
+                            data[1]
+                    );
+
+
+
             if(
-                    data[0]
-                            .equals(seatClass)
+                    grade.equals(seatClass)
             ){
 
-                return data[1];
+                return amount;
 
             }
 
@@ -267,12 +291,8 @@ public class SeatService {
 
 
         throw new RuntimeException(
-                "가격 정보 없음"
+                "해당 좌석 등급 없음"
         );
 
 
-    }
-
-
-
-}
+    }}

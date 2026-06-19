@@ -1,27 +1,44 @@
 package com.ticketflow.controller;
 
 
+import com.ticketflow.entity.Concert;
 import com.ticketflow.entity.Seat;
+import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.SeatService;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 
-@RestController
+@Controller
 @RequiredArgsConstructor
 @RequestMapping("/seat")
 public class SeatController {
 
 
     private final SeatService seatService;
+    private final ConcertService concertService;
 
+    @GetMapping("/api/concert/{concertId}")
+    public ResponseEntity<?> getConcertInfo(@PathVariable String concertId) {
+        Concert concert = concertService.findById(concertId);
+
+        // 🌟 엔티티를 통째로 주지 않고 가벼운 Map에 담아 무한 참조를 원천 차단합니다.
+        Map<String, Object> response = new HashMap<>();
+        response.put("concertName", concert.getConcertName());
+        response.put("concertPosterUrl", concert.getConcertPosterUrl());
+        response.put("concertTime", concert.getConcertRuntime());
+
+        return ResponseEntity.ok(response);
+    }
 
     /*
         1. 좌석 조회
@@ -54,6 +71,18 @@ public class SeatController {
 
     }
 
+    @GetMapping("/layout/{concertId}")
+    public ResponseEntity<String> getLayout(
+            @PathVariable String concertId
+    ) {
+
+        return ResponseEntity.ok(
+                seatService.getSeatLayoutType(
+                        concertId
+                )
+        );
+
+    }
 
     /*
         2. 좌석 선택
@@ -213,13 +242,13 @@ public class SeatController {
     @GetMapping(
             "/price/{concertId}/{seatClass}"
     )
-    public ResponseEntity<String> getPrice(
+    public ResponseEntity<Integer> getPrice(
             @PathVariable String concertId,
             @PathVariable String seatClass
     ) {
 
 
-        String price =
+        int price =
                 seatService
                         .calculatePrice(
                                 concertId,
