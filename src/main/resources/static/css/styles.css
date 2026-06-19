@@ -153,7 +153,26 @@ body {
 .concert-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; line-height: 1.4; }
 .concert-date { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
 .concert-hall { font-size: 12px; color: var(--text-muted); }
+.search-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr); /* 1줄에 5개 */
+    gap: 20px;
+}
 
+/* 사이드바가 있을 때의 그리드 조정 */
+.search-container .concert-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+}
+
+/* 모바일 반응형 처리 */
+@media (max-width: 1200px) {
+    .search-container .concert-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 900px) {
+    .search-container .concert-grid { grid-template-columns: repeat(3, 1fr); }
+}
 /* ══════════════════════════════════════
    6. CONCERT DETAIL (전체 통합 코드)
 ══════════════════════════════════════ */
@@ -190,7 +209,34 @@ body {
 .benefit-box a { font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 600; }
 
 /* 예매 영역 및 캘린더 */
-.booking-right { display: flex; flex-direction: column; gap: 15px; width: 340px; }
+/* booking-right 영역을 플렉스 컨테이너로 설정 */
+/* 우측 예약 영역 스타일 수정 */
+.booking-right {
+    display: flex;
+    flex-direction: column;
+    gap: 24px; /* 캘린더, 회차 선택, 버튼 사이의 기본 간격 */
+    width: 340px;
+}
+
+/* 회차 선택 컨테이너 스타일 */
+.session-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px; /* 시간 버튼들 사이의 간격 */
+    margin-top: 10px; /* '회차 선택' 텍스트와의 간격 */
+}
+
+/* 캘린더와 회차 선택 타이틀 하단 여백 조정 */
+.booking-right h3 {
+    margin: 0 0 10px 0;
+}
+
+/* 폼 영역에 마진을 주어 버튼을 하단으로 밀어냄 */
+.booking-right form {
+    margin-top: auto;
+    padding-top: 20px;
+}
+
 #calendar { width: 340px !important; height: 320px !important; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
 
 /* 버튼 */
@@ -1104,3 +1150,35 @@ aside {
     transition: color 0.2s;
 }
 .back-link:hover { color: var(--primary); }
+
+/* ══════════════════════════════════════
+   랭킹 페이지 관련
+══════════════════════════════════════ */
+
+/* 랭킹 탭 필터 스타일 */
+.genre-tabs { display: flex; justify-content: center; gap: 10px; margin: 30px 0; }
+.tab-link {
+    padding: 10px 20px; border: 1px solid #ddd; border-radius: 20px;
+    text-decoration: none; color: #666; font-size: 0.95rem; transition: all 0.3s;
+}
+.tab-link.active {
+    background-color: #3b6fff; color: white; border-color: #3b6fff; font-weight: bold;
+}
+.tab-link:hover { border-color: #3b6fff; color: #3b6fff; }
+
+/* 마이페이지 위시리스트 그리드 고정 설정 */
+.main-content .concert-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+/* 태블릿 이상에서는 3개, 모바일에서는 2개로 반응형 대응 */
+@media (max-width: 1024px) {
+    .main-content .concert-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+@media (max-width: 768px) {
+    .main-content .concert-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}

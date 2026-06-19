@@ -7,7 +7,7 @@ public class   DummyData {
     public static final List<Map<String, Object>> DUMMY_TICKETS = new ArrayList<>();
 
     static {
-        // 유저 더미 데이터
+        // 유저 더미 data
         DUMMY_USER.put("id", "ticketflow123");
         DUMMY_USER.put("password", "Test1234!");
         DUMMY_USER.put("name", "김티켓");

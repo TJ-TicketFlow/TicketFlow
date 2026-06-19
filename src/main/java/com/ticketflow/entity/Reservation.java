@@ -36,6 +36,10 @@ public class Reservation {
     @Column(name = "reservation_created_at", updatable = false)
     private LocalDateTime reservationCreatedAt;
 
+    // 추가 변경 사항 회차 시간 추가
+    @Column(name = "session_time", length = 20, nullable = false)
+    private String sessionTime; // 예: "14:00"
+
     @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY)
     @Builder.Default
     private List<Pay> pays = new ArrayList<>();

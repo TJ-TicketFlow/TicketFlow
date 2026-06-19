@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<body>
-<th:block th:replace="~{mypage/mypage_base :: mypageLayout('위시리스트 - 티켓플로우', '위시리스트', 'wishlist', ~{::content})}">
-    <th:block th:fragment="content">
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
 
-        <div class="empty-state">
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('위시리스트', '위시리스트', 'wishlist', ~{this :: .main-content-area})}">
+
+    <div class="main-content-area">
+
+        <div class="empty-state" th:if="${#lists.isEmpty(wishlist)}">
             <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
@@ -12,7 +17,54 @@
             <a th:href="@{/}" class="btn-explore">공연 둘러보기</a>
         </div>
 
-    </th:block>
+        <th:block th:if="${not #lists.isEmpty(wishlist)}">
+            <div class="wishlist-actions" style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 24px;">
+                <button type="button" onclick="toggleAll(true)" style="padding: 8px 16px; border: 1.5px solid var(--border); background: white; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">전체 선택</button>
+                <button type="button" onclick="deleteSelected()" style="padding: 8px 16px; background: #E53E3E; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;">선택 삭제</button>
+            </div>
+
+            <div class="concert-grid">
+                <div th:each="wish : ${wishlist}" class="concert-card" style="position: relative;">
+                    <div style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+                        <input type="checkbox" name="wishIds" th:value="${wish.concert.concertId}" class="wish-item-check" style="width: 18px; height: 18px; cursor: pointer;">
+                    </div>
+                    <a th:href="@{/concert/{id}/detail-page(id=${wish.concert.concertId})}">
+                        <div class="poster-wrap"><img th:src="${wish.concert.concertPosterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="concert-info">
+                            <h4 class="concert-name" th:text="${wish.concert.concertName}">공연명</h4>
+                            <p class="concert-hall" th:text="${wish.concert.hall.hallName}">장소</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </th:block>
+
+    </div>
 </th:block>
-</body>
+
+<script>
+    function toggleAll(checked) {
+        document.querySelectorAll('.wish-item-check').forEach(el => el.checked = checked);
+    }
+
+    function deleteSelected() {
+        const checkedItems = document.querySelectorAll('.wish-item-check:checked');
+        if (checkedItems.length === 0) { alert("삭제할 항목을 선택해주세요."); return; }
+
+        const ids = Array.from(checkedItems).map(el => el.value);
+        const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+
+        if (confirm(ids.length + "개의 공연을 삭제하시겠습니까?")) {
+            fetch('/mypage/wishlist/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [csrfHeader]: csrfToken
+                },
+                body: JSON.stringify({ concertIds: ids })
+            }).then(res => { if (res.ok) location.reload(); });
+        }
+    }
+</script>
 </html>
