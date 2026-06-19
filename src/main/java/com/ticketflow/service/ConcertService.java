@@ -21,6 +21,7 @@ public class ConcertService {
     private final UserRepository userRepository;         // User 엔티티 조회를 위해 추가
     private final SelectedSeatRepository selectedSeatRepository;
     private final SeatRepository seatRepository;
+    private final ReservationRepository reservationRepository;
 
     public List<Concert> getAllConcerts() {
         return concertRepository.findAll();
@@ -169,11 +170,12 @@ public class ConcertService {
         return totalSeats > 0 && reservedSeats >= totalSeats;
     }
 
+    // ConcertService.java
     public boolean isSessionSoldOut(String concertId, String sessionTime) {
-        // 특정 회차의 좌석 수 대비 예매된 좌석 수 계산이 필요합니다.
-        // 회차(sessionTime)별로 좌석이 구분되어 있다면 이 로직을 사용하세요.
-        long totalSeats = seatRepository.countByConcert_ConcertId(concertId); // 필요 시 회차 조건 추가
-        long reservedSeats = selectedSeatRepository.countByConcert_ConcertIdAndSessionTime(concertId, sessionTime);
+        // 1. 해당 공연의 총 좌석 수 (Seat 엔티티 활용)
+        long totalSeats = seatRepository.countByConcert_ConcertId(concertId);
+        // 2. 해당 회차에 예약된 좌석 수 (Reservation 엔티티 활용)
+        long reservedSeats = reservationRepository.countBySelectedSeat_Concert_ConcertIdAndSessionTime(concertId, sessionTime);
 
         return reservedSeats >= totalSeats;
     }

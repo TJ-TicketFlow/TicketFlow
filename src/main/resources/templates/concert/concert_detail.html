@@ -132,14 +132,56 @@
     });
 
     function initCharts(stats) {
+        // 1. 성별 차트 (도넛)
         genderChart = new Chart(document.getElementById('genderChart'), {
             type: 'doughnut',
-            data: { labels: ['남성', '여성'], datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }] }
+            data: {
+                labels: ['남성', '여성'],
+                datasets: [{
+                    data: stats.genderData,
+                    backgroundColor: ['#3b82f6', '#f43f5e']
+                }]
+            },
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw;
+                                return `${label}: ${value}%`; // 툴팁에 % 추가
+                            }
+                        }
+                    }
+                }
+            }
         });
+
+        // 2. 연령대 차트 (막대)
         ageChart = new Chart(document.getElementById('ageChart'), {
             type: 'bar',
-            data: { labels: ['10대', '20대', '30대', '40대', '50대'], datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }] },
-            options: { scales: { y: { beginAtZero: true, max: 100 } } }
+            data: {
+                labels: ['10대', '20대', '30대', '40대', '50대'],
+                datasets: [{
+                    label: '연령대별 예매율',
+                    data: stats.ageData,
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { callback: (val) => val + '%' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw}%`; // 툴팁에 % 추가
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 
