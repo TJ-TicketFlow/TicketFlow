@@ -252,4 +252,12 @@ public class ConcertController {
         return ResponseEntity.ok(stats);
     }
 
+    @GetMapping("/{id}/available-dates")
+    @ResponseBody
+    public ResponseEntity<List<String>> getAvailableDates(@PathVariable String id) {
+        // 예: concertService에 findAvailableDatesByConcertId(id) 메서드 추가 필요
+        List<String> dates = concertService.findAvailableDates(id);
+        return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
+    }
+
 }

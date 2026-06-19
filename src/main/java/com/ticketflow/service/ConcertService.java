@@ -235,4 +235,33 @@ public class ConcertService {
                 .collect(Collectors.toList());
     }
 
+    public List<String> findAvailableDates(String id) {
+        Concert concert = findById(id);
+        LocalDate startDate = concert.getConcertStartDate();
+        LocalDate endDate = concert.getConcertEndDate();
+        String allTimes = concert.getConcertTime();
+
+        if (allTimes == null || allTimes.isEmpty()) return Collections.emptyList();
+
+        List<String> availableDates = new ArrayList<>();
+
+        // 공연 기간(startDate ~ endDate)을 하루씩 증가시키며 루프
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
+
+            // 해당 요일에 공연이 있는지 확인 (기존 findSessionsByDate와 동일한 로직)
+            boolean hasPerformance = Arrays.stream(allTimes.split(","))
+                    .map(String::trim)
+                    .anyMatch(time -> {
+                        String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
+                        return targetPart.contains(dayOfWeek);
+                    });
+
+            if (hasPerformance) {
+                availableDates.add(date.toString()); // "2026-06-20" 형식으로 저장
+            }
+        }
+        return availableDates;
+    }
+
 }
