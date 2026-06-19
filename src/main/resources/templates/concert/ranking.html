@@ -1,65 +1,70 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/header :: header(pageTitle='공연 랭킹')}"></head>
+<!-- 기존 헤더 프래그먼트 유지 -->
+<head th:replace="~{fragments/header :: header(pageTitle='공연 랭킹')}">
+</head>
 
 <body>
-<div class="ranking-container" style="max-width: 900px; margin: 50px auto; padding: 20px;">
+<div class="main-wrap">
+    <div class="main-inner">
 
-    <div class="genre-tabs">
-        <a th:href="@{/concert/ranking}"
-           th:classappend="${genre == 'all' || genre == null} ? 'active' : ''" class="tab-link">전체</a>
-
-        <a th:each="g : ${ {'jazz', 'ballad', 'rock', 'indie', 'hiphop', 'etc'} }"
-           th:href="@{/concert/ranking(genre=${g})}"
-           th:text="${#strings.replace(g, 'jazz', '재즈').replace('ballad', '발라드').replace('rock', '록').replace('indie', '인디').replace('hiphop', '힙합').replace('etc', '기타')}"
-           th:classappend="${genre == g} ? 'active' : ''" class="tab-link">
-        </a>
-    </div>
-
-    <h1 style="text-align: center;">공연 예매 랭킹</h1>
-
-    <div th:if="${top3 == null or #lists.isEmpty(top3)}" style="text-align: center; margin-top: 50px;">
-        <p>현재 등록된 랭킹 정보가 없습니다.</p>
-    </div>
-
-    <div th:if="${not #lists.isEmpty(top3)}">
-        <div class="top-3-grid" style="display: flex; justify-content: center; gap: 30px; margin-bottom: 70px; align-items: flex-end;">
-            <div th:each="item : ${top3}" class="rank-card"
-                 style="width: 250px; text-align: center; position: relative; display: flex; flex-direction: column;">
-                <div class="rank-num-badge" th:text="${item.ranking} + '위'" style="font-weight: bold; color: #555555; font-size: 1.5rem; margin-bottom: 10px;"></div>
-                <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; height: 450px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <a th:href="@{/concert/{id}/detail-page(id=${item.concert.concertId})}" style="text-decoration: none; color: inherit;">
-                        <img th:src="${item.concert.concertPosterUrl}" style="width: 100%; height: 250px; object-fit: cover; border-radius: 5px;">
-                        <h3 th:text="${item.concert.concertName}" style="font-size: 1.1rem; margin: 15px 0 5px 0; height: 3.5em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"></h3>
-                    </a>
-                    <div>
-                        <div style="font-size: 0.9rem; color: #777; margin-bottom: 5px;" th:text="${item.concert.concertStartDate} + ' ~ ' + ${item.concert.concertEndDate}"></div>
-                        <div th:if="${not #lists.isEmpty(item.concert.stats)}" style="font-size: 0.9rem; color: #333; font-weight: bold;">
-                            예매율: <span style="color: #0056b3;" th:text="${item.concert.stats[0].reservationRate} + '%'"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- 1. 장르 탭 -->
+        <div class="genre-tabs">
+            <a th:href="@{/concert/ranking}"
+               th:classappend="${genre == 'all' || genre == null} ? 'active' : ''"
+               class="tab-link">전체</a>
+            <a th:each="g : ${ {'jazz', 'ballad', 'rock', 'indie', 'hiphop', 'etc'} }"
+               th:href="@{/concert/ranking(genre=${g})}"
+               th:text="${#strings.replace(g, 'jazz', '재즈').replace('ballad', '발라드').replace('rock', '록').replace('indie', '인디').replace('hiphop', '힙합').replace('etc', '기타')}"
+               th:classappend="${genre == g} ? 'active' : ''"
+               class="tab-link"></a>
         </div>
 
-        <div class="list-ranking" style="border-top: 2px solid #333;">
-            <div th:each="item : ${restRankings}" class="list-row" style="display: flex; align-items: center; padding: 20px 10px; border-bottom: 1px solid #eee;">
-                <div class="list-rank" th:text="${item.ranking} + '위'" style="width: 60px; font-weight: bold; font-size: 1.1rem; color: #555555;"></div>
-                <a th:href="@{/concert/{id}/detail-page(id=${item.concert.concertId})}" style="text-decoration: none; color: inherit; display: flex; align-items: center; width: 100%;">
-                    <img th:src="${item.concert.concertPosterUrl}" style="width: 60px; height: 85px; object-fit: cover; margin-right: 25px; border-radius: 3px;">
-                    <div class="list-info" style="flex-grow: 1; display: flex; align-items: center; justify-content: space-between;">
-                        <h4 th:text="${item.concert.concertName}" style="margin: 0; width: 40%; font-size: 1.05rem;"></h4>
-                        <div style="font-size: 0.9rem; color: #666; width: 30%;" th:text="${item.concert.concertStartDate} + ' ~ ' + ${item.concert.concertEndDate}"></div>
-                        <div th:if="${not #lists.isEmpty(item.concert.stats)}" style="font-size: 0.9rem; font-weight: bold; width: 20%; text-align: right;">
-                            예매율: <span style="color: #0056b3;" th:text="${item.concert.stats[0].reservationRate} + '%'"></span>
+        <h2 class="section-heading" style="text-align: center; margin-top: 40px;">공연 예매 랭킹</h2>
+
+        <!-- 2. 상위 랭킹 카드 영역 (디자인 고정 적용) -->
+        <div th:if="${not #lists.isEmpty(top3)}" class="ranking-grid" style="margin-bottom: 60px;">
+            <div th:each="item : ${top3}" class="concert-card">
+                <a th:href="@{/concert/{id}/detail-page(id=${item.concert.concertId})}">
+                    <!-- 디자인 고정: 이미지 액자 -->
+                    <div class="poster-wrap">
+                        <img th:src="${item.concert.concertPosterUrl}" alt="포스터" class="poster-img">
+                    </div>
+
+                    <div class="concert-info">
+                        <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px;" th:text="${item.ranking} + '위'"></div>
+                        <h3 class="concert-name" th:text="${item.concert.concertName}"></h3>
+                        <div class="concert-date" th:text="${item.concert.concertStartDate} + ' ~ ' + ${item.concert.concertEndDate}"></div>
+                        <div class="concert-hall" th:if="${not #lists.isEmpty(item.concert.stats)}">
+                            예매율: <span th:text="${item.concert.stats[0].reservationRate} + '%'"></span>
                         </div>
                     </div>
                 </a>
             </div>
         </div>
+
+        <!-- 3. 일반 리스트 영역 -->
+        <div class="concert-section" th:if="${not #lists.isEmpty(restRankings)}">
+            <div th:each="item : ${restRankings}" style="border-bottom: 1px solid var(--border); padding: 15px 10px;">
+                <a th:href="@{/concert/{id}/detail-page(id=${item.concert.concertId})}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                    <div style="width: 50px; font-weight: bold; color: #555;" th:text="${item.ranking} + '위'"></div>
+                    <!-- 리스트용 이미지 -->
+                    <img th:src="${item.concert.concertPosterUrl}" style="width: 50px; height: 70px; object-fit: cover; margin-right: 20px; border-radius: 3px;">
+                    <div style="flex-grow: 1; display: flex; justify-content: space-between; align-items: center;">
+                        <h4 style="margin: 0; font-size: 1rem; width: 40%;" th:text="${item.concert.concertName}"></h4>
+                        <div style="font-size: 0.85rem; color: #666;" th:text="${item.concert.concertStartDate}"></div>
+                        <div style="font-weight: bold; color: var(--primary);" th:if="${not #lists.isEmpty(item.concert.stats)}">
+                            <span th:text="${item.concert.stats[0].reservationRate} + '%'"></span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
     </div>
 </div>
 
+<!-- 기존 푸터 프래그먼트 유지 -->
 <footer th:replace="~{fragments/footer :: footer}"></footer>
 </body>
 </html>

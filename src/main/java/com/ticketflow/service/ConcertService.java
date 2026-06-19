@@ -200,12 +200,13 @@ public class ConcertService {
     }
 
     public List<ConcertResponseDto> getRecommendedConcerts(String userId) {
-        // 1. 선호 장르 분석 (기존 로직 유지)
+        // 1. 유저가 선호하는 장르 목록 추출 (기존 로직 유지)
         List<String> preferredGenres = wishlistRepository.findByUser_UserId(userId).stream()
                 .map(wish -> wish.getConcert().getConcertGenre())
                 .filter(Objects::nonNull)
-                .flatMap(g -> Arrays.stream(((String) g).split(",")))
+                .flatMap(g -> Arrays.stream(g.split(","))) // 쉼표 기준 분리
                 .map(String::trim)
+                .filter(g -> !g.isEmpty())
                 .collect(Collectors.groupingBy(g -> g, Collectors.counting()))
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -213,14 +214,23 @@ public class ConcertService {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
-        if (preferredGenres.isEmpty()) return getPopularConcerts(3);
+        if (preferredGenres.isEmpty()) {
+            // 선호 장르가 없으면 인기순으로 기본 추천
+            return concertRepository.findPopularAndUpcoming(PageRequest.of(0, 3)).stream()
+                    .map(ConcertResponseDto::new).collect(Collectors.toList());
+        }
 
-        // 2. [수정] 공연 조회 후 '오늘 이후 종료'되는 공연만 필터링
+        // 2. 서비스단에서 유연한 필터링 수행 (방법 B)
         LocalDate today = LocalDate.now();
-        return concertRepository.findByGenreInOrderByStartDateAsc(preferredGenres, PageRequest.of(0, 10)) // 여유 있게 더 가져옴
-                .stream()
-                .filter(c -> !c.getConcertEndDate().isBefore(today)) // 종료일이 오늘보다 이전이 아닌 것만 남김
-                .limit(3) // 필터링 후 다시 3개만 제한
+        return concertRepository.findAll().stream() // 전체 공연을 가져옴 (데이터가 아주 많다면 JPQL로 페이징 필요)
+                .filter(c -> !c.getConcertEndDate().isBefore(today)) // 마감 안 된 공연
+                .filter(c -> {
+                    String[] concertGenres = c.getConcertGenre().split(","); // DB의 다중 장르 분리
+                    return Arrays.stream(concertGenres)
+                            .map(String::trim)
+                            .anyMatch(preferredGenres::contains); // 취향 장르가 하나라도 포함되면 True
+                })
+                .limit(3)
                 .map(ConcertResponseDto::new)
                 .collect(Collectors.toList());
     }
