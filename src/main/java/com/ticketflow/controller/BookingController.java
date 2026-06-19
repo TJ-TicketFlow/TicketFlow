@@ -59,7 +59,7 @@ public class BookingController {
         model.addAttribute("reservationKey", reservationKey);
 
         // 5. 멤버십 확인 (추후 currentUserNo와 맞춰서 userId 조회가 필요할 수 있습니다)
-        boolean isMember = bookingService.checkActiveMembership("hong123");
+        boolean isMember = bookingService.checkActiveMembership(currentUserId);
         model.addAttribute("isMember", isMember);
 
         return "booking/payment";

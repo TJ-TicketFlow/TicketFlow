@@ -80,7 +80,7 @@ public class MyPageController {
     public String mypageTickets(@AuthenticationPrincipal UserDetails userDetails,
                                 @RequestParam(value = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
                                 @RequestParam(value = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
-                                @PageableDefault(size = 10) Pageable pageable, // 💡 한 페이지에 10개씩!
+                                @PageableDefault(size = 5) Pageable pageable, // 💡 한 페이지에 n개씩!
                                 Model model) {
 
         // 💡 1. 날짜 기본값 세팅 (1달 전 ~ 오늘)
