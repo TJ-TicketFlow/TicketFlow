@@ -13,4 +13,5 @@ public class CouponViewDto {
     private LocalDate startDate;
     private LocalDate expireDate;
     private long daysLeft;
+    private Integer status;
 }

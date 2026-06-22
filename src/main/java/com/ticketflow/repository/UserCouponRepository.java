@@ -14,4 +14,5 @@ public interface UserCouponRepository extends JpaRepository<UserCoupon, Long> {
     List<UserCoupon> findByUserCouponStatusAndUserCouponExpireAtBefore(Integer status, LocalDateTime dateTime);
     List<UserCoupon> findByUserAndUserCouponStatus(User user, Integer userCouponStatus);
     boolean existsByUserAndCouponAndUserCouponStatus(User user, Coupon coupon, Integer userCouponStatus);
+    List<UserCoupon> findByUser(User user);
 }
