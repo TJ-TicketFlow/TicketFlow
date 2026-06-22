@@ -24,9 +24,4 @@ public class MainController {
         return "redirect:/login";
     }
 
-    @GetMapping("/seat/{concertId}")
-    public String seatPage(@PathVariable String concertId, Model model){
-        model.addAttribute("concertId",concertId);
-        return "concert/seatmap";
-    }
 }

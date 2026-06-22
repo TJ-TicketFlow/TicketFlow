@@ -1,0 +1,61 @@
+/* 1. 전체 레이아웃 (충돌 방지를 위해 좀 더 명확하게 선언) */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+}
+
+.main-layout {
+    display: flex !important;       /* 강제로 가로 정렬 적용 */
+    flex-direction: row !important; /* 왼쪽에서 오른쪽으로 흐르게 */
+    align-items: flex-start;        /* 무조건 상단 높이 맞춤 */
+    justify-content: center;        /* 화면 중앙 정렬 */
+    gap: 50px;                      /* 팝업과 좌석 사이 간격 */
+    padding: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+
+.popup {
+    flex: none !important;          /* 🌟 추가: flex 안에서 절대 크기가 변하지 않도록 완전 고정 */
+    width: 280px !important;        /* 🌟 중요: width 뒤에 !important를 붙여서 강제 적용 */
+    margin: 0 !important;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    box-sizing: border-box;         /* 🌟 추가: 패딩과 테두리가 너비 280px 안에 포함되도록 설정 */
+}
+
+/* 💥 [가장 중요] 포스터 이미지 크기 제어 */
+.popup .poster {
+    width: 100% !important;         /* 팝업 너비(280px)에 꽉 차게 듬 */
+    height: auto !important;        /* 비율 유지하며 축소 */
+    max-height: 400px;              /* 너무 길어지는 것 방지 */
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.popup .title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    word-break: keep-all;           /* 글자 예쁘게 깨지도록 */
+}
+
+/* 3. 오른쪽 좌석 페이지 영역 */
+.seat-page {
+    flex-grow: 1;
+    margin: 0 !important;           /* 위쪽 마진 완전히 제거 */
+    padding-top: 0 !important;
+}
+
+/* 좌석 컨테이너 자체 상단 여백 제거 */
+#seat-container {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}

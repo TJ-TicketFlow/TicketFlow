@@ -1,5 +1,8 @@
 package com.ticketflow.controller;
 
+import com.ticketflow.entity.Concert;
+import com.ticketflow.entity.Seat;
+import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.SeatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -7,6 +10,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -14,249 +19,104 @@ import java.util.Map;
 @RequestMapping("/seat")
 public class SeatController {
 
-//
-//    private final SeatService seatService;
-//
-//
-//
-//    /*
-//        좌석 배치도 페이지 이동
-//
-//        예:
-//        /seat/1
-//
-//        1번 공연 좌석 페이지
-//    */
-//    @GetMapping("/{concertId}")
-//    public String seatMap(
-//
-//            @PathVariable Long concertId,
-//
-//            Model model
-//
-//    ){
-//
-//
-//        // 공연 ID 전달
-//        model.addAttribute(
-//                "concertId",
-//                concertId
-//        );
-//
-//
-//
-//        // 공연장별 배치도 이름
-//        model.addAttribute(
-//                "seatMapType",
-//                seatService.getSeatMapType(
-//                        concertId
-//                )
-//        );
-//
-//
-//
-//        // 실제 좌석 배열
-//        model.addAttribute(
-//                "layout",
-//                seatService.getSeatLayout(
-//                        concertId
-//                )
-//        );
-//
-//
-//
-//        return "concert/seatmap";
-//
-//    }
-//
-//
-//
-//
-//
-//    // ==========================
-//    // 기존 API
-//    // ==========================
-//
-//
-//
-//    // 좌석 선택
-//    @PostMapping("/select")
-//    @ResponseBody
-//    public ResponseEntity<?> selectSeat(
-//
-//            @RequestParam String concertId,
-//            @RequestParam String seatId,
-//            @RequestParam Long userNo
-//
-//    ) {
-//
-//
-//        seatService.selectSeat(
-//                concertId,
-//                seatId,
-//                userNo
-//        );
-//
-//
-//        return ResponseEntity.ok(
-//                "선택 완료"
-//        );
-//
-//    }
-//
-//
-//
-//
-//    // 가격 계산
-//    @GetMapping("/select/pay")
-//    @ResponseBody
-//    public ResponseEntity<Integer> calculatePrice(
-//
-//            @RequestParam String concertId,
-//            @RequestParam String seatId
-//
-//    ) {
-//
-//
-//        int total =
-//                seatService.calculatePrice(
-//                        concertId,
-//                        seatId
-//                );
-//
-//
-//        return ResponseEntity.ok(
-//                total
-//        );
-//
-//    }
-//
-//
-//
-//
-//    // 좌석 상태 조회
-//    @GetMapping("/status/{concertId}")
-//    @ResponseBody
-//    public ResponseEntity<?> getSeatStatus(
-//
-//            @PathVariable Long concertId
-//
-//    ){
-//
-//
-//        return ResponseEntity.ok(
-//
-//                seatService.getSeatStatus(
-//                        concertId
-//                )
-//
-//        );
-//
-//    }
-//
-//
-//
-//
-//
-//    // 중복 선택 확인
-//    @GetMapping("/selected")
-//    @ResponseBody
-//    public ResponseEntity<Boolean> checkSelected(
-//
-//            @RequestParam String concertId,
-//            @RequestParam String seatId
-//
-//    ){
-//
-//
-//        return ResponseEntity.ok(
-//
-//                seatService.isSelected(
-//                        concertId,
-//                        seatId
-//                )
-//
-//        );
-//
-//    }
-//
-//
-//
-//
-//
-//    // 선택 취소
-//    @DeleteMapping("/select")
-//    @ResponseBody
-//    public ResponseEntity<?> cancelSeat(
-//
-//            @RequestParam String concertId,
-//            @RequestParam String seatId,
-//            @RequestParam Long userNo
-//
-//    ){
-//
-//
-//        seatService.cancelSeat(
-//                concertId,
-//                seatId,
-//                userNo
-//        );
-//
-//
-//        return ResponseEntity.ok(
-//                "취소 완료"
-//        );
-//
-//    }
-//
-//
-//
-//
-//
-//    // 남은 좌석
-//    @GetMapping("/remain")
-//    @ResponseBody
-//    public ResponseEntity<Integer> remainSeat(
-//
-//            @RequestParam String concertId
-//
-//    ){
-//
-//
-//        return ResponseEntity.ok(
-//
-//                seatService.getRemainSeat(
-//                        concertId
-//                )
-//
-//        );
-//
-//    }
-//
-//
-//
-//
-//
-//    // 결제 전달
-//    @PostMapping("/payment")
-//    @ResponseBody
-//    public ResponseEntity<?> sendPaymentInfo(
-//
-//            @RequestBody Map<String,Object> data
-//
-//    ){
-//
-//
-//        seatService.sendPaymentInfo(
-//                data
-//        );
-//
-//
-//        return ResponseEntity.ok(
-//                "결제 데이터 전달 완료"
-//        );
-//
-//    }
-//
-//
+    private final SeatService seatService;
+    private final ConcertService concertService;
+
+
+    @GetMapping("/{concertId}")
+    public String seatPage(@PathVariable String concertId, Model model){
+        model.addAttribute("concertId",concertId);
+        return "concert/seatmap"; //나중에 검토
+    }
+    /**
+     * 공연 기본 정보 조회 (이름, 포스터, 시간, 날짜)
+     * GET /seat/api/concert/{concertId}
+     */
+    @GetMapping("/api/concert/{concertId}")
+    public ResponseEntity<?> getConcertInfo(@PathVariable String concertId) {
+        Concert concert = concertService.findById(concertId);
+
+        // 엔티티를 통째로 주지 않고 가벼운 Map에 담아 무한 참조를 원천 차단합니다.
+        Map<String, Object> response = new HashMap<>();
+        response.put("concertName", concert.getConcertName());
+        response.put("concertPosterUrl", concert.getConcertPosterUrl());
+        response.put("concertTime", concert.getConcertRuntime());
+        response.put("concertDate", concert.getConcertStartDate().toString());
+        response.put("concertPriceInfo",concert.getConcertPriceInfo());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 1. 특정 공연의 전체 좌석 조회
+     * GET /seat/api/{concertId}
+     */
+    @GetMapping("/api/{concertId}")
+    public ResponseEntity<List<Seat>> getSeats(@PathVariable String concertId) {
+        List<Seat> seats = seatService.getSeats(concertId);
+        return ResponseEntity.ok(seats);
+    }
+
+    /**
+     * 공연별 좌석 배치 타입 조회 (SEAT_A, SEAT_B 등)
+     * GET /seat/layout/{concertId}
+     */
+    @GetMapping("/layout/{concertId}")
+    public ResponseEntity<String> getLayout(@PathVariable String concertId) {
+        return ResponseEntity.ok(seatService.getSeatLayoutType(concertId));
+    }
+
+    /**
+     * 2. 좌석 선택 (선점)
+     * POST /seat/select
+     * body: {"seatId": "A1", "userNo": 1}
+     */
+    @PostMapping("/select")
+    public ResponseEntity<String> selectSeat(@RequestBody Map<String, Object> data) {
+        String seatId = data.get("seatId").toString();
+        Long userNo = Long.valueOf(data.get("userNo").toString());
+
+        seatService.selectSeat(seatId, userNo);
+        return ResponseEntity.ok("좌석 선택 완료");
+    }
+
+    /**
+     * 3. 좌석 취소
+     * POST /seat/cancel
+     * body: {"seatId": "A1"}
+     */
+    @PostMapping("/cancel")
+    public ResponseEntity<String> cancelSeat(@RequestBody Map<String, Object> data) {
+        String seatId = data.get("seatId").toString();
+
+        seatService.cancelSeat(seatId);
+        return ResponseEntity.ok("좌석 취소 완료");
+    }
+
+    /**
+     * 4. 좌석 예매 상태 강제 변경
+     * PUT /seat/status
+     * body: {"seatId": "A1", "status": 0}
+     */
+    @PutMapping("/status")
+    public ResponseEntity<String> updateSeatStatus(@RequestBody Map<String, Object> data) {
+        String seatId = data.get("seatId").toString();
+        Short status = Short.valueOf(data.get("status").toString());
+
+        seatService.updateSeatStatus(seatId, status);
+        return ResponseEntity.ok("상태 변경 완료");
+    }
+
+    /**
+     * 5. 특정 등급의 단일 좌석 가격 조회
+     * GET /seat/price/{concertId}/{seatClass}
+     */
+    @GetMapping("/price/{concertId}/{seatClass}")
+    public ResponseEntity<Integer> getPrice(
+            @PathVariable String concertId,
+            @PathVariable String seatClass
+    ) {
+        int price = seatService.calculatePrice(concertId, seatClass);
+        return ResponseEntity.ok(price);
+    }
 }

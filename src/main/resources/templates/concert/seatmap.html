@@ -1,27 +1,59 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <title>좌석 선택</title>
 
     <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/infopopup.css">
+    <link rel="stylesheet" href="/css/selectedSeat.css">
 </head>
 
 <body>
-<h1>
-    공연번호 : [[${concertId}]]
-</h1>
 
-<div id="seat-container"
-     th:data-concert-id="${concertId}">
+<div class="main-layout">
+
+    <div class="popup">
+        <div class="title" id="concert-name">공연명 기본값</div>
+        <img class="poster" id="concert-poster" src="" alt="공연 포스터">
+        <div class="info-box">
+            <div class="info-item">
+                <div class="label">공연날짜</div>
+                <div class="value" id="concert-date">날짜 로딩 중...</div>
+            </div>
+            <div class="info-item">
+                <div class="label">시작시간</div>
+                <div class="value" id="concert-runtime">시간 로딩 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="seat-page">
+        <div id="seat-container">
+        </div>
+    </div>
+
+    <div class="popup-box right-sidebar">
+        <div class="selection-title">선택한 좌석</div>
+
+        <div class="selected-seats-list" id="selected-seats-display">
+            <span class="no-seat-msg">좌석을 선택해 주세요. (최대 4개)</span>
+        </div>
+
+        <div class="price-box" style="margin: 20px 0; padding-top: 15px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-weight: bold; width: 100%;">
+            <span style="color: #64748b; font-size: 14px; white-space: nowrap; flex-shrink: 0;">결제 예정 금액</span>
+            <span id="total-price-display" style="color: #3b82f6; font-size: 20px; white-space: nowrap; flex-shrink: 0; margin-left: 10px;">0원</span>
+        </div>
+
+        <button class="booking-btn" id="booking-submit-btn">작성 완료 및 예매하기</button>
+    </div>
+
 </div>
 
-
-<script th:inline="javascript">
-    const concertId = [[${concertId}]];
-</script>
+<script src="/js/seatprice.js"></script>
 <script src="/js/seatmap.js"></script>
 
-
 </body>
+
 </html>

@@ -79,9 +79,10 @@
                         <h3>회차 선택</h3>
                         <div id="session-container" class="session-wrapper"></div>
                     </div>
-                    <form th:action="@{/concert/seatmap}" method="get">
+                    <form th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
                         <input type="hidden" name="sessionId" id="selectedSessionId">
+                        <input type="hidden" name="date" id="selectedDate">
                         <button type="submit" class="btn-primary">예매하기</button>
                     </form>
                 </div>
@@ -233,6 +234,9 @@
     }
 
     function loadSessions(date) {
+
+        document.getElementById('selectedDate').value = date;
+
         const concertId = document.querySelector('input[name="concertId"]').value;
         fetch(`/concert/${concertId}/sessions?date=${date}`)
             .then(res => res.json())

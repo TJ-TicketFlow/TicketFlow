@@ -1,0 +1,129 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f8fafc; /* 배경을 살짝 밝은 회색으로 줘서 구역을 선명하게 */
+    font-family: 'Pretendard', -apple-system, sans-serif;
+}
+
+.main-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 40px;
+    padding: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+/* 왼쪽 사이드바 영역 (공연정보 + 좌석선택 팝업을 세로로 배치) */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* 두 팝업 사이의 간격 */
+    width: 300px;
+    flex-shrink: 0;
+}
+
+/* 공통 팝업 스타일 */
+.popup {
+    width: 100%;
+    margin: 0 !important;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.popup .poster {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 380px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.popup .title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    word-break: keep-all;
+    color: #1e293b;
+}
+
+/* 🌟 [추가] 선택한 좌석 팝업 전용 스타일 */
+.selection-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 8px;
+}
+
+.selected-seats-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px; /* 좌석이 없을 때도 일정 높이 유지 */
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* 동적으로 추가될 좌석 칩(Badge) 스타일 */
+.seat-chip {
+    background-color: #3b82f6;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.no-seat-msg {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+/* 예매하기 버튼 */
+.booking-btn {
+    width: 100%;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.booking-btn:hover {
+    background-color: #059669;
+}
+
+/* 오른쪽 좌석 페이지 영역 */
+.seat-page {
+    flex-grow: 1;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+#seat-container {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

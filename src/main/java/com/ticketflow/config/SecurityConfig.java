@@ -24,8 +24,9 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook")
+                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook","/concert/*/like")
                 )
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/login", "/register",
@@ -36,7 +37,7 @@ public class SecurityConfig {
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
-                                "/concert/","/concert/**","/concert/{id}/sessions",
+                                "/concert/","/concert/**","/concert/{id}/sessions","/search",
                                 "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
