@@ -2,7 +2,11 @@ package com.ticketflow.service;
 
 import com.ticketflow.dto.RegisterRequestDto;
 import com.ticketflow.dto.UserUpdateDto;
+import com.ticketflow.entity.Coupon;
 import com.ticketflow.entity.User;
+import com.ticketflow.entity.UserCoupon;
+import com.ticketflow.repository.CouponRepository;
+import com.ticketflow.repository.UserCouponRepository;
 import com.ticketflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -10,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +22,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CouponRepository couponRepository;
+    private final UserCouponRepository userCouponRepository;
 
     // ───────────────────────────────────────────────
     // 회원가입
@@ -75,6 +82,19 @@ public class UserService {
                 .build();
 
         userRepository.save(user);
+        issueWelcomeCoupon(user);
+    }
+    private void issueWelcomeCoupon(User user) {
+        Coupon coupon = couponRepository.findByCouponName("신규가입 웰컴 쿠폰")
+                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 신규가입 웰컴 쿠폰"));
+
+        UserCoupon userCoupon = UserCoupon.builder()
+                .user(user)
+                .coupon(coupon)
+                .userCouponStatus(0)
+                .userCouponExpireAt(LocalDateTime.now().plusDays(coupon.getCouponValidDays()))
+                .build();
+        userCouponRepository.save(userCoupon);
     }
 
     // ───────────────────────────────────────────────

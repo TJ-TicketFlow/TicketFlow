@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface MembershipPaymentRepository extends JpaRepository<MembershipPayments, Long> {
     List<MembershipPayments> findByMembershipOrderByMembershipHistoryDateDesc(Membership membership);
+    List<MembershipPayments> findByMembershipAndPaymentStatusOrderByMembershipHistoryDateDesc(Membership membership, String paymentStatus);
 }
