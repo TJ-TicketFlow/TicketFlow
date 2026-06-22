@@ -30,7 +30,7 @@
                     <th:block th:if="${coupon.daysLeft > 0}">
                         <button class="coupon-btn available">사용가능</button>
                     </th:block>
-                    <th:block th:if="${coupon.daysLeft == 0}">
+                    <th:block th:if="${coupon.daysLeft == 1}">
                         <button class="coupon-btn unavailable" disabled>사용완료</button>
                     </th:block>
                 </div>

@@ -56,7 +56,7 @@
 
         <div class="quick-grid">
             <a th:href="@{/mypage/tickets}" class="quick-card">
-                <div class="q-num" th:text="${tickets != null ? #lists.size(tickets) : 0}">0</div>
+                <div class="q-num" th:text="${totalTicketCount ?: 0}">0</div>
                 <div class="q-label">예매 내역</div>
             </a>
             <a th:href="@{/mypage/coupons}" class="quick-card">
@@ -82,27 +82,28 @@
                 </tr>
                 </thead>
                 <tbody>
-                <th:block th:if="${tickets != null and !tickets.isEmpty()}">
-                    <tr th:each="ticket, iter : ${tickets}"
-                        th:if="${iter.index < 3}"
-                        th:data-url="@{/mypage/tickets/} + ${ticket.bookingNo}"
-                        onclick="location.href=this.dataset.url">
-                        <td th:text="${ticket.bookingNo}"></td>
-                        <td class="rt-name" th:text="${ticket.showName}"></td>
-                        <td th:text="${ticket.date}"></td>
-                        <td th:text="${ticket.count}"></td>
-                        <td>
+                    <th:block th:if="${tickets != null and !tickets.isEmpty()}">
+                        <tr th:each="ticket : ${tickets}"
+                            th:data-url="@{/mypage/tickets/} + ${ticket['booking_no']}"
+                            onclick="location.href=this.dataset.url"
+                            style="cursor:pointer;">
+
+                            <td th:text="${ticket['display_no']}"></td>
+                            <td class="rt-name" th:text="${ticket['show_name']}"></td>
+                            <td th:text="${ticket['date']}"></td>
+                            <td th:text="${ticket['count']}"></td>
+                            <td>
                             <span class="rt-status"
-                                  th:classappend="${ticket.status == '취소'} ? 'status-cancel' : 'status-booked'"
-                                  th:text="${ticket.status}"></span>
-                        </td>
-                    </tr>
-                </th:block>
-                <th:block th:if="${tickets == null or tickets.isEmpty()}">
-                    <tr>
-                        <td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">예매 내역이 없습니다.</td>
-                    </tr>
-                </th:block>
+                                  th:classappend="${ticket['status'] == '결제 취소' or ticket['status'] == '결제 실패'} ? 'status-cancel' : 'status-booked'"
+                                  th:text="${ticket['status']}"></span>
+                            </td>
+                        </tr>
+                    </th:block>
+                    <th:block th:if="${tickets == null or tickets.isEmpty()}">
+                        <tr>
+                            <td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">예매 내역이 없습니다.</td>
+                        </tr>
+                    </th:block>
                 </tbody>
             </table>
             <a th:href="@{/mypage/tickets}" class="see-all">전체 예매 내역 보기 →</a>

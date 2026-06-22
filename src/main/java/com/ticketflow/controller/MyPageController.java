@@ -62,7 +62,15 @@ public class MyPageController {
                                  Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
-        model.addAttribute("tickets", Collections.emptyList());
+
+        LocalDate endDate = java.time.LocalDate.now();
+        LocalDate startDate = endDate.minusYears(1);
+
+        org.springframework.data.domain.Page<java.util.Map<String, Object>> ticketPage =
+                bookingService.getMyTicketHistory(userDetails.getUsername(), startDate, endDate, org.springframework.data.domain.PageRequest.of(0, 2));
+
+        model.addAttribute("tickets", ticketPage.getContent());                // 최근 내역 2개
+        model.addAttribute("totalTicketCount", ticketPage.getTotalElements());
         model.addAttribute("coupons", getAvailableCoupons(user));
         return "mypage/mypage_benefits";
     }
