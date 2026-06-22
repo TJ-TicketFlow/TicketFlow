@@ -50,7 +50,8 @@ public class User {
 
     // 멤버십 등급: "premium", "basic", null
     @Column(name = "membership", length = 50)
-    private String membership;
+    @Builder.Default
+    private String membership = "basic";
 
     // 멤버십 시작일
     @Column(name = "membership_start")
