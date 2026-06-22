@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -26,6 +27,12 @@ public class SeatController {
 
     private final SeatService seatService;
     private final ConcertService concertService;
+
+    @GetMapping("{concertId}") // 경로에 ID가 포함되는 방식 권장
+    public String showSeatmap(@PathVariable String concertId, Model model) {
+        model.addAttribute("concertId", concertId); // 여기에서 템플릿으로 전달
+        return "concert/seatmap";
+    }
 
     @GetMapping("/api/concert/{concertId}")
     public ResponseEntity<?> getConcertInfo(@PathVariable String concertId) {

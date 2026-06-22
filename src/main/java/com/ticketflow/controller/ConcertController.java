@@ -125,11 +125,6 @@ public class ConcertController {
         return "concert/concert_detail";
     }
 
-    @GetMapping("/seatmap/{id}") // 경로에 ID가 포함되는 방식 권장
-    public String showSeatmap(@PathVariable String id, Model model) {
-        model.addAttribute("concertId", id); // 여기에서 템플릿으로 전달
-        return "concert/seatmap";
-    }
 
     @GetMapping("/ranking")
     public String rankingPage(@RequestParam(required = false) String genre, Model model) {
