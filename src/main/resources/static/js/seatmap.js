@@ -1,21 +1,15 @@
 // ==========================
 // 공연 ID 가져오기
 // ==========================
-
 console.log("seatmap.js 실행됨");
-
 const seatContainer = document.getElementById("seat-container");
-
 const pathSegments = window.location.pathname.split('/');
 const concertId = pathSegments[pathSegments.length - 1];
-
 console.log("받은 concertId:", concertId);
-
 
 // ==========================
 // 🌟 공연 정보 동적 불러오기
 // ==========================
-
 if (concertId) {
     fetch(`/seat/api/concert/${concertId}`)
         .then(res => {
@@ -24,24 +18,18 @@ if (concertId) {
         })
         .then(concert => {
             console.log("백엔드에서 받은 공연 데이터:", concert);
-
-            // HTML 태그들을 안전하게 변수에 먼저 담습니다.
             const nameEl = document.getElementById("concert-name");
             const posterEl = document.getElementById("concert-poster");
             const runtimeEl = document.getElementById("concert-runtime");
             const dateEl = document.getElementById("concert-date");
 
-            // 안전장치: 태그가 제대로 존재할 때만 데이터를 쏙쏙 매핑합니다.
             if (nameEl) nameEl.innerText = concert.concertName;
             if (posterEl) posterEl.src = concert.concertPosterUrl;
 
             const urlParams = new URLSearchParams(window.location.search);
-            const selectedDate = urlParams.get('date');
             const startTime = urlParams.get('sessionId');
 
-            if (runtimeEl && startTime) {
-                runtimeEl.innerText = startTime;
-            }
+            if (runtimeEl && startTime) runtimeEl.innerText = startTime;
             if (dateEl) dateEl.innerText = concert.concertDate;
         })
         .catch(err => console.error("공연 정보 로드 에러:", err));
@@ -51,16 +39,11 @@ const urlParams = new URLSearchParams(window.location.search);
 const selectedDate = urlParams.get('date');
 const selectedTime = urlParams.get('sessionId');
 
-console.log("사용자가 선택한 날짜:", selectedDate);
-console.log("사용자가 선택한 시간:", selectedTime);
-
-
 // ==========================
 // 공연별 좌석 배치 데이터
 // ==========================
 let seatLayout;
-let vipRows = [];
-const selectedSeats = []; // 선택된 좌석 목록 배열
+let vipRows = []; // 필요시 특정 행 인덱스를 넣으시면 VIP 처리가 활성화됩니다.
 
 const seatLayouts = {
     map1: [
@@ -96,7 +79,6 @@ const seatLayouts = {
     ]
 };
 
-
 // ==========================
 // 레이아웃 조건 처리 및 로드
 // ==========================
@@ -118,41 +100,32 @@ fetch(`/seat/layout/${concertId}`)
             seatContainer.innerHTML = "<h3>알 수 없는 공연 타입입니다.</h3>";
             return;
         }
-
         renderSeat();
     })
     .catch(err => console.error("레이아웃 로드 에러:", err));
-
 
 // ==========================
 // 좌석 렌더링 함수
 // ==========================
 function renderSeat() {
-    seatContainer.innerHTML = ""; // 초기화
+    seatContainer.innerHTML = "";
 
-
-    // ==========================================
-    // 🌟 [추가] 좌석 배치도 최상단에 무대(STAGE) 추가
-    // ==========================================
+    // 무대(STAGE) 생성 및 디자인 스타일링
     const stageDiv = document.createElement("div");
     stageDiv.innerText = "STAGE";
-
-    // 무대 디자인 스타일링
-    stageDiv.style.width = "70%";            /* 좌석 전체 너비의 70% 정도 차지 */
-    stageDiv.style.maxWidth = "500px";       /* 너무 거대해지는 것 방지 */
-    stageDiv.style.height = "40px";          /* 무대 높이(두께) */
-    stageDiv.style.background = "#1e293b";   /* 어두운 네이비색 무대 배경 */
-    stageDiv.style.color = "#ffffff";        /* 글자색 (흰색) */
+    stageDiv.style.width = "70%";
+    stageDiv.style.maxWidth = "500px";
+    stageDiv.style.height = "40px";
+    stageDiv.style.background = "#1e293b";
+    stageDiv.style.color = "#ffffff";
     stageDiv.style.fontSize = "16px";
     stageDiv.style.fontWeight = "bold";
     stageDiv.style.display = "flex";
     stageDiv.style.alignItems = "center";
     stageDiv.style.justifyContent = "center";
-    stageDiv.style.margin = "0 auto 40px auto"; /* 가운데 정렬 및 아래 좌석들과 40px 간격 둠 */
+    stageDiv.style.margin = "0 auto 40px auto";
     stageDiv.style.borderRadius = "4px";
     stageDiv.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-
-    // 좌석 상자에 무대 먼저 얹기
     seatContainer.appendChild(stageDiv);
 
     seatLayout.forEach((row, rowIndex) => {
@@ -185,8 +158,12 @@ function renderSeat() {
             seatDiv.title = seatId;
             seatDiv.style.cursor = "pointer";
 
-            // VIP / 일반 색상 설정
-            if (vipRows.includes(rowIndex)) {
+            // 🌟 [Data Store] 선택 상태(false) 및 기본 좌석 클래스(VIP/일반) 저장
+            seatDiv.dataset.selected = "false";
+            seatDiv.dataset.seatClass = vipRows.includes(rowIndex) ? "VIP" : "GENERAL";
+
+            // 기본 배경색 설정
+            if (seatDiv.dataset.seatClass === "VIP") {
                 seatDiv.style.background = "#facc15";
                 seatDiv.style.border = "1px solid #ca8a04";
             } else {
@@ -194,21 +171,25 @@ function renderSeat() {
                 seatDiv.style.border = "1px solid #16a34a";
             }
 
-            // 클릭 이벤트 리스너 추가
+            // 클릭 이벤트 리스너 변경 (Data Store 기반)
             seatDiv.addEventListener("click", () => {
-                const idx = selectedSeats.indexOf(seatId);
+                const isSelected = seatDiv.dataset.selected === "true";
 
-                if (idx === -1) {
-                    if (selectedSeats.length >= 4) {
+                if (!isSelected) {
+                    // 🌟 실시간으로 선택된 좌석 개수를 DOM에서 직접 쿼리하여 체크
+                    const currentSelectedCount = seatContainer.querySelectorAll('[data-selected="true"]').length;
+                    if (currentSelectedCount >= 4) {
                         alert("좌석은 최대 4개까지 선택 가능합니다.");
                         return;
                     }
-                    selectedSeats.push(seatId);
+                    // 상태 변경 및 UI 색상 갱신
+                    seatDiv.dataset.selected = "true";
                     seatDiv.style.background = "#3b82f6";
                     seatDiv.style.border = "1px solid #2563eb";
                 } else {
-                    selectedSeats.splice(idx, 1);
-                    if (vipRows.includes(rowIndex)) {
+                    // 선택 해제 상태로 복구
+                    seatDiv.dataset.selected = "false";
+                    if (seatDiv.dataset.seatClass === "VIP") {
                         seatDiv.style.background = "#facc15";
                         seatDiv.style.border = "1px solid #ca8a04";
                     } else {
@@ -217,20 +198,22 @@ function renderSeat() {
                     }
                 }
 
-                console.log("선택된 좌석:", selectedSeats);
-                updateSelectedSeatsUI(); // ⭕ 정상 호출
-            }); // click 이벤트 종료
+                // 🌟 현재 상태 콘솔 로그 출력 테스트
+                const allSelected = Array.from(seatContainer.querySelectorAll('[data-selected="true"]')).map(el => el.dataset.seatId);
+                console.log("선택된 좌석(DOM 스냅샷):", allSelected);
+
+                updateSelectedSeatsUI();
+            });
 
             seatColIndex++;
             rowDiv.appendChild(seatDiv);
-        }); // row.forEach 종료
+        });
 
         seatContainer.appendChild(rowDiv);
-    }); // seatLayout.forEach 종료
+    });
 
     renderLegend();
 }
-
 
 // ==========================
 // standing 처리 (임시)
@@ -238,7 +221,6 @@ function renderSeat() {
 function showStandingOrder() {
     seatContainer.innerHTML = "<h3>스탠딩 공연입니다. 번호 순서로 입장합니다.</h3>";
 }
-
 
 // ==========================
 // 범례 렌더링
@@ -249,7 +231,6 @@ function renderLegend() {
     legend.style.gap = "20px";
     legend.style.justifyContent = "center";
     legend.style.marginTop = "16px";
-
     legend.innerHTML = `
         <div style="display:flex;align-items:center;gap:6px;">
             <div style="width:20px;height:20px;background:#4ade80;border:1px solid #16a34a;border-radius:3px;"></div>
@@ -267,9 +248,8 @@ function renderLegend() {
     seatContainer.appendChild(legend);
 }
 
-
 // ==========================
-// 🌟 [안전하게 바깥으로 탈출!] 오른쪽 팝업 화면 갱신 함수
+// 🌟 [Data Store 변경] 오른쪽 팝업 화면 갱신 함수
 // ==========================
 function updateSelectedSeatsUI() {
     const displayContainer = document.getElementById("selected-seats-display");
@@ -277,15 +257,18 @@ function updateSelectedSeatsUI() {
 
     displayContainer.innerHTML = "";
 
-    if (selectedSeats.length === 0) {
+    // 🌟 DOM 저장소에서 'data-selected="true"' 인 엘리먼트들을 긁어옴
+    const selectedElements = seatContainer.querySelectorAll('[data-selected="true"]');
+
+    if (selectedElements.length === 0) {
         displayContainer.innerHTML = '<span class="no-seat-msg">좌석을 선택해 주세요. (최대 4개)</span>';
         return;
     }
 
-    selectedSeats.forEach(seatId => {
+    selectedElements.forEach(seatEl => {
         const chip = document.createElement("span");
         chip.className = "seat-chip";
-        chip.innerText = seatId;
+        chip.innerText = seatEl.dataset.seatId; // 엘리먼트에 저장된 ID 추출
         displayContainer.appendChild(chip);
     });
 }
