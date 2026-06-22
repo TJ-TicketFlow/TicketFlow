@@ -87,7 +87,7 @@ function setFilter(btn, status) {
         const s = row.querySelector('.ticket-status')?.textContent.trim() || '';
 
         // 필터 조건에 맞는지 확인합니다.
-        const isMatch = (status === '전체' || (status === '취소/환불' && s.includes('취소')) || s === status);
+        const isMatch = (status === '전체' || (status === '취소' && (s.includes('취소') || s.includes('실패'))) || s === status);
 
         if (isMatch) {
             row.style.display = ''; // 조건에 맞으면 보여줍니다.

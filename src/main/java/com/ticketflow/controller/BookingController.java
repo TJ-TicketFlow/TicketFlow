@@ -24,8 +24,8 @@ public class BookingController {
     // 0. 결제 화면 (여기에 쿠폰, 예매 정보가 다 나옴)
     @GetMapping("/payment")
     public String showPaymentPage(
-            @RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
-            //(실제로 테스트할때)@RequestParam(value = "reservationKey", required = true) Long reservationKey,
+            //@RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
+            @RequestParam(value = "reservationKey", required = true) Long reservationKey,
             java.security.Principal principal, // 💡 [핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
             Model model) {
 
@@ -143,12 +143,6 @@ public class BookingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-    // 11. 예매 완료 이메일/알림
-    @PostMapping("/notification")
-    @ResponseBody
-    public String sendNotification() {
-        return "예매 완료 이메일 및 알림을 전송합니다.";
-    }
 
     // ==========================================
     // 💡 [네이버 캡차 2] 프론트엔드에 열쇠 던져주기
@@ -167,7 +161,7 @@ public class BookingController {
     }
 
     // ==========================================
-    // 💡 12. 결제창 이탈 시 좌석 해제 API
+    // 💡 11. 결제창 이탈 시 좌석 해제 API
     // ==========================================
     @PostMapping("/release-seat")
     @ResponseBody

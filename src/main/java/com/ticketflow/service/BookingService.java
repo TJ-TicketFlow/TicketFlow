@@ -6,7 +6,8 @@ import com.ticketflow.repository.MembershipRepository;
 import com.ticketflow.repository.PayRepository;
 import com.ticketflow.repository.ReservationRepository;
 import com.ticketflow.repository.UserCouponRepository;
-import com.ticketflow.repository.UserRepository; // 💡 UserRepository 임포트 필요!
+import com.ticketflow.repository.UserRepository;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,8 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -38,6 +41,7 @@ public class BookingService {
 
     // 💡 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
+    private final JavaMailSender javaMailSender;
 
     @Value("${lemonsqueezy.api-key2}")
     private String apiKey;
@@ -294,6 +298,8 @@ public class BookingService {
         }
 
         System.out.println("✅ 결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
+
+        sendBookingCompleteEmail(payment);
     }
 
     // ==========================================
@@ -474,11 +480,41 @@ public class BookingService {
             // int count = pay.getReservation().getSelectedSeats().size();
 
             // 예매상태
+            // 💡 [수정] 예매상태 결정 로직 (+ 관람완료 처리 추가)
             String statusStr = "진행중";
             String currentStatus = pay.getPayStatus();
 
             if ("PAID".equals(currentStatus)) {
-                statusStr = "예매완료";
+                statusStr = "예매완료"; // 일단 기본은 예매완료로 설정
+
+                // 🚨 방어막: 예약 날짜 정보가 잘 있는지 확인
+                if (pay.getReservation() != null && pay.getReservation().getReservationDate() != null) {
+                    LocalDate rDate = pay.getReservation().getReservationDate();
+                    String rTimeStr = pay.getReservation().getSessionTime();
+
+                    try {
+                        LocalDateTime concertDateTime;
+                        // "19:00" 처럼 시간 글자가 있다면 날짜와 합쳐서 정확한 '관람일시' 생성
+                        if (rTimeStr != null && !rTimeStr.isBlank()) {
+                            concertDateTime = LocalDateTime.of(rDate, LocalTime.parse(rTimeStr));
+                        } else {
+                            // 시간 정보가 없으면 그날 자정(밤 12시)을 기준으로 잡음
+                            concertDateTime = rDate.atTime(LocalTime.MAX);
+                        }
+
+                        // 💡 현재 시간이 관람일시를 지나버렸다면? -> 관람완료!
+                        if (LocalDateTime.now().isAfter(concertDateTime)) {
+                            statusStr = "관람완료";
+                        }
+                    } catch (Exception e) {
+                        // 만약 DB에 시간이 "오후 7시" 처럼 글자로 들어있어서 파싱 에러가 난다면,
+                        // 안전하게 '날짜'만 비교해서 어제 이전이면 관람완료로 처리!
+                        if (LocalDate.now().isAfter(rDate)) {
+                            statusStr = "관람완료";
+                        }
+                    }
+                }
+
             } else if ("CANCELLED".equals(currentStatus)) {
                 statusStr = "결제 취소";
             } else if ("FAILED".equals(currentStatus)) {
@@ -585,7 +621,7 @@ public class BookingService {
         String delivery_status = "모바일 티켓";
         if(pay.getPayDelPostcode()!=null && pay.getPayDelAddr() != null) delivery_status = "배송";
         map.put("delivery", delivery_status);
-        map.put("pay_method", pay.getPayMethod() != null ? pay.getPayMethod() : "신용카드");
+        map.put("pay_method", pay.getPayMethod() != null ? pay.getPayMethod() : "결제 대기");
 
         // 가격 (150000 -> "150,000" 형태로 콤마 찍기)
         java.text.DecimalFormat df = new java.text.DecimalFormat("###,###");
@@ -594,11 +630,37 @@ public class BookingService {
         // 결제 상태
         String statusStr = "진행중";
         String currentStatus = pay.getPayStatus();
-        if ("PAID".equals(currentStatus)) statusStr = "예매완료";
-        else if ("CANCELLED".equals(currentStatus)) statusStr = "결제 취소";
-        else if ("FAILED".equals(currentStatus)) statusStr = "결제 실패";
-        map.put("status", statusStr);
 
+        if ("PAID".equals(currentStatus)) {
+            statusStr = "예매완료";
+
+            if (pay.getReservation() != null && pay.getReservation().getReservationDate() != null) {
+                LocalDate rDate = pay.getReservation().getReservationDate();
+                String rTimeStr = pay.getReservation().getSessionTime();
+
+                try {
+                    LocalDateTime concertDateTime;
+                    if (rTimeStr != null && !rTimeStr.isBlank()) {
+                        concertDateTime = LocalDateTime.of(rDate, LocalTime.parse(rTimeStr));
+                    } else {
+                        concertDateTime = rDate.atTime(LocalTime.MAX);
+                    }
+
+                    if (LocalDateTime.now().isAfter(concertDateTime)) {
+                        statusStr = "관람완료";
+                    }
+                } catch (Exception e) {
+                    if (LocalDate.now().isAfter(rDate)) {
+                        statusStr = "관람완료";
+                    }
+                }
+            }
+        } else if ("CANCELLED".equals(currentStatus)) {
+            statusStr = "결제 취소";
+        } else if ("FAILED".equals(currentStatus)) {
+            statusStr = "결제 실패";
+        }
+        map.put("status", statusStr);
         map.put("pay_no", pay.getPayNo());
 
         return map;
@@ -806,6 +868,48 @@ public class BookingService {
             selectedSeat.setSeatState((short) 0); // 선택 상태 해제
             seat.setSeatStatus((short) 1);        // 1: 다시 누구나 예매 가능 상태로 복구
             System.out.println("✅ " + seat.getSeatId() + " 좌석이 결제창 이탈로 인해 다시 예매 가능 상태로 풀렸습니다.");
+        }
+    }
+
+    // ==========================================
+    // 💡 예매 완료 이메일 발송 메서드
+    // ==========================================
+    public void sendBookingCompleteEmail(Pay payment) {
+        try {
+            // 편지 봉투(MimeMessage)를 하나 만듭니다.
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            // 1. 누구에게 보낼 것인가? (결제할 때 입력한 구매자 이메일)
+            helper.setTo(payment.getBuyerEmail());
+
+            // 2. 이메일 제목
+            helper.setSubject("[TicketFlow] 예매가 성공적으로 완료되었습니다!");
+
+            // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
+            String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
+            String seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
+                    + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
+                    + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
+
+            // HTML 문법을 사용해서 내용을 작성합니다.
+            String htmlContent = "<h3>🎉 예매가 완료되었습니다!</h3>"
+                    + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
+                    + "<p><b>예매번호:</b> TF-0000" + payment.getPayNo() + "</p>"
+                    + "<p><b>공연명:</b> " + showName + "</p>"
+                    + "<p><b>좌석:</b> " + seatInfo + "</p>"
+                    + "<p><b>결제금액:</b> " + payment.getPayAmount() + "원</p>"
+                    + "<br><p>마이페이지에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
+
+            // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
+            helper.setText(htmlContent, true);
+
+            // 4. 전송!
+            javaMailSender.send(mimeMessage);
+            System.out.println("✅ 예매 완료 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
+
+        } catch (Exception e) {
+            System.err.println("🚨 이메일 발송 실패: " + e.getMessage());
         }
     }
 }

@@ -87,9 +87,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const ticketPriceElement = document.getElementById('TicketPrice');
     const feeElement = document.getElementById('fee');
 
-    const TicketPrice = ticketPriceElement ? Number(ticketPriceElement.textContent.replace(/,/g,"")) : 20000;
+    const TicketPrice = ticketPriceElement ? Number(ticketPriceElement.textContent.replace(/,/g,"")) : 0;
     const fee = feeElement ? Number(feeElement.textContent.replace(/,/g,"")) : 2000;
 
+    if (TicketPrice === 0) {
+        console.error("티켓 가격 정보를 정상적으로 불러오지 못했습니다.");
+        // 필요하다면 여기서 alert("잘못된 접근입니다.") 후 페이지를 뒤로 보낼 수도 있습니다.
+    }
 
     // ==========================================
     // 💡 기능 함수들 (쿠폰 불러오기, 계산기, 숨김마법사)
