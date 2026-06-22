@@ -23,6 +23,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/concert/*/like") // "좋아요" 요청만 CSRF 예외 처리
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/login", "/register",
@@ -31,8 +34,8 @@ public class SecurityConfig {
                                 "/register/verify-code",
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
-                                "/concert/","/concert/**",
-                                "/css/**", "/js/**", "/images/**", "/favicon.ico"
+                                "/css/**", "/js/**", "/images/**", "/favicon.ico",
+                                "/concert/","/concert/**","/concert/{id}/sessions","/search"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()
@@ -42,13 +45,13 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("user_id")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/mypage/benefits", true)
+                        .defaultSuccessUrl("/concert/", true)
                         .failureUrl("/login?error")
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login")
+                        .logoutSuccessUrl("/concert/")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()

@@ -42,6 +42,7 @@ public class SeatController {
         response.put("concertPosterUrl", concert.getConcertPosterUrl());
         response.put("concertTime", concert.getConcertRuntime());
         response.put("concertDate", concert.getConcertStartDate().toString());
+        response.put("concertPriceInfo",concert.getConcertPriceInfo());
 
         return ResponseEntity.ok(response);
     }

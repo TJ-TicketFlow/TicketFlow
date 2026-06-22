@@ -1,10 +1,20 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>공연 상세 정보</title>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <style>
+        .stats-chart-wrapper { display: flex; gap: 60px; justify-content: center; align-items: center; padding: 40px; background: #f9f9f9; border-radius: 15px; margin-top: 20px; }
+        .chart-box-doughnut { width: 330px; text-align: center; }
+        .chart-box-bar { width: 450px; text-align: center; }
+        .chart-box-doughnut canvas, .chart-box-bar canvas { width: 100% !important; height: auto !important; }
+        .disabled-box { opacity: 0.6; pointer-events: none; }
+    </style>
 </head>
 <body>
 
@@ -14,6 +24,19 @@
     <div class="detail-grid">
         <div class="info-left">
             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
+
+            <div class="wishlist-box"
+                 th:data-concert-id="${concert.concertId}"
+                 onclick="toggleWishlist(this.getAttribute('data-concert-id'))"
+                 style="display: flex; align-items: center; justify-content: flex-start; cursor: pointer; margin-top: 10px;">
+
+                <img th:id="'wish-icon-' + ${concert.concertId}"
+                     th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}"
+                     alt="찜" style="width: 24px; margin-right: 8px;">
+
+                <span style="margin-right: 8px; font-weight: 500;">위시리스트</span>
+                <span th:id="'wish-count-' + ${concert.concertId}" th:text="${wishCount}">0</span>
+            </div>
         </div>
 
         <div class="info-middle">
@@ -23,42 +46,43 @@
                 <p><strong>공연기간</strong> <span th:text="${dateRange}"></span></p>
                 <p><strong>공연시간</strong> <span th:text="${concert.concertTime}"></span></p>
                 <p><strong>관람연령</strong> <span th:text="${concert.concertAgeLimit}"></span></p>
-
                 <div class="price-section">
                     <p><strong>가격</strong></p>
                     <div class="price-list">
                         <span th:each="price : ${priceList}" th:text="${price}"></span>
                     </div>
                 </div>
-
-                <div class="benefit-section">
-                    <p><strong>혜택</strong></p>
-                    <div class="benefit-box">
-                        <span>기본할인 3%</span>
-                        <a href="#">내 쿠폰 확인하기 ></a>
+                <div class="membership-section" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 10px; background: #fff;">
+                    <p><strong>멤버십 혜택</strong></p>
+                    <div sec:authorize="isAnonymous()"><p>멤버십 혜택이 없습니다.</p></div>
+                    <div sec:authorize="isAuthenticated()">
+                        <p>기본할인 3%</p>
+                        <a href="javascript:void(0);" onclick="openCouponPopup()" style="color: #0056b3; text-decoration: underline; font-weight: bold;">내 쿠폰 확인하기 ◀</a>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="booking-right">
-            <div th:with="isEnded=${concert.concertEndDate < today}">
-
-                <div th:if="${isEnded}" class="sold-out-box" style="border: 2px solid #eee; padding: 30px; text-align: center; border-radius: 15px; background: #fafafa; color: #666;">
-                    <h3 style="margin-top: 0; color: #333;">판매종료</h3>
-                    <p>본 상품은 판매가 종료되었어요</p>
-                    <button type="button" class="btn-primary" disabled style="background-color: #bbbbbb; border: none; width: 100%; padding: 12px; color: #fff; border-radius: 5px; cursor: not-allowed;">예매하기</button>
-                </div>
-
-                <div th:unless="${isEnded}">
+            <div th:with="isEnded=${concert.concertEndDate.isBefore(today)}">
+                <div th:if="${isEnded}" class="disabled-box">
                     <h3>관람일 선택</h3>
-                    <div id="calendar"></div>
-                    <h3>회차 선택</h3>
-                    <div id="session-container" class="session-wrapper">
-                        <p class="empty-msg">달력에서 날짜를 선택하세요.</p>
+                    <div class="concert-calendar"></div>
+                    <button type="button" class="btn-primary" style="background-color: #ccc; border-color: #ccc; cursor: not-allowed; width: 100%; margin-top: 20px;" disabled>판매종료</button>
+                </div>
+                <div th:unless="${isEnded}" style="display: flex; flex-direction: column; gap: 24px;">
+                    <div>
+                        <h3>관람일 선택</h3>
+                        <div class="concert-calendar"></div>
                     </div>
-                    <form th:action="@{/seat/__${concert.concertId}__}" method="get">
+                    <div>
+                        <h3>회차 선택</h3>
+                        <div id="session-container" class="session-wrapper"></div>
+                    </div>
+                    <form th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
+                        <input type="hidden" name="concertId" th:value="${concert.concertId}">
                         <input type="hidden" name="sessionId" id="selectedSessionId">
+                        <input type="hidden" name="date" id="selectedDate">
                         <button type="submit" class="btn-primary">예매하기</button>
                     </form>
                 </div>
@@ -72,72 +96,180 @@
             <div th:if="${not #lists.isEmpty(concert.concertInfoImages)}" th:each="imgUrl : ${concert.concertInfoImages}">
                 <img th:src="${imgUrl}" alt="상세 정보">
             </div>
-            <p th:if="${#lists.isEmpty(concert.concertInfoImages)}" class="empty-msg">등록된 상세 이미지가 없습니다.</p>
         </div>
-
         <div class="stats-section">
             <h3>예매자 통계</h3>
-            <div th:if="${stats != null}" class="stats-chart">
-                <p>성별/연령 통계 그래프 영역</p>
+            <div th:if="${stats != null}" class="stats-chart-wrapper">
+                <div class="chart-box-doughnut"><canvas id="genderChart"></canvas></div>
+                <div class="chart-box-bar"><canvas id="ageChart"></canvas></div>
             </div>
-            <div th:if="${stats == null}" class="empty-msg">
-                <p>아직 예매 데이터가 없습니다.</p>
-            </div>
+            <div th:unless="${stats != null}" class="empty-msg"><p>아직 예매 데이터가 없습니다.</p></div>
         </div>
     </section>
 </main>
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
-<!-- concertId를 JS 변수로 주입 -->
 <script th:inline="javascript">
-    const concertId = [[${concert.concertId}]];
-</script>
+    let genderChart, ageChart;
 
-<script>
     document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            locale: 'ko',
-            initialView: 'dayGridMonth',
-            selectable: true,
-            dateClick: function(info) {
-                loadSessions(info.dateStr);
-            }
-        });
-        calendar.render();
+        const initialStats = /*[[${stats}]]*/ null;
+        if (initialStats) {
+            initCharts(initialStats);
+            setInterval(pollStats, 3000);
+        }
+
+        const calendarEl = document.querySelector('.concert-calendar');
+        const concertId = /*[[${concert.concertId}]]*/ null;
+
+        if (calendarEl) {
+            // 공연 가능 날짜를 서버에서 가져온 뒤 달력 생성
+            fetch(`/concert/${concertId}/available-dates`)
+                .then(res => res.json())
+                .then(availableDates => {
+                    var calendar = new FullCalendar.Calendar(calendarEl, {
+                        locale: 'ko',
+                        initialView: 'dayGridMonth',
+                        selectable: true,
+                        dateClick: (info) => {
+                            if (availableDates.includes(info.dateStr)) {
+                                loadSessions(info.dateStr);
+                            } else {
+                                alert("해당 날짜에는 공연이 없습니다.");
+                            }
+                        },
+                        dayCellDidMount: (info) => {
+                            if (availableDates.includes(info.dateStr)) {
+                                info.el.style.backgroundColor = '#f0f7ff';
+                            }
+                        }
+                    });
+                    calendar.render();
+                });
+        }
     });
 
-    function loadSessions(date) {
-        fetch(`/concert/${concertId}/sessions?date=${date}`)
-            .then(res => {
-                if (!res.ok) throw new Error('서버 오류: ' + res.status);
-                return res.json();
+    function initCharts(stats) {
+        genderChart = new Chart(document.getElementById('genderChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['남성', '여성'],
+                datasets: [{
+                    data: stats.genderData,
+                    backgroundColor: ['#3b82f6', '#f43f5e']
+                }]
+            },
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw;
+                                return `${label}: ${value}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        ageChart = new Chart(document.getElementById('ageChart'), {
+            type: 'bar',
+            data: {
+                labels: ['10대', '20대', '30대', '40대', '50대'],
+                datasets: [{
+                    label: '연령대별 예매율',
+                    data: stats.ageData,
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { callback: (val) => val + '%' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function pollStats() {
+        const concertId = /*[[${concert.concertId}]]*/ null;
+        fetch(`/concert/${concertId}/stats-json`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && genderChart && ageChart) {
+                    genderChart.data.datasets[0].data = data.genderData;
+                    ageChart.data.datasets[0].data = data.ageData;
+                    genderChart.update();
+                    ageChart.update();
+                }
             })
+            .catch(err => console.error("통계 업데이트 실패", err));
+    }
+
+    function toggleWishlist(concertId) {
+        const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+        fetch(`/concert/${concertId}/like`, {
+            method: 'POST',
+            headers: { [csrfHeader]: csrfToken, 'Content-Type': 'application/json' },
+            credentials: 'include'
+        })
+            .then(res => res.status === 401 ? (alert("로그인이 필요합니다."), window.location.href="/login", null) : res.json())
+            .then(data => {
+                if (!data) return;
+                document.getElementById(`wish-icon-${concertId}`).src = data.isLiked ? "/images/favicon.png" : "/images/notfavicon.png";
+                document.getElementById(`wish-count-${concertId}`).innerText = data.newCount;
+            });
+    }
+
+    function loadSessions(date) {
+
+        document.getElementById('selectedDate').value = date;
+
+        const concertId = document.querySelector('input[name="concertId"]').value;
+        fetch(`/concert/${concertId}/sessions?date=${date}`)
+            .then(res => res.json())
             .then(data => {
                 const container = document.getElementById('session-container');
                 container.innerHTML = '';
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<p class="empty-msg">공연이 없습니다.</p>';
-                    return;
-                }
                 data.forEach(s => {
                     const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'btn-session';
+                    btn.type = 'button'; btn.className = 'btn-session';
                     btn.innerText = s.time;
-                    btn.onclick = function() {
+                    btn.onclick = () => {
                         document.querySelectorAll('.btn-session').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         document.getElementById('selectedSessionId').value = s.id;
                     };
                     container.appendChild(btn);
                 });
-            })
-            .catch(err => {
-                console.error('세션 로딩 실패:', err);
             });
     }
+    function openCouponPopup() { document.getElementById('couponPopup').style.display = 'block'; }
+    function closeCouponPopup() { document.getElementById('couponPopup').style.display = 'none'; }
 </script>
+
+<div id="couponPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#ffffff; padding:30px; border-radius:24px; z-index:1001; width:360px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); border: 1px solid #eee;">
+    <h3 style="margin: 0 0 20px 0; text-align: center; font-size: 1.3rem;">보유 쿠폰</h3>
+    <div th:each="entry : ${coupons}" style="background: #fdfdfd; margin-bottom: 12px; padding: 12px; border-radius: 16px; display:flex; align-items:center; border: 1px solid #f0f0f0;">
+        <img th:src="@{'/images/' + ${entry.key} + 'percent.png'}" style="width: 50px; height: 50px; object-fit: contain; margin-right: 15px;">
+        <div style="display:flex; flex-direction: column;">
+            <span style="font-weight: bold; font-size: 1rem;" th:text="${entry.key} + '% 할인권'"></span>
+            <span style="font-size: 0.85rem; color: #666;" th:text="'소지개수 : ' + ${entry.value} + '매'"></span>
+        </div>
+    </div>
+    <button onclick="closeCouponPopup()" style="width:100%; padding:14px; margin-top:20px; cursor:pointer; background:#111; color:white; border:none; border-radius:12px; font-weight:bold; font-size: 1rem;">닫기</button>
+</div>
 </body>
 </html>
