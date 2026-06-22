@@ -35,7 +35,7 @@
             <div class="hero-stat">
                 <div class="hero-stat-label">쿠폰</div>
                 <div class="coupon-count">
-                    <span th:text="${coupons != null ? #lists.size(coupons) : 0}">0</span><span>장</span>
+                    <span th:text="${availableCouponCount != null ? availableCouponCount : 0}">0</span><span>장</span>
                 </div>
             </div>
 

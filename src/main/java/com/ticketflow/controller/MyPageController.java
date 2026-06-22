@@ -55,7 +55,11 @@ public class MyPageController {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
         model.addAttribute("tickets", Collections.emptyList());
-        model.addAttribute("coupons", getAvailableCoupons(user));
+
+        List<CouponViewDto> coupons = getAvailableCoupons(user);
+        model.addAttribute("coupons", coupons);
+        model.addAttribute("availableCouponCount", coupons.stream().filter(c -> c.getStatus() == 0).count());
+
         return "mypage/mypage_benefits";
     }
 
@@ -64,11 +68,15 @@ public class MyPageController {
                                 Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
-        model.addAttribute("coupons", getAvailableCoupons(user));
+
+        List<CouponViewDto> coupons = getAvailableCoupons(user);
+        model.addAttribute("coupons", coupons);
+        model.addAttribute("availableCouponCount", coupons.stream().filter(c -> c.getStatus() == 0).count());
+
         return "mypage/mypage_coupons";
     }
     private List<CouponViewDto> getAvailableCoupons(User user) {
-        List<UserCoupon> userCoupons = userCouponRepository.findByUserAndUserCouponStatus(user, 0);
+        List<UserCoupon> userCoupons = userCouponRepository.findByUser(user);
 
         return userCoupons.stream()
                 .sorted(Comparator.comparing(UserCoupon::getUserCouponExpireAt))
@@ -77,7 +85,8 @@ public class MyPageController {
                         uc.getCoupon().getCouponDiscountRate(),
                         uc.getUserCouponIssuedAt().toLocalDate(),
                         uc.getUserCouponExpireAt().toLocalDate(),
-                        Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), uc.getUserCouponExpireAt().toLocalDate()))
+                        Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), uc.getUserCouponExpireAt().toLocalDate())),
+                        uc.getUserCouponStatus()
                 ))
                 .collect(Collectors.toList());
     }
