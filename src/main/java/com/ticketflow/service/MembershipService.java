@@ -1,5 +1,6 @@
 package com.ticketflow.service;
 
+import com.ticketflow.dto.RefundEligibilityDto;
 import com.ticketflow.dto.WebhookRequestDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
@@ -25,6 +26,8 @@ public class MembershipService {
     private final MembershipHistoryRepository historyRepository;
     private final UserCouponRepository userCouponRepository;
     private final CouponRepository couponRepository;
+    private final PayCheckRepository payCheckRepository;
+    private final LemonSqueezyRefundService lemonSqueezyRefundService;
 
     public void processPaymentWebhook(WebhookRequestDto dto) {
         if (dto.getData() == null || dto.getData().getAttributes() == null) {
@@ -74,8 +77,6 @@ public class MembershipService {
             default:
                 System.out.println("ℹ️ 처리하지 않는 이벤트: " + eventName);
         }
-
-        processCouponIfPresent(user, dto);
 
         System.out.println("🎉 웹훅 처리 완료! (event: " + eventName + ")");
     }
@@ -138,7 +139,7 @@ public class MembershipService {
             user.setMembershipEnd(membershipPeriodEnd.toLocalDate());
             userRepository.save(user);
             issuePremiumSignupCouponsIfNeeded(user);
-        } else if (("CANCELLED".equals(newStatus) || "EXPIRED".equals(newStatus)) && "premium".equals(user.getMembership())) {
+        } else if ("EXPIRED".equals(newStatus) && "premium".equals(user.getMembership())) {
             user.setMembership("basic");
             user.setMembershipEnd(LocalDate.now());
             userRepository.save(user);
@@ -149,8 +150,8 @@ public class MembershipService {
         Coupon checkCoupon = couponRepository.findByCouponName("프리미엄 가입 쿠폰")
                 .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 프리미엄 가입 쿠폰"));
 
-        if (userCouponRepository.existsByUserAndCoupon(user, checkCoupon)) {
-            System.out.println("ℹ️ 이미 프리미엄 가입 쿠폰을 받은 유저라 건너뜁니다. (user: " + user.getUserEmail() + ")");
+        if (userCouponRepository.existsByUserAndCouponAndUserCouponStatus(user, checkCoupon, 0)) {
+            System.out.println("ℹ️ 이미 사용 가능한 프리미엄 가입 쿠폰이 있는 유저라 건너뜁니다. (user: " + user.getUserEmail() + ")");
             return;
         }
 
@@ -187,6 +188,109 @@ public class MembershipService {
         userCouponRepository.save(userCoupon);
     }
 
+    public RefundEligibilityDto checkRefundEligibility(User user) {
+        Membership membership = membershipRepository.findByUser(user)
+                .stream().findFirst().orElse(null);
+
+        if (membership == null || !List.of("ACTIVE", "CANCELLED").contains(membership.getMembershipStatus())) {
+            return new RefundEligibilityDto(false, "현재 활성화된 멤버십이 없습니다.");
+        }
+
+        MembershipPayments latestPayment = paymentRepository
+                .findByMembershipAndPaymentStatusOrderByMembershipHistoryDateDesc(membership, "PAID")
+                .stream().findFirst().orElse(null);
+
+        if (latestPayment == null) {
+            return new RefundEligibilityDto(false, "결제 내역을 찾을 수 없습니다.");
+        }
+
+        LocalDateTime paidAt = latestPayment.getMembershipHistoryDate();
+        if (paidAt.isBefore(LocalDateTime.now().minusDays(7))) {
+            return new RefundEligibilityDto(false, "결제일로부터 7일이 지나 환불 신청이 불가능합니다.");
+        }
+
+        boolean usedBenefit = payCheckRepository.existsPaidReservationByUserSince(user, paidAt);
+        if (usedBenefit) {
+            return new RefundEligibilityDto(false, "이미 예매에 사용하여 환불이 불가능합니다.");
+        }
+
+        return new RefundEligibilityDto(true, "환불 가능합니다.");
+    }
+
+    public RefundEligibilityDto processRefund(User user) {
+        RefundEligibilityDto eligibility = checkRefundEligibility(user);
+        if (!eligibility.isEligible()) {
+            return eligibility;
+        }
+
+        Membership membership = membershipRepository.findByUser(user).stream().findFirst().orElseThrow();
+        MembershipPayments latestPayment = paymentRepository
+                .findByMembershipAndPaymentStatusOrderByMembershipHistoryDateDesc(membership, "PAID")
+                .stream().findFirst().orElseThrow();
+
+        String invoiceId = latestPayment.getMembershipInvoiceId();
+        if (invoiceId == null) {
+            return new RefundEligibilityDto(false, "환불 처리에 필요한 결제 정보가 없습니다. 고객센터에 문의해주세요.");
+        }
+
+        try {
+            lemonSqueezyRefundService.refundSubscriptionInvoice(invoiceId, null);
+        } catch (Exception e) {
+            System.out.println("❌ Lemon Squeezy 환불 API 호출 실패: " + e.getMessage());
+            return new RefundEligibilityDto(false, "환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        String previousStatus = membership.getMembershipStatus();
+        membership.setMembershipStatus("REFUNDED");
+        membershipRepository.save(membership);
+
+        user.setMembership("basic");
+        user.setMembershipStart(null);
+        user.setMembershipEnd(null);
+        userRepository.save(user);
+
+        userCouponRepository.findByUserAndUserCouponStatus(user, 0).stream()
+                .filter(uc -> !"신규가입 웰컴 쿠폰".equals(uc.getCoupon().getCouponName()))
+                .forEach(uc -> {
+                    uc.setUserCouponStatus(2);
+                    userCouponRepository.save(uc);
+                });
+
+        historyRepository.save(MembershipHistory.builder()
+                .membership(membership)
+                .actionType("REFUND")
+                .previousStatus(previousStatus)
+                .newStatus("REFUNDED")
+                .historyNote("사용자 환불 신청 승인")
+                .build());
+
+        return new RefundEligibilityDto(true, "환불이 완료되었습니다.");
+
+
+    }
+
+    public RefundEligibilityDto cancel(User user) {
+        Membership membership = membershipRepository.findByUser(user).stream().findFirst().orElse(null);
+
+        if (membership == null || !"ACTIVE".equals(membership.getMembershipStatus())) {
+            return new RefundEligibilityDto(false, "현재 활성화된 멤버십이 없습니다.");
+        }
+
+        String subId = membership.getMembershipSubId();
+        if (subId == null) {
+            return new RefundEligibilityDto(false, "구독 정보를 찾을 수 없습니다. 고객센터에 문의해주세요.");
+        }
+
+        try {
+            lemonSqueezyRefundService.cancelSubscription(subId);
+        } catch (Exception e) {
+            System.out.println("❌ Lemon Squeezy 구독 취소 API 호출 실패: " + e.getMessage());
+            return new RefundEligibilityDto(false, "해지 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        return new RefundEligibilityDto(true, "해지 신청이 완료되었습니다. 이번 결제 기간이 끝나는 날까지는 계속 이용하실 수 있습니다.");
+    }
+
     // ── 결제 관련 이벤트 처리 ──
     private void handlePaymentEvent(User user, WebhookRequestDto dto, WebhookRequestDto.WebhookAttributes attrs, String paymentStatus) {
         Membership membership = membershipRepository.findByUser(user)
@@ -218,31 +322,14 @@ public class MembershipService {
         MembershipPayments payment = MembershipPayments.builder()
                 .membership(membership)
                 .membershipOrderId(orderRef)
-                .membershipPayAmount(attrs.getTotal())
+                .membershipPayAmount(attrs.getTotal() / 100)
                 .paymentStatus(paymentStatus)
                 .cardBrand(cardBrand)
                 .cardLastFour(cardLastFour)
                 .membershipHistoryDate(LocalDateTime.now())
+                .membershipInvoiceId(dto.getData().getId())
                 .build();
         paymentRepository.save(payment);
-    }
-
-    private void processCouponIfPresent(User user, WebhookRequestDto dto) {
-        if (dto.getData().getMetadata() == null || dto.getData().getMetadata().get("user_coupon_id") == null) {
-            return;
-        }
-        try {
-            Long couponId = Long.valueOf(dto.getData().getMetadata().get("user_coupon_id").toString());
-            user.getUserCoupons().stream()
-                    .filter(uc -> uc.getCoupon().getCouponId().equals(couponId))
-                    .findFirst()
-                    .ifPresent(uc -> {
-                        uc.setUserCouponStatus(1);
-                        userCouponRepository.save(uc);
-                    });
-        } catch (Exception e) {
-            System.err.println("⚠️ 쿠폰 처리 중 에러 발생: " + e.getMessage());
-        }
     }
 
     private Instant parseInstantOrNull(String value) {

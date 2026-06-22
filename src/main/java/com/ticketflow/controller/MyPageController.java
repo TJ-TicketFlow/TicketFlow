@@ -1,8 +1,11 @@
 package com.ticketflow.controller;
 
 import com.ticketflow.dto.CouponViewDto;
+import com.ticketflow.dto.PaymentViewDto;
+import com.ticketflow.dto.RefundEligibilityDto;
 import com.ticketflow.dto.UserUpdateDto;
 import com.ticketflow.entity.Membership;
+import com.ticketflow.entity.MembershipPayments;
 import com.ticketflow.entity.User;
 import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.repository.MembershipPaymentRepository;
@@ -27,6 +30,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.ticketflow.service.MembershipService;
+import com.ticketflow.repository.MembershipRepository;
+import com.ticketflow.repository.MembershipPaymentRepository;
+
 @Controller
 @RequestMapping("/mypage")
 @RequiredArgsConstructor
@@ -34,6 +41,8 @@ public class MyPageController {
 
     private final UserService userService;
     private final UserCouponRepository userCouponRepository;
+    private final MembershipService membershipService;
+
 
     @GetMapping
     public String mypage() {
@@ -123,21 +132,93 @@ public class MyPageController {
 
     @GetMapping("/membership/subscribe")
     public String mypageMembershipSubscribe(@AuthenticationPrincipal UserDetails userDetails,
-                                        @RequestParam(required = false) String plan,
-                                        Model model) {
+                                            @RequestParam(required = false) String plan,
+                                            Model model,
+                                            RedirectAttributes rttr) {
 
         User user = userService.findByUserId(userDetails.getUsername());
+
+        if ("premium".equals(user.getMembership())) {
+            rttr.addFlashAttribute("errorMessage", "이미 프리미엄 멤버십을 이용 중입니다.");
+            return "redirect:/mypage/membership";
+        }
+
         model.addAttribute("user", user);
         model.addAttribute("plan", plan);
 
         return "mypage/mypage_membership_subscribe";
     }
 
-    @GetMapping("/membership/cancel")
+    private final MembershipRepository membershipRepository;
+    private final MembershipPaymentRepository paymentRepository;
+
+    @GetMapping("/membership/payments")
+    public String mypageMembershipPayments(@AuthenticationPrincipal UserDetails userDetails,
+                                           Model model) {
+        User user = userService.findByUserId(userDetails.getUsername());
+        model.addAttribute("user", user);
+
+        Membership membership = membershipRepository.findByUser(user)
+                .stream().findFirst().orElse(null);
+
+        List<PaymentViewDto> payments = membership == null
+                ? Collections.emptyList()
+                : paymentRepository.findByMembershipOrderByMembershipHistoryDateDesc(membership)
+                .stream()
+                .map(this::toPaymentViewDto)
+                .collect(Collectors.toList());
+
+        model.addAttribute("payments", payments);
+        model.addAttribute("refundEligibility", membershipService.checkRefundEligibility(user));
+        return "mypage/mypage_membership_history";
+    }
+
+    private PaymentViewDto toPaymentViewDto(MembershipPayments p) {
+        String statusLabel;
+        String statusClass;
+        switch (p.getPaymentStatus()) {
+            case "PAID":
+                statusLabel = "결제완료";
+                statusClass = "status-booked";
+                break;
+            case "FAILED":
+                statusLabel = "결제실패";
+                statusClass = "status-pending";
+                break;
+            case "REFUNDED":
+                statusLabel = "환불완료";
+                statusClass = "status-cancel";
+                break;
+            default:
+                statusLabel = p.getPaymentStatus();
+                statusClass = "status-pending";
+        }
+
+        String cardInfo = (p.getCardBrand() != null && !"UNKNOWN".equals(p.getCardBrand()))
+                ? p.getCardBrand().toUpperCase() + " ****" + p.getCardLastFour()
+                : "-";
+
+        return new PaymentViewDto(
+                p.getMembershipHistoryDate(),
+                p.getMembershipOrderId(),
+                p.getMembershipPayAmount(),
+                cardInfo,
+                statusLabel,
+                statusClass
+        );
+    }
+
+    @PostMapping("/membership/cancel")
     public String mypageMembershipCancel(@AuthenticationPrincipal UserDetails userDetails,
                                          RedirectAttributes rttr) {
-        // TODO: membershipService.cancel(userDetails.getUsername())
-        rttr.addFlashAttribute("successMessage", "멤버십이 해지되었습니다.");
+        User user = userService.findByUserId(userDetails.getUsername());
+        RefundEligibilityDto result = membershipService.cancel(user);
+
+        if (result.isEligible()) {
+            rttr.addFlashAttribute("successMessage", result.getReason());
+        } else {
+            rttr.addFlashAttribute("errorMessage", result.getReason());
+        }
         return "redirect:/mypage/membership";
     }
 
