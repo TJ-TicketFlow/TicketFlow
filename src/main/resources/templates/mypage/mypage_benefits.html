@@ -13,17 +13,17 @@
                 <div class="hero-stat-label">등급</div>
                 <div class="grade-block">
                     <th:block th:if="${user.membership == 'premium'}">
-                        <img th:src="@{/images/cpupon-premium.png}" alt="Premium" class="membership-icon">
+                        <img th:src="@{/images/coupon-premium.png}" alt="Premium" class="membership-icon">
                         <div class="grade-name premium">Premium</div>
                         <a th:href="@{/mypage/membership}" class="btn-mem-link">멤버십 혜택 보러가기 ›</a>
                     </th:block>
                     <th:block th:if="${user.membership == 'basic'}">
-                        <img th:src="@{/images/cpupon-basic.png}" alt="Basic" class="membership-icon">
+                        <img th:src="@{/images/coupon-basic.png}" alt="Basic" class="membership-icon">
                         <div class="grade-name basic">Basic</div>
                         <a th:href="@{/mypage/membership}" class="btn-mem-link">멤버십 혜택 보러가기 ›</a>
                     </th:block>
                     <th:block th:if="${user.membership == null or user.membership == ''}">
-                        <img th:src="@{/images/cpupon-basic.png}" alt="없음" class="membership-icon" style="opacity:0.3;">
+                        <img th:src="@{/images/coupon-basic.png}" alt="없음" class="membership-icon" style="opacity:0.3;">
                         <div class="grade-name none">없음</div>
                         <a th:href="@{/mypage/membership}" class="btn-mem-link">가입하러가기 ›</a>
                     </th:block>

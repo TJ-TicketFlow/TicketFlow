@@ -24,12 +24,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/booking/webhooks", "/api/payment/webhook")
+                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook")
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/login", "/register",
                                 "/api/check-userid",         // 아이디 중복확인 API
+                                "/api/create-checkout",
                                 "/register/send-code",
                                 "/register/verify-code",
                                 "/find-id", "/find-id/**",
@@ -47,6 +48,10 @@ public class SecurityConfig {
                         .usernameParameter("user_id")
                         .passwordParameter("password")
                         .defaultSuccessUrl("/concert/", true)
+                        .successHandler((request, response, authentication) -> {
+                            request.getSession().setAttribute("logged_in", true);
+                            response.sendRedirect("/mypage/benefits");
+                        })
                         .failureUrl("/login?error")
                         .permitAll()
                 )

@@ -1,8 +1,11 @@
 package com.ticketflow.controller;
 
 import com.ticketflow.service.BookingService;
+import com.ticketflow.dto.WebhookRequestDto;
+import com.ticketflow.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import lombok.ToString;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,8 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+@ToString
+@RestController
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -120,10 +125,20 @@ public class WebhookController {
     }
 
 
-    // 멤버십 결제
+    private final MembershipService membershipService;
+
     @PostMapping("/payment/webhook")
-    public ResponseEntity<?> handlePaymentWebhook(){
-        return ResponseEntity.ok(Map.of("message", "webhook"));
+    public ResponseEntity<String> handleWebhook(@RequestBody WebhookRequestDto dto) {
+        try {
+            System.out.println("🔥 웹훅 수신됨, DTO 내용: " + dto);
+
+            membershipService.processPaymentWebhook(dto);
+            return ResponseEntity.ok("success");
+        } catch (Exception e) {
+            System.err.println("❌ 웹훅 처리 중 치명적 에러 발생!");
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 }
 

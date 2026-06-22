@@ -1,7 +1,13 @@
 package com.ticketflow.controller;
 
+import com.ticketflow.dto.CouponViewDto;
 import com.ticketflow.dto.UserUpdateDto;
+import com.ticketflow.entity.Membership;
 import com.ticketflow.entity.User;
+import com.ticketflow.entity.UserCoupon;
+import com.ticketflow.repository.MembershipPaymentRepository;
+import com.ticketflow.repository.MembershipRepository;
+import com.ticketflow.repository.UserCouponRepository;
 import com.ticketflow.service.BookingService;
 import com.ticketflow.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +26,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Map;
 
 @Controller
@@ -29,6 +40,7 @@ import java.util.Map;
 public class MyPageController {
 
     private final UserService userService;
+    private final UserCouponRepository userCouponRepository;
     private final BookingService bookingService;
 
     @GetMapping
@@ -42,7 +54,7 @@ public class MyPageController {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
         model.addAttribute("tickets", Collections.emptyList());
-        model.addAttribute("coupons", Collections.emptyList());
+        model.addAttribute("coupons", getAvailableCoupons(user));
         return "mypage/mypage_benefits";
     }
 
@@ -51,8 +63,22 @@ public class MyPageController {
                                 Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
-        model.addAttribute("coupons", Collections.emptyList());
+        model.addAttribute("coupons", getAvailableCoupons(user));
         return "mypage/mypage_coupons";
+    }
+    private List<CouponViewDto> getAvailableCoupons(User user) {
+        List<UserCoupon> userCoupons = userCouponRepository.findByUserAndUserCouponStatus(user, 0);
+
+        return userCoupons.stream()
+                .sorted(Comparator.comparing(UserCoupon::getUserCouponExpireAt))
+                .map(uc -> new CouponViewDto(
+                        uc.getCoupon().getCouponName(),
+                        uc.getCoupon().getCouponDiscountRate(),
+                        uc.getUserCouponIssuedAt().toLocalDate(),
+                        uc.getUserCouponExpireAt().toLocalDate(),
+                        Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), uc.getUserCouponExpireAt().toLocalDate()))
+                ))
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/profile")
@@ -133,11 +159,14 @@ public class MyPageController {
 
     @GetMapping("/membership/subscribe")
     public String mypageMembershipSubscribe(@AuthenticationPrincipal UserDetails userDetails,
-                                            @RequestParam(required = false) String plan,
-                                            RedirectAttributes rttr) {
-        // TODO: membershipService.subscribe(userDetails.getUsername(), plan)
-        rttr.addFlashAttribute("successMessage", "멤버십이 신청되었습니다.");
-        return "redirect:/mypage/membership";
+                                        @RequestParam(required = false) String plan,
+                                        Model model) {
+
+        User user = userService.findByUserId(userDetails.getUsername());
+        model.addAttribute("user", user);
+        model.addAttribute("plan", plan);
+
+        return "mypage/mypage_membership_subscribe";
     }
 
     @GetMapping("/membership/cancel")
