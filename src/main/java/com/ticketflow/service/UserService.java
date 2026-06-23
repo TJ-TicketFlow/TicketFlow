@@ -32,6 +32,7 @@ public class UserService {
     /**
      * 아이디 중복 여부 확인
      */
+    @Transactional(readOnly = true)
     public boolean isUserIdDuplicated(String userId) {
         return userRepository.existsByUserId(userId);
     }
@@ -39,6 +40,7 @@ public class UserService {
     /**
      * 이메일 중복 여부 확인
      */
+    @Transactional(readOnly = true)
     public boolean isEmailDuplicated(String email) {
         return userRepository.existsByUserEmail(email);
     }
@@ -84,6 +86,7 @@ public class UserService {
         userRepository.save(user);
         issueWelcomeCoupon(user);
     }
+
     private void issueWelcomeCoupon(User user) {
         Coupon coupon = couponRepository.findByCouponName("신규가입 웰컴 쿠폰")
                 .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 신규가입 웰컴 쿠폰"));
@@ -102,7 +105,7 @@ public class UserService {
     // ───────────────────────────────────────────────
 
     /**
-     * 비밀번호 변경
+     * 비밀번호 변경 (마이페이지 - 현재 비밀번호 확인 필요)
      * @throws IllegalArgumentException 현재 비밀번호 불일치 또는 새 비밀번호 미입력
      */
     @Transactional
