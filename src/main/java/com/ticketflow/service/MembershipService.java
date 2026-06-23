@@ -354,4 +354,16 @@ public class MembershipService {
             userCouponRepository.save(coupon);
         }
     }
+
+    @Scheduled(cron = "0 0 3 * * *")
+    public void issueThreeMonthLoyaltyCoupons() {
+        List<Membership> activeMemberships = membershipRepository.findByMembershipStatus("ACTIVE");
+        LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3);
+
+        for (Membership membership : activeMemberships) {
+            if (!membership.getMembershipStartDate().isAfter(threeMonthsAgo)) {
+                issueLoyaltyCouponIfNeeded(membership);
+            }
+        }
+    }
 }
