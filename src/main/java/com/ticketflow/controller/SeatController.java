@@ -63,6 +63,7 @@ public class SeatController {
      */
     @GetMapping("/layout/{concertId}")
     public ResponseEntity<String> getLayout(@PathVariable String concertId) {
+      
         return ResponseEntity.ok(seatService.getSeatLayoutType(concertId));
     }
 

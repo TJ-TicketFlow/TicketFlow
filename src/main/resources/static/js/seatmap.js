@@ -1,52 +1,139 @@
-// ==========================
+// ==========================================
+// 🔌 1. Socket.io 실시간 클라이언트 설정 (Netty 서버 연동)
+// ==========================================
+// Spring Boot Netty-SocketIO 서버가 열려있는 9092 포트로 연결합니다.
+const socket = io("http://localhost:9092");
+
+// ==========================================
 // 공연 ID 및 전역 설정
-// ==========================
-console.log("seatmap.js 실행됨");
+// ==========================================
+console.log("seatmap.js 실행됨 (실시간 소켓 활성화)");
 
 const seatContainer = document.getElementById("seat-container");
 const pathSegments = window.location.pathname.split('/');
 const concertId = pathSegments[pathSegments.length - 1];
 
 let seatLayout;
-let vipRows = [0, 1, 2, 3]; // 차등가일 때 VIP로 지정할 행 번호 (0부터 시작)
+let vipRows = []; // 기본 VIP 행 지정
 
-// ==========================
-// 🌟 공연 정보 동적 불러오기
-// ==========================
-// 🟢 seatmap.js 수정 방향 스케치
+// 전역 변수 초기화 (let 없이 기존 변수 활용)
+isSinglePrice = false;
+defaultSinglePrice = 0;
+concertPriceMap = {};
 
-// 1. 먼저 공연 정보를 불러옵니다.
+// 페이지 로드 시 백엔드 소켓 서버의 해당 공연 전용 'Room'에 입장
+if (concertId) {
+    socket.emit('join_concert', concertId);
+}
+
+// ==========================================
+// 📥 2. 서버로부터 수신하는 실시간 소켓 이벤트 리스너
+// ==========================================
+
+// [이벤트 A] 타인이 좌석을 선택(선점)했을 때 -> 해당 좌석을 회색으로 잠금
+socket.on('seat_selected_by_other', (data) => {
+    console.log(`🔒 타인이 좌석 선점함: ${data.seatId}`);
+    const targetSeat = document.querySelector(`[data-seat-id="${data.seatId}"]`);
+    if (targetSeat) {
+        targetSeat.style.background = "#d1d5db"; // 회색 잠금 색상
+        targetSeat.style.border = "1px solid #9ca3af";
+        targetSeat.style.cursor = "not-allowed";
+        targetSeat.dataset.status = "locked"; // 클릭 차단용 상태 심기
+    }
+});
+
+// [이벤트 B] 타인이 선택했던 좌석을 해제(취소)했을 때 -> 다시 예매 가능하게 복구
+socket.on('seat_cancelled_by_other', (data) => {
+    console.log(`🔓 타인이 좌석 해제함: ${data.seatId}`);
+    const targetSeat = document.querySelector(`[data-seat-id="${data.seatId}"]`);
+    if (targetSeat) {
+        targetSeat.dataset.status = "available"; // 상태 복구
+        targetSeat.style.cursor = "pointer";
+
+        // 등급별 원래 색상으로 롤백
+        if (targetSeat.dataset.seatClass === "VIP") {
+            targetSeat.style.background = "#facc15";
+            targetSeat.style.border = "1px solid #ca8a04";
+        } else {
+            targetSeat.style.background = "#3b82f6"; // 기본 파란색
+            targetSeat.style.border = "1px solid #2563eb";
+        }
+    }
+});
+
+
+// ==========================================
+// 🌟 공연 정보 & 레이아웃 순서 제어 (기존 fetch 유지)
+// ==========================================
 if (concertId) {
     fetch(`/seat/api/concert/${concertId}`)
         .then(res => res.json())
         .then(concert => {
-            // [여기가 중요!] 단일가 판별 및 가격 세팅을 완벽히 끝냅니다.
-            if (typeof initPriceMap === "function") {
-                initPriceMap(concert.concertPriceInfo);
+            console.log("✈️ 백엔드에서 받은 원본 공연 데이터:", concert);
+
+            // HTML 화면 바인딩
+            const nameEl = document.getElementById("concert-name");
+            const posterEl = document.getElementById("concert-poster");
+            const runtimeEl = document.getElementById("concert-runtime");
+            const dateEl = document.getElementById("concert-date");
+
+            if (nameEl) nameEl.innerText = concert.concertName;
+            if (posterEl) posterEl.src = concert.concertPosterUrl;
+            if (dateEl) dateEl.innerText = concert.concertDate;
+            if (runtimeEl) runtimeEl.innerText = concert.concertTime || concert.concertRuntime;
+
+            // 가격 정보 파싱 로직
+            const priceInfo = concert.concertPriceInfo;
+            concertPriceMap = {};
+            isSinglePrice = false;
+
+            if (priceInfo && priceInfo.trim() !== "") {
+                const cleanPriceInfo = priceInfo.trim();
+                const pairs = cleanPriceInfo.includes(",") ? cleanPriceInfo.split(",") : [cleanPriceInfo];
+
+                pairs.forEach(pair => {
+                    const trimmedPair = pair.trim();
+                    const priceMatch = trimmedPair.match(/[\d,]+원?$/);
+
+                    if (priceMatch) {
+                        const priceStr = priceMatch[0];
+                        let cleanPrice = parseInt(priceStr.replace(/,/g, "").replace("원", ""), 10);
+
+                        if (!isNaN(cleanPrice) && cleanPrice > 0 && cleanPrice < 1000) {
+                            cleanPrice = cleanPrice * 1000;
+                        }
+
+                        let gradeName = trimmedPair.replace(priceStr, "").trim();
+                        gradeName = gradeName.replace(/석석/g, "석");
+                        if (gradeName.endsWith("석")) {
+                            gradeName = gradeName.slice(0, -1);
+                        }
+
+                        if (gradeName && !isNaN(cleanPrice)) {
+                            concertPriceMap[gradeName] = cleanPrice;
+                        }
+                    }
+                });
             }
 
-            // 🌟 가격 세팅이 완전히 끝난 "이 시점"에 레이아웃을 불러오라고 강제합니다.
             return fetch(`/seat/layout/${concertId}`);
         })
         .then(res => res.text())
         .then(type => {
             const cleanType = type.trim();
-            console.log("공연 레이아웃 타입:", cleanType);
-
-            // 이제는 무조건 isSinglePrice가 세팅된 상태이므로 올바르게 그려집니다!
             if (cleanType === "SEAT" || cleanType === "SEAT_A") {
                 seatLayout = seatLayouts.map1;
                 renderSeat();
-            } else if (cleanType === "SEAT_B") {
-                seatLayout = seatLayouts.map2;
-                renderSeat();
-            } else if (cleanType === "STANDING") {
+            } else if (cleanType === "SEAT_B" || cleanType === "STANDING") {
                 showQuantitySelectionForm();
+            } else {
+                seatContainer.innerHTML = "<h3>알 수 없는 레이아웃 타입입니다.</h3>";
             }
         })
-        .catch(err => console.error("데이터 로드 에러:", err));
+        .catch(err => {
+            console.error("🚨 데이터 로드 중 치명적 에러 발생:", err);
+        });
 }
-
 // ==========================
 // 공연별 고정 좌석 배치 데이터
 // ==========================
@@ -54,69 +141,24 @@ const seatLayouts = {
     map1: [
         ['A','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
         ['A','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
-        ['R','R','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
         ['A','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
-        ['A','R','R','R','R','R','A','A','A','N','A','A','A','A','A','A','A','A'],
-        ['A','R','R','R','R','A','A','A','A','N','R','A','R','R','R','R','A','A'],
-        ['N','N','R','A','A','A','A','A','A','N','A','A','A','A','R','A','N','N'],
-        ['N','N','R','A','A','A','A','A','A','N','A','A','A','A','A','A','N','N'],
-        ['N','N','R','R','R','R','A','A','A','N','A','R','R','R','R','R','A','N'],
+        ['A','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
+        ['A','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
+        ['A','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','A'],
+        ['N','N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','N','N'],
+        ['N','N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','N','N'],
+        ['N','N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
         ['N','N','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
         ['N','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
         ['N','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N'],
         ['N','A','A','A','A','A','A','A','A','N','A','A','A','A','A','A','A','N']
-    ],
-    map2: [
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','R','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','R','R','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','R','R','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','R','R','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A'],
-        ['A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A','A']
     ]
+
 };
 
-// ==========================
-// 레이아웃 조건 분기 및 로드
-// ==========================
-if (concertId) {
-    fetch(`/seat/layout/${concertId}`)
-        .then(res => res.text())
-        .then(type => {
-            const cleanType = type.trim();
-            console.log("공연 레이아웃 타입:", cleanType);
-
-            if (cleanType === "SEAT" || cleanType === "SEAT_A") {
-                seatLayout = seatLayouts.map1;
-                renderSeat();
-            } else if (cleanType === "SEAT_B") {
-                seatLayout = seatLayouts.map2;
-                renderSeat();
-            } else if (cleanType === "STANDING") {
-                // 🌟 비지정석(스탠딩)일 때 수량 선택 폼 로드
-                showQuantitySelectionForm();
-            } else {
-                seatContainer.innerHTML = "<h3>알 수 없는 레이아웃 타입입니다.</h3>";
-            }
-        })
-        .catch(err => console.error("레이아웃 로드 에러:", err));
-}
-
-// ==========================
-// 지정석 바둑판 렌더링 함수
-// ==========================
 function renderSeat() {
     seatContainer.innerHTML = "";
 
-    // 무대 그리기
     const stageDiv = document.createElement("div");
     stageDiv.innerText = "STAGE";
     stageDiv.style.width = "70%"; stageDiv.style.maxWidth = "500px"; stageDiv.style.height = "40px";
@@ -125,7 +167,9 @@ function renderSeat() {
     stageDiv.style.justifyContent = "center"; stageDiv.style.margin = "0 auto 40px auto"; stageDiv.style.borderRadius = "4px";
     seatContainer.appendChild(stageDiv);
 
-    // 좌석 배열 배치
+    const priceList = Object.values(concertPriceMap).sort((a, b) => b - a);
+    const defaultPrice = priceList[0] || 0;
+
     seatLayout.forEach((row, rowIndex) => {
         const rowDiv = document.createElement("div");
         rowDiv.style.display = "flex"; rowDiv.style.justifyContent = "center"; rowDiv.style.gap = "4px"; rowDiv.style.marginBottom = "4px";
@@ -147,23 +191,34 @@ function renderSeat() {
             seatDiv.title = seatId;
             seatDiv.style.cursor = "pointer";
             seatDiv.dataset.selected = "false";
+            seatDiv.dataset.status = "available"; // 초기 상태 설정
 
-            // 🌟 [보완] 단일가(isSinglePrice)일 땐 vipRows 무시하고 무조건 GENERAL 처리
-            if (typeof isSinglePrice !== "undefined" && isSinglePrice) {
-                seatDiv.dataset.seatClass = "GENERAL";
+            let seatPrice = defaultPrice;
+            if (cell === 'R' || vipRows.includes(rowIndex)) {
+                seatDiv.dataset.seatClass = "VIP";
+                seatPrice = priceList[0] || defaultPrice;
             } else {
-                seatDiv.dataset.seatClass = vipRows.includes(rowIndex) ? "VIP" : "GENERAL";
+                seatDiv.dataset.seatClass = "GENERAL";
+                seatPrice = priceList[1] || priceList[0] || defaultPrice;
             }
 
-            // 색상 부여
+            seatDiv.dataset.price = seatPrice;
+
+            // 등급별 기본 색상 부여
             if (seatDiv.dataset.seatClass === "VIP") {
                 seatDiv.style.background = "#facc15"; seatDiv.style.border = "1px solid #ca8a04";
             } else {
-                seatDiv.style.background = "#4ade80"; seatDiv.style.border = "1px solid #16a34a";
+                seatDiv.style.background = "#3b82f6"; seatDiv.style.border = "1px solid #2563eb";
             }
 
-            // 클릭 이벤트
+            // 🖱️ [수정] 좌석 클릭 이벤트 핸들러 내부 소켓 연동
             seatDiv.addEventListener("click", () => {
+                // 🚨 다른 유저가 선점 중인 좌석이면 클릭 자체를 원천 차단
+                if (seatDiv.dataset.status === "locked") {
+                    alert("다른 유저가 선택 중인 좌석입니다.");
+                    return;
+                }
+
                 const isSelected = seatDiv.dataset.selected === "true";
 
                 if (!isSelected) {
@@ -173,19 +228,30 @@ function renderSeat() {
                         return;
                     }
                     seatDiv.dataset.selected = "true";
-                    seatDiv.style.background = "#3b82f6"; seatDiv.style.border = "1px solid #2563eb";
+                    seatDiv.style.background = "#1d4ed8"; seatDiv.style.border = "1px solid #1e40af"; // 내가 선택한 색상(진한파랑)
+
+                    // 📤 [소켓 전송] "나 이 좌석 찜했어!" 라고 서버에 브로드캐스트 요청
+                    socket.emit('seat_select', {
+                        concertId: concertId,
+                        seatId: seatId
+                    });
                 } else {
                     seatDiv.dataset.selected = "false";
                     if (seatDiv.dataset.seatClass === "VIP") {
                         seatDiv.style.background = "#facc15"; seatDiv.style.border = "1px solid #ca8a04";
                     } else {
-                        seatDiv.style.background = "#4ade80"; seatDiv.style.border = "1px solid #16a34a";
+                        seatDiv.style.background = "#3b82f6"; seatDiv.style.border = "1px solid #2563eb";
                     }
+
+                    // 📤 [소켓 전송] "나 이 좌석 선택 취소할게!" 라고 서버에 브로드캐스트 요청
+                    socket.emit('seat_cancel', {
+                        concertId: concertId,
+                        seatId: seatId
+                    });
                 }
 
                 const activeSelectedSeats = seatContainer.querySelectorAll('[data-selected="true"]');
                 updateSelectedSeatsUI(activeSelectedSeats);
-
                 if (typeof calculateAndDisplayTotalPrice === "function") {
                     calculateAndDisplayTotalPrice(activeSelectedSeats);
                 }
@@ -203,9 +269,9 @@ function renderLegend() {
     const legend = document.createElement("div");
     legend.style.display = "flex"; legend.style.gap = "20px"; legend.style.justifyContent = "center"; legend.style.marginTop = "16px";
     legend.innerHTML = `
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:20px;height:20px;background:#4ade80;border:1px solid #16a34a;border-radius:3px;"></div><span>선택 가능</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:20px;height:20px;background:#3b82f6;border:1px solid #2563eb;border-radius:3px;"></div><span>선택됨</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:20px;height:20px;background:#d1d5db;border:1px solid #9ca3af;border-radius:3px;"></div><span>예매완료</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:20px;height:20px;background:#3b82f6;border:1px solid #2563eb;border-radius:3px;"></div><span>선택 가능</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:20px;height:20px;background:#1d4ed8;border:1px solid #1e40af;border-radius:3px;"></div><span>선택됨</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:20px;height:20px;background:#d1d5db;border:1px solid #9ca3af;border-radius:3px;"></div><span>선택불가(타인선점)</span></div>
     `;
     seatContainer.appendChild(legend);
 }
@@ -228,108 +294,119 @@ function updateSelectedSeatsUI(selectedElements) {
 }
 
 // ===================================================
-// 🌟 [신설 및 통합] 티켓 장수 선택형 UI 렌더링 영역
-// ===================================================
-// ===================================================
-// 🌟 [레이아웃 완전 분리] 티켓 장수 선택형 UI 렌더링 영역
+// 🌟 티켓 장수 선택형 UI 렌더링 영역 (스탠딩 & SEAT_B 공용)
 // ===================================================
 function showQuantitySelectionForm() {
-    // 1️⃣ 오른쪽 사이드바(지정석용) 찾아내서 통째로 숨기기
     const rightSidebar = document.querySelector(".right-sidebar");
-    if (rightSidebar) {
-        rightSidebar.style.display = "none";
-    }
+    if (rightSidebar) rightSidebar.style.display = "none";
 
-    // 2️⃣ 중앙 좌석 페이지 영역을 화면 전체(100%) 넓이로 확장
     const seatPage = document.querySelector(".seat-page");
     if (seatPage) {
         seatPage.style.width = "100%";
         seatPage.style.flex = "1";
     }
 
-    // 3️⃣ 기존 배치도 영역 청소 후 수량 선택 카드 배치
     seatContainer.innerHTML = "";
 
     const formWrapper = document.createElement("div");
-    formWrapper.style.padding = "40px";
+    formWrapper.style.padding = "40px 30px";
     formWrapper.style.background = "#ffffff";
     formWrapper.style.borderRadius = "12px";
-    formWrapper.style.maxWidth = "500px";
-    formWrapper.style.margin = "60px auto";
-    formWrapper.style.boxShadow = "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)";
+    formWrapper.style.width = "100%";
+    formWrapper.style.maxWidth = "650px";
+    formWrapper.style.margin = "40px auto";
+    formWrapper.style.boxShadow = "0 10px 25px -5px rgba(0, 0, 0, 0.1)";
+    formWrapper.style.boxSizing = "border-box";
 
     formWrapper.innerHTML = `
-        <h2 style="margin-bottom: 8px; text-align: center; color: #1e293b; font-size: 22px;">티켓 수량 선택</h2>
-        <p style="margin-bottom: 32px; text-align: center; color: #64748b; font-size: 14px;">원하시는 티켓의 수량을 선택해 주세요. (인당 최대 4장)</p>
+        <h2 style="margin-bottom: 8px; text-align: center; color: #1e293b; font-size: 24px; font-weight: bold;">티켓 수량 선택</h2>
+        <p style="margin-bottom: 35px; text-align: center; color: #64748b; font-size: 14px;">원하시는 티켓의 수량을 선택해 주세요. (인당 최대 4장)</p>
     `;
 
-    // 4️⃣ 단일가/차등가에 따라 입력 행 생성
-    if (typeof isSinglePrice !== "undefined" && isSinglePrice) {
-        createQuantityRow(formWrapper, "일반석", defaultSinglePrice, "GENERAL");
-    } else if (typeof concertPriceMap !== "undefined") {
-        Object.keys(concertPriceMap).forEach(grade => {
-            createQuantityRow(formWrapper, `${grade}석`, concertPriceMap[grade], grade);
+    let finalPriceMap = {};
+
+    if (typeof concertPriceMap !== "undefined" && Object.keys(concertPriceMap).length > 0) {
+        Object.keys(concertPriceMap).forEach(key => {
+            let currentPrice = concertPriceMap[key];
+
+            let cleanKey = key.replace(/석석/g, "석");
+            if (cleanKey.endsWith("석")) {
+                cleanKey = cleanKey.slice(0, -1);
+            }
+
+            finalPriceMap[cleanKey] = currentPrice;
         });
     }
 
-    // 5️⃣ 하단에 결제 금액 및 예매하기 버튼을 이 카드 안으로 이사시키기
+    if (Object.keys(finalPriceMap).length > 0) {
+        Object.keys(finalPriceMap).forEach(gradeName => {
+            const price = finalPriceMap[gradeName];
+            createQuantityRow(formWrapper, `${gradeName}석`, price, gradeName);
+        });
+    } else if (isSinglePrice && defaultSinglePrice > 0) {
+        createQuantityRow(formWrapper, "전석 일반석", defaultSinglePrice, "GENERAL");
+    } else {
+        formWrapper.innerHTML += `<p style="text-align:center; color:#ef4444; font-weight:bold; margin-top:20px;">공연 가격 정보를 읽어오지 못했습니다.</p>`;
+    }
+
     const totalBox = document.createElement("div");
-    totalBox.style.marginTop = "30px";
-    totalBox.style.paddingTop = "20px";
-    totalBox.style.borderTop = "2px dashed #e2e8f0";
-    totalBox.style.display = "flex";
-    totalBox.style.justifyContent = "space-between";
-    totalBox.style.alignItems = "center";
+    totalBox.style.marginTop = "30px"; totalBox.style.paddingTop = "20px"; totalBox.style.borderTop = "2px dashed #e2e8f0";
+    totalBox.style.display = "flex"; totalBox.style.justifyContent = "space-between"; totalBox.style.alignItems = "center";
     totalBox.innerHTML = `
         <span style="font-weight: bold; color: #475569; font-size: 16px;">총 결제 금액</span>
-        <span id="standing-total-price" style="font-weight: bold; color: #3b82f6; font-size: 24px;">0원</span>
+        <span id="standing-total-price" style="font-weight: bold; color: #3b82f6; font-size: 26px;">0원</span>
     `;
     formWrapper.appendChild(totalBox);
 
     const submitBtn = document.createElement("button");
     submitBtn.innerText = "예매하기";
-    submitBtn.style.width = "100%";
-    submitBtn.style.marginTop = "24px";
-    submitBtn.style.padding = "14px";
-    submitBtn.style.background = "#10b981"; // 초록색 버튼
-    submitBtn.style.color = "#fff";
-    submitBtn.style.border = "none";
-    submitBtn.style.borderRadius = "6px";
-    submitBtn.style.fontSize = "16px";
-    submitBtn.style.fontWeight = "bold";
+    submitBtn.style.width = "100%"; submitBtn.style.marginTop = "24px"; submitBtn.style.padding = "15px";
+
+    // 🌟 예매하기 버튼 색상을 #3b82f6 으로 변경 완료
+    submitBtn.style.background = "#3b82f6";
+
+    submitBtn.style.color = "#fff"; submitBtn.style.border = "none";
+    submitBtn.style.borderRadius = "6px"; submitBtn.style.fontSize = "16px"; submitBtn.style.fontWeight = "bold";
     submitBtn.style.cursor = "pointer";
 
-    submitBtn.addEventListener("click", () => {
-        // 기존의 booking-submit-btn과 똑같은 제출 로직을 수행하도록 바인딩
-        submitBooking();
-    });
-
+    submitBtn.addEventListener("click", () => { submitBooking(); });
     formWrapper.appendChild(submitBtn);
+
     seatContainer.appendChild(formWrapper);
 }
 
 function createQuantityRow(container, label, price, gradeCode) {
     const row = document.createElement("div");
-    row.style.display = "flex"; row.style.justifyContent = "space-between";
-    row.style.alignItems = "center"; row.style.marginBottom = "20px"; row.style.paddingBottom = "16px";
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "center";
+    row.style.marginBottom = "20px";
+    row.style.paddingBottom = "16px";
     row.style.borderBottom = "1px solid #f1f5f9";
+    row.style.gap = "16px";
 
     row.innerHTML = `
-        <div>
-            <div style="font-weight: bold; color: #334155; font-size: 16px;">${label}</div>
-            <div style="font-size: 14px; color: #64748b; margin-top: 4px;">${price.toLocaleString()}원</div>
+        <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: bold; color: #334155; font-size: 16px;">
+                ${label}
+            </div>
+            <div style="font-size: 14px; color: #64748b; margin-top: 4px;">
+                ${price.toLocaleString()}원 
+            </div>
         </div>
-        <select class="ticket-qty-select" data-grade="${gradeCode}" data-price="${price}" style="padding: 8px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 15px; font-weight: 500;">
-            <option value="0">0장</option> <option value="1">1장</option>
-            <option value="2">2장</option> <option value="3">3장</option> <option value="4">4장</option>
-        </select>
+        <div style="flex-shrink: 0;">
+            <select class="ticket-qty-select" data-grade="${gradeCode}" data-price="${price}" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 15px; font-weight: 500; cursor: pointer;">
+                <option value="0">0장</option> 
+                <option value="1">1장</option>
+                <option value="2">2장</option> 
+                <option value="3">3장</option> 
+                <option value="4">4장</option>
+            </select>
+        </div>
     `;
 
     const selectEl = row.querySelector(".ticket-qty-select");
-    selectEl.addEventListener("change", (e) => {
-        handleQuantityChange(e.target);
-    });
-
+    selectEl.addEventListener("change", (e) => { handleQuantityChange(e.target); });
     container.appendChild(row);
 }
 
@@ -355,42 +432,50 @@ function handleQuantityChange(changedSelect) {
         totalPrice += (qty * price);
     });
 
-    // 🌟 카드 내부에 새로 만든 금액창에 실시간 반영
     const standingPriceEl = document.getElementById("standing-total-price");
     if (standingPriceEl) {
         standingPriceEl.innerText = totalPrice.toLocaleString() + "원";
     }
 }
 
+// ===================================================
+// 🌟 지정석(바둑판) 선택 좌석 실시간 금액 계산 함수 (값 반환형)
+// ===================================================
 
 // ===================================================
-// 🌟 [신설] 최종 선택 데이터 수집 및 결제/예매 요청 전송
+// 🌟 최종 선택 데이터 수집 및 결제/예매 요청 전송 (금액 주입완료)
 // ===================================================
 function submitBooking() {
     let bookingData = {
         concertId: concertId,
-        ticketType: ""
+        ticketType: "",
+        totalPrice: 0 // 🌟 DTO 매핑용 totalPrice 추가
     };
 
-    // 1. 현재 어떤 레이아웃(모드)인지 판별하여 데이터 수집
     const activeSelectedSeats = seatContainer.querySelectorAll('[data-selected="true"]');
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
 
     if (activeSelectedSeats.length > 0) {
-        // A. 지정석 모드 데이터 수집
         bookingData.ticketType = "SEAT";
         bookingData.selectedSeats = Array.from(activeSelectedSeats).map(el => el.dataset.seatId);
+
+        // return 받은 좌석 총 가격을 주입합니다.
+        bookingData.totalPrice = calculateAndDisplayTotalPrice(activeSelectedSeats);
+
     } else if (qtySelects.length > 0) {
-        // B. 수량 선택형(스탠딩) 모드 데이터 수집
         bookingData.ticketType = "STANDING";
         bookingData.quantities = {};
 
         let totalQty = 0;
+        let calculatedPrice = 0;
+
         qtySelects.forEach(select => {
             const qty = parseInt(select.value, 10);
+            const price = parseInt(select.dataset.price, 10) || 0;
             if (qty > 0) {
                 bookingData.quantities[select.dataset.grade] = qty;
                 totalQty += qty;
+                calculatedPrice += (qty * price);
             }
         });
 
@@ -398,37 +483,32 @@ function submitBooking() {
             alert("티켓 수량을 1장 이상 선택해 주세요.");
             return;
         }
+
+        // 수량 폼 합산 가격을 주입합니다.
+        bookingData.totalPrice = calculatedPrice;
     } else {
         alert("선택된 좌석이나 티켓 수량이 없습니다.");
         return;
     }
 
-    // 콘솔창에서 가공된 데이터 눈으로 확인하기
-    console.log("✈️ 백엔드로 전송할 최종 예매 데이터:", bookingData);
-
-    // 2. 백엔드 컨트롤러로 데이터 전송 (Fetch API 예시)
-    // 실제 결제 페이지로 이동하거나 백엔드 세션에 임시 저장을 요청합니다.
+    console.log("✈ nighttime 백엔드로 전송할 최종 예매 데이터:", bookingData);
 
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
-
 
     fetch("/seat/api/booking/prepare", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            // 🌟 CSRF 토큰 열쇠 추가
             [csrfHeader]: csrfToken
         },
         body: JSON.stringify(bookingData)
     })
         .then(res => {
             if (!res.ok) throw new Error("예매 정보 등록에 실패했습니다.");
-            return res.json(); // 보통 예매 임시 ID 등을 반환받음
+            return res.json();
         })
         .then(result => {
-            // 성공 시 결제 페이지(예: /payment)로 페이지 이동
-            // window.location.href = `/payment?bookingId=${result.bookingId}`;
             alert("데이터 전송 성공! 결제 페이지 연동부로 진입합니다.");
         })
         .catch(err => {
