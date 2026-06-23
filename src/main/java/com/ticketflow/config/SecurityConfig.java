@@ -22,9 +22,12 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // 1️⃣ [핵심] CSRF 보호 조치에서 좌석 예매 API 주소들을 제외시킵니다.
+        // POST 요청 시 토큰 검사를 하지 않도록 열어주는 설정입니다.
+
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/concert/*/like") // "좋아요" 요청만 CSRF 예외 처리
+                        .ignoringRequestMatchers("/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel") // "좋아요" 요청만 CSRF 예외 처리
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(

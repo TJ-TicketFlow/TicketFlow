@@ -119,4 +119,32 @@ public class SeatController {
         int price = seatService.calculatePrice(concertId, seatClass);
         return ResponseEntity.ok(price);
     }
-}
+
+    @PostMapping("/api/booking/prepare")
+    public ResponseEntity<?> prepareBooking(@RequestBody Map<String, Object> bookingData) {
+
+        System.out.println("====== ✈️ [백엔드] 프론트엔드 예매 데이터 수신 ======");
+        System.out.println("공연 ID (concertId): " + bookingData.get("concertId"));
+        System.out.println("티켓팅 타입 (ticketType): " + bookingData.get("ticketType"));
+
+        // 지정석(SEAT)일 때 들어오는 좌석 배열 출력
+        if (bookingData.containsKey("selectedSeats")) {
+            System.out.println("선택된 좌석 리스트 (selectedSeats): " + bookingData.get("selectedSeats"));
+        }
+
+        // 비지정석(STANDING)일 때 들어오는 등급별 수량 객체 출력
+        if (bookingData.containsKey("quantities")) {
+            System.out.println("선택된 등급별 수량 (quantities): " + bookingData.get("quantities"));
+        }
+        System.out.println("==================================================");
+
+        // 🌟 프론트엔드가 다음 단계(결제 창 등)로 부드럽게 넘어갈 수 있도록 응답값 세팅
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "SUCCESS");
+        response.put("bookingId", "TEMP_B_" + System.currentTimeMillis()); // 임시 예매 ID 생성
+
+        return ResponseEntity.ok(response);
+    }
+} // 클래스 마지막 닫는 괄호
+
+
