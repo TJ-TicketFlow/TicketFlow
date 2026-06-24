@@ -1,9 +1,7 @@
 package com.ticketflow.service;
 
-import com.ticketflow.entity.Concert;
-import com.ticketflow.entity.Seat;
-import com.ticketflow.repository.ConcertRepository;
-import com.ticketflow.repository.SeatRepository;
+import com.ticketflow.entity.*;
+import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

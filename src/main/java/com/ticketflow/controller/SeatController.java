@@ -24,8 +24,8 @@ public class SeatController {
 
 
     @GetMapping("/{concertId}")
-    public String seatPage(@PathVariable String concertId, Model model){
-        model.addAttribute("concertId",concertId);
+    public String seatPage(@PathVariable String concertId, Model model) {
+        model.addAttribute("concertId", concertId);
         return "concert/seatmap"; //나중에 검토
     }
     /**
@@ -42,7 +42,7 @@ public class SeatController {
         response.put("concertPosterUrl", concert.getConcertPosterUrl());
         response.put("concertTime", concert.getConcertRuntime());
         response.put("concertDate", concert.getConcertStartDate().toString());
-        response.put("concertPriceInfo",concert.getConcertPriceInfo());
+        response.put("concertPriceInfo", concert.getConcertPriceInfo());
 
         return ResponseEntity.ok(response);
     }
