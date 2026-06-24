@@ -2,11 +2,7 @@ package com.ticketflow.service;
 
 import com.ticketflow.dto.BookingRequestDto;
 import com.ticketflow.entity.*;
-import com.ticketflow.repository.MembershipRepository;
-import com.ticketflow.repository.PayRepository;
-import com.ticketflow.repository.ReservationRepository;
-import com.ticketflow.repository.UserCouponRepository;
-import com.ticketflow.repository.UserRepository;
+import com.ticketflow.repository.*;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +34,7 @@ public class BookingService {
     private final ReservationRepository reservationRepository;
     private final UserCouponRepository userCouponRepository;
     private final MembershipRepository membershipRepository;
+    private final SeatRepository seatRepository;
 
     // 💡 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
@@ -585,8 +582,18 @@ public class BookingService {
             }
             map.put("venue", venue);
 
-            // 좌석 정보 (예: VIP석 1열 5번)
-            map.put("seat", seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번");
+            // ==============================================================
+            // 🌟 [핵심 수정] 대표 좌석 1개가 아니라, 영수증에 적어둔 전체 좌석 텍스트를 꺼냅니다!
+            // ==============================================================
+            String allSeatsText = reservation.getSelectedSeatsText();
+
+            // 방어 로직: 이 기능을 만들기 전(과거)에 예매해서 텍스트가 텅 비어있다면? 기존처럼 1개만 보여줌
+            if (allSeatsText == null || allSeatsText.isBlank()) {
+                allSeatsText = seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번";
+            }
+
+            map.put("seat", allSeatsText);
+            // ==============================================================
 
             // 관람일시 (List 페이지와 동일한 방식 적용)
             String viewDate = "-";
@@ -757,14 +764,23 @@ public class BookingService {
         }
 
         // 4. 좌석을 다시 [예매 가능] 상태로 풀어주기
+        // 4. 좌석을 다시 [예매 가능] 상태로 풀어주기
         Reservation reservation = pay.getReservation();
         if (reservation != null && reservation.getSelectedSeat() != null) {
-            var selectedSeat = reservation.getSelectedSeat();
-            var seat = selectedSeat.getSeat();
+            reservation.getSelectedSeat().setSeatState((short) 0); // 껍데기 해제
 
-            // 임시 선택 상태 해제(0) 및 실제 좌석 사용가능(1) 처리
-            selectedSeat.setSeatState((short) 0);
-            seat.setSeatStatus((short) 1);
+            // 🌟 [수정된 부분] 저장해둔 진짜 ID들을 꺼내서 모조리 1(가능)로 돌려놓습니다!
+            String idsStr = reservation.getReservedSeatIds();
+            if (idsStr != null && !idsStr.isEmpty()) {
+                String[] seatIds = idsStr.split(",");
+                for (String sId : seatIds) {
+                    Seat seatToFree = seatRepository.findById(sId).orElse(null);
+                    if (seatToFree != null) {
+                        seatToFree.setSeatStatus((short) 1); // 싹 다 해제!
+                    }
+                }
+                System.out.println("✅ 예매된 모든 좌석(" + idsStr + ") 취소 완료 및 상태 복구!");
+            }
         }
     }
 
@@ -852,22 +868,27 @@ public class BookingService {
     // ==========================================
     @Transactional
     public void releaseUnpaidSeat(Long reservationKey) {
-        // 1. 임시 예약 장부를 찾습니다.
         Reservation reservation = reservationRepository.findById(reservationKey).orElse(null);
-
-        // 예약 장부가 없거나, 이미 선택된 좌석이 없다면 무시합니다.
-        if (reservation == null || reservation.getSelectedSeat() == null) {
-            return;
-        }
+        if (reservation == null || reservation.getSelectedSeat() == null) return;
 
         SelectedSeat selectedSeat = reservation.getSelectedSeat();
-        Seat seat = selectedSeat.getSeat();
 
         // 3. 결제가 안 된 좀비 좌석이라면 다시 세상에 풀어줍니다!
         if (selectedSeat.getSeatState() == 1 || selectedSeat.getSeatState() == 2) {
-            selectedSeat.setSeatState((short) 0); // 선택 상태 해제
-            seat.setSeatStatus((short) 1);        // 1: 다시 누구나 예매 가능 상태로 복구
-            System.out.println("✅ " + seat.getSeatId() + " 좌석이 결제창 이탈로 인해 다시 예매 가능 상태로 풀렸습니다.");
+            selectedSeat.setSeatState((short) 0);
+
+            // 🌟 [수정된 부분] 여기도 똑같이 모든 좌석 해제!
+            String idsStr = reservation.getReservedSeatIds();
+            if (idsStr != null && !idsStr.isEmpty()) {
+                String[] seatIds = idsStr.split(",");
+                for (String sId : seatIds) {
+                    Seat seatToFree = seatRepository.findById(sId).orElse(null);
+                    if (seatToFree != null) {
+                        seatToFree.setSeatStatus((short) 1);
+                    }
+                }
+            }
+            System.out.println("✅ 결제창 이탈! 좌석(" + idsStr + ") 다시 예매 가능 상태로 풀림.");
         }
     }
 

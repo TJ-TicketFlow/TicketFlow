@@ -95,9 +95,20 @@ public class BookingController {
             return ResponseEntity.status(400).body("이미 결제가 완료된 예매건입니다.");
         }
 
-        // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
-        String checkoutUrl = bookingService.createTemporaryPayment(requestDto);
-        return ResponseEntity.ok(checkoutUrl);
+        // ==============================================================
+        // 🌟 [수정된 부분] try-catch로 감싸서 캡차 실패 메시지를 프론트로 전달합니다!
+        // ==============================================================
+        try {
+            // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
+            String checkoutUrl = bookingService.createTemporaryPayment(requestDto);
+            return ResponseEntity.ok(checkoutUrl);
+
+        } catch (IllegalArgumentException e) {
+            // 💡 캡차가 틀렸을 때 서비스에서 던진 메시지를 400 에러와 함께 보냅니다.
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("결제 준비 중 서버 오류가 발생했습니다.");
+        }
     }
 
     // 3. 쿠폰 목록 가져오기

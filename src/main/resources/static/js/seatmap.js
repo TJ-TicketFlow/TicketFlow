@@ -429,28 +429,66 @@ function handleQuantityChange(changedSelect) {
 }
 
 function submitBooking() {
-    let bookingData = { concertId: concertId, ticketType: "STANDING", quantities: {}, totalPrice: 0 };
+    // 1. 현재 화면이 지정석(배치도)인지 스탠딩(수량 선택)인지 판별
+    // 화면에 수량 선택 select 박스가 있으면 스탠딩, 없으면 지정석입니다.
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
+    const isStanding = qtySelects.length > 0;
 
-    let totalQty = 0;
-    let calculatedPrice = 0;
+    let bookingData = {
+        concertId: concertId,
+        ticketType: isStanding ? "STANDING" : "SEAT",
+        quantities: {}, // 스탠딩용 수량 정보
+        selectedSeats: [], // 지정석용 좌석 ID 리스트
+        totalPrice: 0
+    };
 
-    qtySelects.forEach(select => {
-        const qty = parseInt(select.value, 10);
-        const price = parseInt(select.dataset.price, 10) || 0;
-        if (qty > 0) {
-            bookingData.quantities[select.dataset.grade] = qty;
-            totalQty += qty;
-            calculatedPrice += (qty * price);
+    if (isStanding) {
+        // ==========================================
+        // [스탠딩 모드 처리] 드롭다운 수량 수집
+        // ==========================================
+        let totalQty = 0;
+        let calculatedPrice = 0;
+
+        qtySelects.forEach(select => {
+            const qty = parseInt(select.value, 10);
+            const price = parseInt(select.dataset.price, 10) || 0;
+            if (qty > 0) {
+                bookingData.quantities[select.dataset.grade] = qty;
+                totalQty += qty;
+                calculatedPrice += (qty * price);
+            }
+        });
+
+        if (totalQty === 0) {
+            alert("티켓 수량을 1장 이상 선택해 주세요.");
+            return;
         }
-    });
+        bookingData.totalPrice = calculatedPrice;
 
-    if (totalQty === 0) {
-        alert("티켓 수량을 1장 이상 선택해 주세요.");
-        return;
+    } else {
+        // ==========================================
+        // [지정석 모드 처리] 선택된 사각형(div) 좌석 수집
+        // ==========================================
+        const activeSelectedSeats = seatContainer.querySelectorAll('[data-selected="true"]');
+
+        if (activeSelectedSeats.length === 0) {
+            alert("좌석을 1개 이상 선택해 주세요.");
+            return;
+        }
+
+        let calculatedPrice = 0;
+        activeSelectedSeats.forEach(seatEl => {
+            // 선택된 좌석들의 ID(예: SEAT_R1_C1)를 배열에 담음
+            bookingData.selectedSeats.push(seatEl.dataset.seatId);
+            calculatedPrice += parseInt(seatEl.dataset.price || 0, 10);
+        });
+
+        bookingData.totalPrice = calculatedPrice;
     }
-    bookingData.totalPrice = calculatedPrice;
 
+    // ==========================================
+    // ✈️ 백엔드 전송 서버 통신부
+    // ==========================================
     console.log("✈ 백엔드로 전송할 최종 예매 데이터:", bookingData);
 
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
@@ -468,6 +506,13 @@ function submitBooking() {
             if (!res.ok) throw new Error("예매 정보 등록에 실패했습니다.");
             return res.json();
         })
-        .then(result => { alert("데이터 전송 성공! 결제부로 진입합니다."); })
-        .catch(err => { alert("예매 처리 중 오류가 발생했습니다."); });
+        .then(result => {
+            alert("데이터 전송 성공! 결제부로 진입합니다.");
+            const reservationKey = result.reservationKey;
+            window.location.href = `/booking/payment?reservationKey=${reservationKey}`;
+        })
+        .catch(err => {
+            alert("예매 처리 중 오류가 발생했습니다.");
+            console.error(err);
+        });
 }
