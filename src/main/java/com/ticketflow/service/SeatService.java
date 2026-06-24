@@ -28,8 +28,16 @@ public class SeatService {
 
         String priceInfo = concert.getConcertPriceInfo();
 
-        if (priceInfo.contains("스탠딩")) {
-            return "SEAT_B";
+        if (priceInfo == null || priceInfo.trim().isEmpty()) {
+            return "SEAT_A"; // 가격 정보가 없으면 안전하게 기본 좌석형 리턴
+        }
+
+        // 🌟 대소문자 무관하게 비교하기 위해 대문자로 변환 처리
+        String upperPriceInfo = priceInfo.toUpperCase();
+
+        // 🌟 "스탠딩"이나 "GA"라는 단어가 포함되어 있다면 배치도가 없는 스탠딩형으로 판단
+        if (upperPriceInfo.contains("스탠딩") || upperPriceInfo.contains("GA")) {
+            return "STANDING"; // 앞서 seatmap.js 조건문과 맞추기 위해 "STANDING" 또는 "SEAT_B"를 리턴
         } else {
             return "SEAT_A";
         }

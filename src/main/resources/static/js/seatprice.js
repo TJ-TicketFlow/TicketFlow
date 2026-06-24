@@ -1,11 +1,14 @@
-// src/main/resources/static/js/seat-price.js 중 일부
-
+// ===================================================
 // src/main/resources/static/js/seat-price.js
+// ===================================================
 
 let concertPriceMap = {};
 let isSinglePrice = false;
 let defaultSinglePrice = 0;
 
+/**
+ * 1. 백엔드 가격 정보 문자열 파싱 및 오염 방어
+ */
 function initPriceMap(priceInfoStr) {
     concertPriceMap = {};
     isSinglePrice = false;
@@ -18,43 +21,46 @@ function initPriceMap(priceInfoStr) {
 
     console.log("▶ 가격 계산 모듈이 처리할 데이터:", priceInfoStr);
 
-    // 쉼표(,)를 기준으로 등급이 나뉘어 있는지 확인
-    // 단, 가격 자체에 포함된 쉼표(88,000)와 구분용 쉼표를 구별하기 위해 공백을 포함하거나 단어를 체크합니다.
-    // 가장 안전한 방법은 원(원)이나 석(석) 뒤의 쉼표를 기준으로 쪼개는 것입니다.
-    const parts = priceInfoStr.split(/석\s*|원\s*,\s*/);
-
-    // 만약 잘 안 쪼개졌다면 일반 쉼표로 분리 시도하되, 숫자 뒤의 쉼표인지 확인
     let items = priceInfoStr.split(/,(?=\s*[^0-9]*[A-Za-z가-힣])/);
     if (items.length === 1 && priceInfoStr.includes(',')) {
-        // "등급 158,000, 등급 88,000" 형태 대응
         items = priceInfoStr.split(/,(?=\s*[A-Za-z가-힣]+)/);
     }
 
     if (items.length === 1) {
-        // 1. 단일가 처리
+        // [단일가 처리]
         const numericStr = priceInfoStr.replace(/[^0-9]/g, '');
         if (numericStr) {
+            let price = parseInt(numericStr, 10);
+
+            // 🚨 백엔드 만원 단위 오염 방어 (120원 등 방지)
+            if (price > 0 && price < 1000) {
+                price = price * 1000;
+            }
+
             isSinglePrice = true;
-            defaultSinglePrice = parseInt(numericStr, 10);
+            defaultSinglePrice = price;
             console.log(`가격 계산 모듈: [단일가] 전 좌석 ${defaultSinglePrice}원 적용`);
             return;
         }
     } else {
-        // 2. 차등가 처리 ("VIP패키지석 158,000원", "GA스탠딩석 88,000원")
+        // [차등가 처리]
         items.forEach(item => {
             if (!item.trim()) return;
 
-            // 문자열에서 오직 숫자만 싹 긁어모으기 (쉼표 제거 포함)
             const numericStr = item.replace(/[^0-9]/g, '');
-            const price = parseInt(numericStr, 10);
+            let price = parseInt(numericStr, 10);
 
-            // 숫자, 쉼표, '원', 공백을 제외한 순수 글자(등급명) 추출
+            // 🚨 백엔드 만원 단위 오염 방어
+            if (!isNaN(price) && price > 0 && price < 1000) {
+                price = price * 1000;
+            }
+
             const textOnly = item.replace(/[0-9,원\s]/g, '').toUpperCase();
 
             if (textOnly && !isNaN(price)) {
                 if (textOnly.includes("VIP")) {
                     concertPriceMap["VIP"] = price;
-                } else if (textOnly.includes("GA") || textOnly.includes("스탠딩") || textOnly.includes("일반")) {
+                } else if (textOnly.includes("GA") || textOnly.includes("스탠딩") || textOnly.includes("일반") || textOnly.includes("GENERAL")) {
                     concertPriceMap["GENERAL"] = price;
                 } else {
                     concertPriceMap[textOnly] = price;
@@ -65,31 +71,79 @@ function initPriceMap(priceInfoStr) {
         console.log("가격 계산 모듈: [차등가 파싱 성공] 등급별 가격표:", concertPriceMap);
     }
 }
-/**
- * 2. 현재 선택된 좌석들의 총 금액 계산 및 출력
- */
-function calculateAndDisplayTotalPrice(selectedElements) {
-    const priceDisplayEl = document.getElementById("total-price-display");
-    if (!priceDisplayEl) return;
 
+/**
+ * 2. [순수 계산 함수] 현재 선택된 좌석들의 총 금액만 계산하여 return
+ * (UI 조작 없이 오직 숫자 연산만 수행하여 독립성 확보)
+ */
+function calculateSelectedSeatsPrice(selectedElements) {
     let totalPrice = 0;
 
+    if (!selectedElements || selectedElements.length === 0) {
+        return totalPrice;
+    }
+
     selectedElements.forEach(seatEl => {
-        // 단일가 플래그가 켜져 있으면 좌석 등급 무관하게 기본가 적용
+        // 만약 지정석 배치도에서 엘리먼트에 직접 숫자가 박혀있다면 최우선 적용
+        if (seatEl.dataset.price) {
+            totalPrice += parseInt(seatEl.dataset.price, 10) || 0;
+            return;
+        }
+
+        // 단일가 플래그가 켜져 있으면 기본가 적용
         if (isSinglePrice) {
             totalPrice += defaultSinglePrice;
         }
-        // 등급별 차등가 적용인 경우
+        // 등급별 차등가 연산
         else {
             const seatClass = seatEl.dataset.seatClass ? seatEl.dataset.seatClass.toUpperCase() : "";
             if (concertPriceMap[seatClass]) {
                 totalPrice += concertPriceMap[seatClass];
             } else {
-                console.warn(`⚠️ 현재 클릭한 좌석 등급(${seatClass})에 해당하는 가격이 가격표에 없습니다.`);
+                // 방어 코드: 키가 완전히 일치하지 않을 때를 위한 유연한 매칭
+                let matched = false;
+                Object.keys(concertPriceMap).forEach(key => {
+                    if (key.includes(seatClass) || seatClass.includes(key)) {
+                        totalPrice += concertPriceMap[key];
+                        matched = true;
+                    }
+                });
+
+                if (!matched) {
+                    console.warn(`⚠️ 현재 클릭한 좌석 등급(${seatClass})에 해당하는 가격을 찾지 못했습니다.`);
+                }
             }
         }
     });
 
-    // 화면에 최종 금액 갱신
-    priceDisplayEl.innerText = totalPrice.toLocaleString() + "원";
+    return totalPrice;
+}
+
+/**
+ * 3. [UI 출력 함수] 연산된 금액을 가져와 화면 레이아웃에 맞춰 갱신 및 return
+ */
+function calculateAndDisplayTotalPrice(selectedElements) {
+    // 💡 분리된 순수 계산 함수를 호출하여 가격을 가져옵니다.
+    const totalPrice = calculateSelectedSeatsPrice(selectedElements);
+
+    // 유연한 엘리먼트 감지 (화면 구조 변화 대응)
+    const totalDisplayEl =
+        document.getElementById("total-price-display") ||
+        document.getElementById("standing-total-price") ||
+        document.querySelector(".right-sidebar span[style*='color']") ||
+        document.querySelector(".right-sidebar div") ||
+        document.evaluate("//span[contains(text(),'결제 예정 금액')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue?.parentElement;
+
+    if (totalDisplayEl) {
+        const priceTarget = totalDisplayEl.querySelector("strong") || totalDisplayEl.querySelector("span") || totalDisplayEl;
+
+        if (priceTarget.innerHTML && priceTarget.innerHTML.includes("결제 예정 금액")) {
+            priceTarget.innerHTML = `결제 예정 금액 <strong style="color: #3b82f6; font-size: 20px;">${totalPrice.toLocaleString()}원</strong>`;
+        } else {
+            priceTarget.innerText = totalPrice.toLocaleString() + "원";
+        }
+    }
+
+    // 외부 전송부(submitBooking 등)에서 연동해 쓸 수 있도록 계산된 금액을 최종 리턴  
+    return totalPrice;
 }
