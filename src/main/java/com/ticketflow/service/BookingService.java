@@ -757,7 +757,7 @@ public class BookingService {
         System.out.println("✅ 취소수수료: " + cancelFee + "원, 실제 환불될 금액: " + refundAmount + "원");
 
         // 🚨 레몬스퀴지 환불 API 연동이 필요하다면 이 자리에서 호출합니다!
-        callLemonSqueezyRefund(pay.getLsOrderId(), refundAmount);
+        callLemonSqueezyRefund(pay.getLsOrderId(), refundAmount, pay.getPayAmount());
 
         // 2. 결제 상태 취소로 변경
         pay.setPayStatus("CANCELLED");
@@ -814,7 +814,7 @@ public class BookingService {
     // ==========================================
     // 💡 13. 레몬스퀴지 환불(Refund) API 통신 (최신 API 적용!)
     // ==========================================
-    private void callLemonSqueezyRefund(String lsOrderId, long refundAmount) {
+    private void callLemonSqueezyRefund(String lsOrderId, long refundAmount, long originalAmount) {
         if (lsOrderId == null || lsOrderId.isBlank()) {
             System.out.println("🚨 레몬스퀴지 주문 번호가 없어서 환불 API를 호출할 수 없습니다. (더미 데이터일 확률 높음)");
             return;
@@ -826,15 +826,16 @@ public class BookingService {
         headers.set("Accept", "application/vnd.api+json");
         headers.set("Content-Type", "application/vnd.api+json");
 
-        // 센트 단위로 변환
-        long finalRefundAmount = refundAmount;
-
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> data = new HashMap<>();
         Map<String, Object> attributes = new HashMap<>();
 
-        // 💡 [핵심 수정 1] 레몬스퀴지 최신 규격에 맞게 데이터 포장 변경
-        attributes.put("amount", finalRefundAmount);
+        if (refundAmount < originalAmount) {
+            attributes.put("amount", refundAmount * 100);
+            data.put("attributes", attributes);
+        }
+        // 2. 수수료가 0원인 '전액 환불'일 경우, attributes를 아예 세팅하지 않습니다!
+        // (금액을 안 보내면 레몬스퀴지가 알아서 1원 단위 오차 없이 100% 전액 환불 처리합니다.)
 
         data.put("type", "orders"); // 'refunds'가 아니라 'orders' 타입으로 보냅니다.
         data.put("id", lsOrderId);  // 어떤 주문을 취소할지 주문 번호를 직접 명시합니다.
