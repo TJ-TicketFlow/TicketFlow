@@ -60,7 +60,7 @@
                 <div class="q-label">예매 내역</div>
             </a>
             <a th:href="@{/mypage/coupons}" class="quick-card">
-                <div class="q-num" th:text="${coupons != null ? #lists.size(coupons) : 0}">0</div>
+                <div class="q-num" th:text="${availableCouponCount != null ? availableCouponCount : 0}">0</div>
                 <div class="q-label">보유 쿠폰</div>
             </a>
             <a th:href="@{/mypage/wishlist}" class="quick-card">
