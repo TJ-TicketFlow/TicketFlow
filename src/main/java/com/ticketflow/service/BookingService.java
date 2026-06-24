@@ -355,9 +355,13 @@ public class BookingService {
         try {
             ticketInfo.put("price", reservation.getSelectedSeat().getPrice());
             ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
-            ticketInfo.put("seatInfo", reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
-                    reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
-                    reservation.getSelectedSeat().getSeat().getSeatCol() + "번");
+            String allSeatsText = reservation.getSelectedSeatsText();
+            if (allSeatsText == null || allSeatsText.isBlank()) {
+                allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
+                        reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
+                        reservation.getSelectedSeat().getSeat().getSeatCol() + "번";
+            }
+            ticketInfo.put("seatInfo", allSeatsText);
             ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
             ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
             ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
@@ -909,10 +913,12 @@ public class BookingService {
 
             // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
             String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
-            String seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
-                    + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
-                    + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
-
+            String seatInfo = payment.getReservation().getSelectedSeatsText();
+            if (seatInfo == null || seatInfo.isBlank()) {
+                seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
+            }
             // HTML 문법을 사용해서 내용을 작성합니다.
             String htmlContent = "<h3>🎉 예매가 완료되었습니다!</h3>"
                     + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
