@@ -5,7 +5,6 @@ import com.ticketflow.dto.WebhookRequestDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
