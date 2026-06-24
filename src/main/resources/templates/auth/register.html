@@ -225,7 +225,8 @@
                 <div class="phone-row">
                     <div class="phone-fixed">
                         010
-                        <input type="hidden" th:field="*{phonePrefix}" value="010">
+                            <input type="hidden" name="phonePrefix" th:value="'010'">
+<!--                        <input type="hidden" th:value="*{phonePrefix}" value="010">-->
                     </div>
                     <span class="phone-sep">-</span>
                     <input type="text" th:field="*{phoneMid}" id="phoneMid"
