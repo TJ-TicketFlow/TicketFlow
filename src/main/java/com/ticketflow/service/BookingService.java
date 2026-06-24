@@ -823,7 +823,7 @@ public class BookingService {
         headers.set("Content-Type", "application/vnd.api+json");
 
         // 센트 단위로 변환
-        long finalRefundAmount = refundAmount * 100;
+        long finalRefundAmount = refundAmount;
 
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> data = new HashMap<>();
