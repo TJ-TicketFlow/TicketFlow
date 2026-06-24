@@ -357,9 +357,14 @@ public class BookingService {
             ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
             String allSeatsText = reservation.getSelectedSeatsText();
             if (allSeatsText == null || allSeatsText.isBlank()) {
-                allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
-                        reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
-                        reservation.getSelectedSeat().getSeat().getSeatCol() + "번";
+                // 🌟 스탠딩(행이 0)일 때 방어 로직 추가
+                if ("0".equals(reservation.getSelectedSeat().getSeat().getSeatRow())) {
+                    allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " + reservation.getReservationCount() + "장";
+                } else {
+                    allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
+                            reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
+                            reservation.getSelectedSeat().getSeat().getSeatCol() + "번";
+                }
             }
             ticketInfo.put("seatInfo", allSeatsText);
             ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
@@ -587,13 +592,18 @@ public class BookingService {
             map.put("venue", venue);
 
             // ==============================================================
-            // 🌟 [핵심 수정] 대표 좌석 1개가 아니라, 영수증에 적어둔 전체 좌석 텍스트를 꺼냅니다!
+            // 🌟 [핵심 수정] 영수증에 적어둔 전체 좌석 텍스트를 꺼냅니다!
             // ==============================================================
             String allSeatsText = reservation.getSelectedSeatsText();
 
-            // 방어 로직: 이 기능을 만들기 전(과거)에 예매해서 텍스트가 텅 비어있다면? 기존처럼 1개만 보여줌
+            // 방어 로직: 텍스트가 텅 비어있을 경우 (예전 예매건 등)
             if (allSeatsText == null || allSeatsText.isBlank()) {
-                allSeatsText = seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번";
+                // 🌟 스탠딩(행이 0)일 때 방어 로직 추가
+                if ("0".equals(seat.getSeatRow())) {
+                    allSeatsText = seat.getSeatClass() + " " + reservation.getReservationCount() + "장";
+                } else {
+                    allSeatsText = seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번";
+                }
             }
 
             map.put("seat", allSeatsText);

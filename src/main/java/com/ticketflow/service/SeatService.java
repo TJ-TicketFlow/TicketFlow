@@ -248,27 +248,31 @@ public class SeatService {
 
         String seatsDisplayHtml = "선택된 티켓";
 
-        if (bookingData.get("selectedSeats") != null) {
+        if ("SEAT".equals(ticketType)) {
             // 지정석일 경우: 화면에 보기 좋게 "1열 1번, 1열 2번" 형태로 변환합니다.
             List<String> seatIds = (List<String>) bookingData.get("selectedSeats");
             List<String> formattedSeats = new java.util.ArrayList<>();
-            for (String sId : seatIds) {
-                String row = sId.contains("R") ? sId.split("C")[0].replace("R", "") : "0";
-                String col = sId.contains("C") ? sId.split("C")[1] : "0";
-                formattedSeats.add(row + "열 " + col + "번");
+            if (seatIds != null && !seatIds.isEmpty()) {
+                for (String sId : seatIds) {
+                    String row = sId.contains("R") ? sId.split("C")[0].replace("R", "") : "0";
+                    String col = sId.contains("C") ? sId.split("C")[1] : "0";
+                    formattedSeats.add(row + "열 " + col + "번");
+                }
             }
             seatsDisplayHtml = String.join(", ", formattedSeats);
 
-        } else if (bookingData.get("quantities") != null) {
+        } else if ("STANDING".equals(ticketType)) {
             // 스탠딩일 경우: "VIP석 2장, 일반석 1장" 형태로 변환합니다.
             Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
             List<String> standingDetails = new java.util.ArrayList<>();
-            for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
-                String gradeName = entry.getKey();
-                if ("GENERAL".equalsIgnoreCase(gradeName)) {
-                    gradeName = "일반";
+            if (quantities != null) {
+                for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+                    String gradeName = entry.getKey();
+                    if ("GENERAL".equalsIgnoreCase(gradeName)) {
+                        gradeName = "일반";
+                    }
+                    standingDetails.add(gradeName + entry.getValue() + "장");
                 }
-                standingDetails.add(gradeName + "석 " + entry.getValue() + "장");
             }
             seatsDisplayHtml = String.join(", ", standingDetails);
         }
@@ -278,8 +282,8 @@ public class SeatService {
                 .reservationCount(totalTicketCount)
                 .reservationDate(concert.getConcertStartDate() != null ? concert.getConcertStartDate() : java.time.LocalDate.now())
                 .sessionTime(concert.getConcertTime() != null ? concert.getConcertTime() : "시간 미정")
-                .selectedSeatsText(seatsDisplayHtml) // 예쁜 글자
-                .reservedSeatIds(String.join(",", realSeatIds)) // 🌟 진짜 취소용 아이디들! (R1C1,R1C2)
+                .selectedSeatsText(seatsDisplayHtml) // 🌟 이제 "VIP석 2장..."이 완벽하게 들어갑니다!
+                .reservedSeatIds(String.join(",", realSeatIds))
                 .build();
 
         Reservation savedReservation = reservationRepository.save(reservation);
