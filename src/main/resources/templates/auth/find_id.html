@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>아이디 찾기 - 티켓플로우</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
@@ -17,8 +19,9 @@
         <th:block th:if="${step == 'input'}">
             <h1>아이디 찾기</h1>
             <p class="desc">입력하신 이름과 이메일 주소가 회원 정보와<br>일치한 경우 인증번호가 발송돼요.</p>
+            <div th:if="${errorMessage}" class="flash-msg" th:text="${errorMessage}"></div>
             <form th:action="@{/find-id/verify}" method="post">
-                    <div class="field"><input type="text" name="name" placeholder="이름" required></div>
+                <div class="field"><input type="text" name="name" placeholder="이름" required></div>
                 <div class="field"><input type="email" name="email" placeholder="이메일 주소" required></div>
                 <button type="submit" class="btn btn-primary">인증번호 받기</button>
             </form>
@@ -27,15 +30,16 @@
         <!-- 인증 단계 -->
         <th:block th:if="${step == 'verify'}">
             <h1>아이디 찾기 - 인증</h1>
-            <p class="desc">입력하신 이메일로 인증번호를 발송했어요.<br>인증번호를 입력해 주세요.</p>
+            <p class="desc" id="sendStatus">인증번호 발송 중...</p>
+            <div th:if="${errorMessage}" class="flash-msg" th:text="${errorMessage}"></div>
             <form th:action="@{/find-id/result}" method="post">
-                    <input type="hidden" name="name" th:value="${name}">
-                <input type="hidden" name="email" th:value="${email}">
+                <input type="hidden" name="name" th:value="${name}" id="fName">
+                <input type="hidden" name="email" th:value="${email}" id="fEmail">
                 <div class="field">
                     <input type="text" name="code" placeholder="인증번호 (6자리)" maxlength="6" required>
                     <div class="timer-row">
-                        <span class="timer" id="timer">02:59</span>
-                        <a class="resend" href="#">인증번호 재발송</a>
+                        <span class="timer" id="timer">03:00</span>
+                        <a class="resend" href="#" id="resendLink">인증번호 재발송</a>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary">다음</button>
@@ -64,17 +68,66 @@
 <th:block th:replace="~{fragments/footer :: footer}"></th:block>
 
 <th:block th:if="${step == 'verify'}">
-<script>
-let secs = 179;
-const el = document.getElementById('timer');
-const iv = setInterval(() => {
-    if (secs <= 0) { clearInterval(iv); el.textContent = '00:00'; return; }
-    secs--;
-    const m = String(Math.floor(secs / 60)).padStart(2, '0');
-    const s = String(secs % 60).padStart(2, '0');
-    el.textContent = `${m}:${s}`;
-}, 1000);
-</script>
+    <script>
+        const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+        const name = document.getElementById('fName').value;
+        const email = document.getElementById('fEmail').value;
+        const statusEl = document.getElementById('sendStatus');
+        const timerEl = document.getElementById('timer');
+
+        let secs = 0;
+        let timerInterval = null;
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            secs = 179;
+            updateTimerText();
+            timerInterval = setInterval(() => {
+                if (secs <= 0) { clearInterval(timerInterval); timerEl.textContent = '00:00'; return; }
+                secs--;
+                updateTimerText();
+            }, 1000);
+        }
+
+        function updateTimerText() {
+            const m = String(Math.floor(secs / 60)).padStart(2, '0');
+            const s = String(secs % 60).padStart(2, '0');
+            timerEl.textContent = `${m}:${s}`;
+        }
+
+        async function sendCode() {
+            statusEl.textContent = '인증번호 발송 중...';
+            statusEl.classList.remove('flash-msg');
+            try {
+                const res = await fetch('/find-id/send-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        [csrfHeader]: csrfToken
+                    },
+                    body: new URLSearchParams({ name, email })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = '인증번호가 발송되었습니다. 이메일을 확인해주세요.';
+                    startTimer();
+                } else {
+                    statusEl.textContent = data.message || '인증번호 발송에 실패했습니다.';
+                }
+            } catch (e) {
+                statusEl.textContent = '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+            }
+        }
+
+        document.getElementById('resendLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            sendCode();
+        });
+
+        // 화면이 뜨자마자(인증 화면 전환은 이미 끝난 상태) 메일 발송 시작
+        sendCode();
+    </script>
 </th:block>
 </body>
 </html>

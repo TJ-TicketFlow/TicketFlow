@@ -38,8 +38,6 @@ import java.util.stream.Collectors;
 import java.util.Map;
 
 import com.ticketflow.service.MembershipService;
-import com.ticketflow.repository.MembershipRepository;
-import com.ticketflow.repository.MembershipPaymentRepository;
 
 @Controller
 @RequestMapping("/mypage")

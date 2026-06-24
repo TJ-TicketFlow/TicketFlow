@@ -5,7 +5,6 @@ import com.ticketflow.dto.WebhookRequestDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +24,9 @@ public class MembershipService {
     private final MembershipPaymentRepository paymentRepository;
     private final MembershipHistoryRepository historyRepository;
     private final UserCouponRepository userCouponRepository;
-    private final CouponRepository couponRepository;
     private final PayCheckRepository payCheckRepository;
     private final LemonSqueezyRefundService lemonSqueezyRefundService;
-
+    private final CouponService couponService;
     public void processPaymentWebhook(WebhookRequestDto dto) {
         if (dto.getData() == null || dto.getData().getAttributes() == null) {
             throw new IllegalArgumentException("웹훅 데이터가 비어 있습니다.");
@@ -138,54 +136,12 @@ public class MembershipService {
             user.setMembershipStart(LocalDate.now());
             user.setMembershipEnd(membershipPeriodEnd.toLocalDate());
             userRepository.save(user);
-            issuePremiumSignupCouponsIfNeeded(user);
+            couponService.issuePremiumSignupCouponsIfNeeded(user);
         } else if ("EXPIRED".equals(newStatus) && "premium".equals(user.getMembership())) {
             user.setMembership("basic");
             user.setMembershipEnd(LocalDate.now());
             userRepository.save(user);
         }
-    }
-
-    private void issuePremiumSignupCouponsIfNeeded(User user) {
-        Coupon checkCoupon = couponRepository.findByCouponName("프리미엄 가입 쿠폰")
-                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 프리미엄 가입 쿠폰"));
-
-        if (userCouponRepository.existsByUserAndCouponAndUserCouponStatus(user, checkCoupon, 0)) {
-            System.out.println("ℹ️ 이미 사용 가능한 프리미엄 가입 쿠폰이 있는 유저라 건너뜁니다. (user: " + user.getUserEmail() + ")");
-            return;
-        }
-
-        issueCoupon(user, "프리미엄 가입 쿠폰");
-        issueCoupon(user, "프리미엄 가입 쿠폰");
-        issueCoupon(user, "프리미엄 가입 스페셜 쿠폰");
-        System.out.println("🎁 프리미엄 가입 쿠폰 3장 발급 완료! (user: " + user.getUserEmail() + ")");
-    }
-
-    // ── 3개월 유지 보상 쿠폰 발급 (스케줄러에서 호출) ──
-    public void issueLoyaltyCouponIfNeeded(Membership membership) {
-        User user = membership.getUser();
-        Coupon loyaltyCoupon = couponRepository.findByCouponName("프리미엄 3개월 유지 쿠폰")
-                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: 프리미엄 3개월 유지 쿠폰"));
-
-        if (userCouponRepository.existsByUserAndCoupon(user, loyaltyCoupon)) {
-            return;
-        }
-
-        issueCoupon(user, "프리미엄 3개월 유지 쿠폰");
-        System.out.println("🎁 3개월 유지 보상 쿠폰 발급! (user: " + user.getUserEmail() + ")");
-    }
-
-    private void issueCoupon(User user, String couponName) {
-        Coupon coupon = couponRepository.findByCouponName(couponName)
-                .orElseThrow(() -> new IllegalStateException("쿠폰 마스터를 찾을 수 없음: " + couponName));
-
-        UserCoupon userCoupon = UserCoupon.builder()
-                .user(user)
-                .coupon(coupon)
-                .userCouponStatus(0)
-                .userCouponExpireAt(LocalDateTime.now().plusDays(coupon.getCouponValidDays()))
-                .build();
-        userCouponRepository.save(userCoupon);
     }
 
     public RefundEligibilityDto checkRefundEligibility(User user) {
@@ -344,14 +300,4 @@ public class MembershipService {
         }
     }
 
-    @Scheduled(cron = "0 0 3 * * *")
-    public void expireOldCoupons() {
-        List<UserCoupon> expiredCoupons = userCouponRepository
-                .findByUserCouponStatusAndUserCouponExpireAtBefore(0, LocalDateTime.now());
-
-        for (UserCoupon coupon : expiredCoupons) {
-            coupon.setUserCouponStatus(2);
-            userCouponRepository.save(coupon);
-        }
-    }
 }

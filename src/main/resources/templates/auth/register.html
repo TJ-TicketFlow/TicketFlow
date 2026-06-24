@@ -58,9 +58,7 @@
 <!-- ── 회원가입 폼 ── -->
 <div class="auth-wrap">
     <div class="auth-box">
-        <div style="text-align:center;margin-bottom:16px;">
-            <img th:src="@{/images/header-logo.png}" alt="티켓플로우" style="height:44px;object-fit:contain;">
-        </div>
+
         <h1 class="auth-title" style="text-align:center;">회원가입</h1>
         <p class="auth-sub" style="text-align:center;">회원 정보를 입력하고 가입해주세요.</p>
 
@@ -227,7 +225,8 @@
                 <div class="phone-row">
                     <div class="phone-fixed">
                         010
-                        <input type="hidden" th:field="*{phonePrefix}" value="010">
+                            <input type="hidden" name="phonePrefix" th:value="'010'">
+<!--                        <input type="hidden" th:value="*{phonePrefix}" value="010">-->
                     </div>
                     <span class="phone-sep">-</span>
                     <input type="text" th:field="*{phoneMid}" id="phoneMid"
