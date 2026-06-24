@@ -58,6 +58,7 @@ if (concertId) {
     console.log("🔍 [디버깅] 현재 자바스크립트가 파싱한 concertId:", concertId);
 
     // [Step 1] 공연 기본 정보 가져오기
+    // 어디 컨트롤러에 하위 api 호출하는 기능이 작성되어 있는지 보이지 않음
     fetch(`/seat/api/concert/${concertId}`)
         .then(res => {
             if (!res.ok) throw new Error(`공연 정보 요청 실패 (Status: ${res.status})`);

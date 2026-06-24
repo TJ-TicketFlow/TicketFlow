@@ -33,11 +33,11 @@ public class SeatService {
             return "SEAT_A"; // 가격 정보가 없으면 안전하게 기본 좌석형 리턴
         }
 
-        // 🌟 대소문자 무관하게 비교하기 위해 대문자로 변환 처리
-        String upperPriceInfo = priceInfo.toUpperCase();
-
-        // 🌟 "스탠딩"이나 "GA"라는 단어가 포함되어 있다면 배치도가 없는 스탠딩형으로 판단
-        if (upperPriceInfo.contains("스탠딩") || upperPriceInfo.contains("GA")) {
+        // "스탠딩"이라는 단어가 명확히 포함된 경우에만 배치도가 없는 스탠딩형으로 판단
+        // 과거에는 "GA"라는 문자열도 체크했지만, "GA석"처럼 좌석 등급명에
+        //    "GA"라는 두 글자가 포함되기만 해도 STANDING으로 오판하는 버그가 있어 제거함.
+        //    (예: "VIP석 99,000원, GA석 88,000원" → 지정석 공연인데도 스탠딩으로 잘못 분류됨)
+        if (priceInfo.contains("스탠딩")) {
             return "STANDING"; // 앞서 seatmap.js 조건문과 맞추기 위해 "STANDING" 또는 "SEAT_B"를 리턴
         } else {
             return "SEAT_A";
@@ -45,7 +45,7 @@ public class SeatService {
     }
 
     /**
-     * 1. 좌석 조회 (💡 수정: DB에 좌석이 없을 경우 13행 18열 자동 동적 생성 로직 통합)
+     * 1. 좌석 조회 (수정: DB에 좌석이 없을 경우 13행 18열 자동 동적 생성 로직 통합)
      */
     public List<Seat> getSeats(String concertId) {
         // 1-1. 먼저 해당 공연의 좌석이 DB에 존재하는지 파악합니다.
@@ -53,7 +53,7 @@ public class SeatService {
 
         // 1-2. 만약 조회된 좌석 개수가 0개라면? 아직 배치도가 생성이 안 된 공연이므로 즉석에서 생성합니다!
         if (seats.isEmpty()) {
-            System.out.println("⚠️ [SeatService] " + concertId + " 공연의 좌석 데이터가 없어 13행 18열 동적 생성을 시작합니다.");
+            System.out.println("[SeatService] " + concertId + " 공연의 좌석 데이터가 없어 13행 18열 동적 생성을 시작합니다.");
 
             // 실제 Concert 정보가 DB에 존재치 않는 경우 예외 처리 및 연관관계 매핑용 객체 확보
             Concert concert = concertRepository.findById(concertId)
@@ -78,7 +78,7 @@ public class SeatService {
 
             // 데이터 쓰기 작업(인서트)이 끝났으므로 다시 정상 조회하여 리스트를 채웁니다.
             seats = seatRepository.findByConcert_ConcertId(concertId);
-            System.out.println("✅ [SeatService] " + concertId + " 공연의 좌석 234개 실시간 동적 생성 완료.");
+            System.out.println("[SeatService] " + concertId + " 공연의 좌석 234개 실시간 동적 생성 완료.");
         }
 
         return seats;
@@ -148,4 +148,10 @@ public class SeatService {
 
         throw new RuntimeException("해당 좌석 등급 없음");
     }
+
+    /*
+     * 좌석 ID로 단건 좌석 엔티티 조회
+     */
+
+
 }

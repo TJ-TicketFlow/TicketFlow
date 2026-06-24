@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:thymeleaf="http://www.w3.org/1999/xhtml">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
@@ -9,11 +9,9 @@
     <link rel="stylesheet" href="/css/infopopup.css">
     <link rel="stylesheet" href="/css/selectedSeat.css">
 
-    <meta name="_csrf" thymeleaf:content="${_csrf.token}"/>
-    <meta name="_csrf_header" thymeleaf:content="${_csrf.headerName}"/>
-
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
-
 <body>
 
 <div class="main-layout">
@@ -50,7 +48,7 @@
             <span id="total-price-display" style="color: #3b82f6; font-size: 20px; white-space: nowrap; flex-shrink: 0; margin-left: 10px;">0원</span>
         </div>
 
-        <button class="booking-btn" id="booking-submit-btn" onclick="submitBooking()">예매하기</button>
+        <button id="next-booking-btn" onclick="submitBooking()">예매하기</button>
     </div>
 
 </div>

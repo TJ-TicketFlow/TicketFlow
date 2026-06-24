@@ -3,6 +3,7 @@ package com.ticketflow.controller;
 import com.ticketflow.entity.Concert;
 import com.ticketflow.entity.Seat;
 
+import com.ticketflow.entity.SelectedSeat;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.SeatService;
 import lombok.RequiredArgsConstructor;
@@ -64,15 +65,24 @@ public class SeatController {
 
             for (String seatId : seats) {
                 // 🎯 [핵심 교정] "SEAT_R1_C1" -> "PF277688" + "_R1_C1" 형태로 문자열을 완벽하게 재조합합니다.
-                String cleanSeatId = seatId.replace("SEAT_", ""); // "R1_C1" 만 남김
+                String cleanSeatId = seatId.replace("SEAT_", "");
                 String realDbSeatId = request.getConcertId() + "_" + cleanSeatId; // "PF277688_R1_C1" 완성!
 
                 System.out.println("➡️ [DB 조회 및 인서트 시도] 변환된 좌석 식별자: " + realDbSeatId);
 
-                // 이제 DB에 있는 식별자와 완벽히 일치하므로 정상적으로 Seat 객체를 찾아옵니다!
-                Seat seat = seatService.findSeatById(realDbSeatId);
+                Seat seat = seatService.getSeatById(realDbSeatId);
+                // 1. 좌석이 이미 다른 사람에게 예약되었는지 검증
+                if (seat.getSeatStatus() == 0) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "이미 선택된 좌석입니다."));
+                }
 
+                // 2. 예약이 가능하다면, 해당 좌석의 상태를 '예약중(0)'으로 변경 (선점 조치)
+                seat.setSeatStatus((short) 0);
 
+                // 3. 결제 준비를 위해 selected_seat 테이블에 이 좌석 정보를 매핑하여 저장
+                SelectedSeat selectedSeat = new SelectedSeat();
+                selectedSeat.setSeat(seat); // 찾은 좌석 객체를 넣어줌
+                selectedSeatRepository.save(selectedSeat);
             }
         }
         // ... 이하 생략 ...
