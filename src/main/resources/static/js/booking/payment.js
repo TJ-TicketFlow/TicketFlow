@@ -328,35 +328,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 headers: headers,
                 body: JSON.stringify(requestData)
             })
-                .then(async response => {
-                    // 🌟 [핵심 수정] 서버가 400(캡차 틀림) 에러를 보내면 글자를 끄집어냅니다!
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText || '서버 통신 실패');
-                    }
+                .then(response => {
+                    if (!response.ok) { throw new Error('서버 통신 실패'); }
                     return response.text();
                 })
                 .then(checkoutUrl => {
+                    // 💡 [핵심 추가] 진짜 결제하러 가는 거니까 화면을 나가도 좌석 풀지 마! (스위치 ON)
                     preserveSeat = true;
                     window.location.href = checkoutUrl;
                 })
                 .catch(error => {
                     console.error('❌ 결제 준비 중 오류 발생:', error);
-
-                    // 로딩 끄고 버튼 원래대로 복구
-                    const loadingOverlay = document.getElementById('loadingOverlay');
                     if (loadingOverlay) loadingOverlay.style.display = 'none';
                     payButton.disabled = false;
                     payButton.textContent = '결제하기';
-
-                    // 🌟 백엔드에서 받아온 에러 메시지를 화면에 그대로 띄워줍니다! (예: "자동주문 방지 글자가 틀렸습니다.")
-                    alert(error.message);
-
-                    // 🌟 캡차가 틀렸다는 내용이면, 유저가 바로 다시 칠 수 있게 이미지를 새로고침해 줍니다!
-                    if (error.message.includes('캡차') || error.message.includes('자동주문') || error.message.includes('틀렸습니다')) {
-                        document.getElementById('captchaInput').value = ''; // 입력창 비워주기
-                        loadCaptcha(); // 이미지 새로 갱신
-                    }
+                    alert('결제창을 불러오는 데 실패했습니다.');
                 });
         });
     }

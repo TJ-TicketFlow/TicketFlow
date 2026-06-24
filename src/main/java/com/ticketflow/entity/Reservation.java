@@ -43,12 +43,4 @@ public class Reservation {
     @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY)
     @Builder.Default
     private List<Pay> pays = new ArrayList<>();
-
-    // 화면 출력용 예쁜 글자
-    @Column(name = "selected_seats_text", length = 500)
-    private String selectedSeatsText;
-
-    // 🌟 [추가] 취소할 때 백엔드가 읽어들일 진짜 DB 아이디 리스트!
-    @Column(name = "reserved_seat_ids", length = 500)
-    private String reservedSeatIds;
 }

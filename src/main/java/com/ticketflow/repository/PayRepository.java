@@ -17,17 +17,11 @@ public interface PayRepository extends JpaRepository<Pay, Long> {
 
     @Query("SELECT p FROM Pay p WHERE p.reservation.selectedSeat.user.userId = :userId " +
             "AND p.payCreatedAt BETWEEN :startDate AND :endDate " +
-            "AND p.payStatus IN ('PAID', 'CANCELLED', 'FAILED') " +
             "ORDER BY p.payCreatedAt DESC")
     Page<Pay> findMyPaymentsByDateRange(@Param("userId") String userId,
                                         @Param("startDate") LocalDateTime startDate,
                                         @Param("endDate") LocalDateTime endDate,
                                         Pageable pageable);
-
-    // 💡 2. [신규] 30분이 지났는데 아직 결제가 완료되지 않은(진행중인) 결제 건들 찾아내기
-    @Query("SELECT p FROM Pay p WHERE p.payCreatedAt <= :thresholdTime " +
-            "AND (p.payStatus IS NULL OR p.payStatus NOT IN ('PAID', 'CANCELLED', 'FAILED'))")
-    List<Pay> findExpiredPendingPayments(@Param("thresholdTime") LocalDateTime thresholdTime);
 
     boolean existsByReservation_ReservationKeyAndPayStatus(Long reservationKey, String payStatus);
 }

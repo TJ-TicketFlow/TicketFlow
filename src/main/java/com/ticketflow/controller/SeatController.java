@@ -4,7 +4,6 @@ import com.ticketflow.entity.Concert;
 import com.ticketflow.entity.Seat;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.SeatService;
-import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -22,7 +21,6 @@ public class SeatController {
 
     private final SeatService seatService;
     private final ConcertService concertService;
-    private final UserService userService;
 
 
     @GetMapping("/{concertId}")
@@ -123,41 +121,30 @@ public class SeatController {
         return ResponseEntity.ok(price);
     }
 
-    // 🌟 이 부분을 기존 prepareBooking 대신 완전히 덮어씌워 주세요!
     @PostMapping("/api/booking/prepare")
-    public ResponseEntity<?> prepareBooking(
-            @RequestBody Map<String, Object> bookingData,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+    public ResponseEntity<?> prepareBooking(@RequestBody Map<String, Object> bookingData) {
 
         System.out.println("====== ✈️ [백엔드] 프론트엔드 예매 데이터 수신 ======");
-        System.out.println("데이터 확인: " + bookingData);
+        System.out.println("공연 ID (concertId): " + bookingData.get("concertId"));
+        System.out.println("티켓팅 타입 (ticketType): " + bookingData.get("ticketType"));
 
-        // 1. 현재 로그인한 유저의 정보 가져오기
-        Long userNo = 1L; // 기본값 (로그인 연동 전 에러 방지용)
-        if (userDetails != null) {
-            com.ticketflow.entity.User user = userService.findByUserId(userDetails.getUsername());
-            userNo = user.getUserNo();
+        // 지정석(SEAT)일 때 들어오는 좌석 배열 출력
+        if (bookingData.containsKey("selectedSeats")) {
+            System.out.println("선택된 좌석 리스트 (selectedSeats): " + bookingData.get("selectedSeats"));
         }
 
-        try {
-            // 2. 서비스 로직을 태워서 DB에 저장하고, 찐 영수증 번호 받아오기!
-            Long realReservationKey = seatService.processBookingAndGetReservationKey(bookingData, userNo);
-
-            // 3. 발급받은 번호를 프론트엔드에 다시 던져줍니다.
-            Map<String, Object> response = new HashMap<>();
-            response.put("status", "SUCCESS");
-            response.put("reservationKey", realReservationKey); // 🌟 여기가 핵심!
-
-            System.out.println("✅ 예매 장부 생성 완료! 예약 번호: " + realReservationKey);
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            System.err.println("🚨 예매 장부 생성 실패: " + e.getMessage());
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "FAIL");
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(errorResponse);
+        // 비지정석(STANDING)일 때 들어오는 등급별 수량 객체 출력
+        if (bookingData.containsKey("quantities")) {
+            System.out.println("선택된 등급별 수량 (quantities): " + bookingData.get("quantities"));
         }
+        System.out.println("==================================================");
+
+        // 🌟 프론트엔드가 다음 단계(결제 창 등)로 부드럽게 넘어갈 수 있도록 응답값 세팅
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "SUCCESS");
+        response.put("bookingId", "TEMP_B_" + System.currentTimeMillis()); // 임시 예매 ID 생성
+
+        return ResponseEntity.ok(response);
     }
 } // 클래스 마지막 닫는 괄호
 

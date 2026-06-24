@@ -113,19 +113,7 @@
                     <div class="summary-row"><span>날짜</span><span th:text="${ticket != null ? ticket.date : 'xxxx.xx.xx'}">xxxx.xx.xx</span></div>
                     <div class="summary-row"><span>시간</span><span th:text="${ticket != null ? ticket.time : 'xx시 xx분'}">xx시 xx분</span></div>
                     <div class="summary-row"><span>매수</span><span th:text="${ticket != null ? ticket.count + '매' : '0매'}">0매</span></div>
-                    <div class="summary-row">
-                        <span>좌석</span>
-                        <!-- 🏃 스탠딩일 경우 (주소창 파라미터 활용) -->
-                        <span th:if="${param.detail != null}" th:text="${param.detail}" style="font-weight: bold; color: #3b82f6;">VIP석 2장, 일반석 1장</span>
-
-                        <!-- 🪑 지정석일 경우 (ticket 바구니에서 꺼내기) -->
-                        <span th:unless="${param.detail != null}">
-                        <span th:text="${ticket != null ? ticket.seatInfo : '좌석 정보 없음'}">VIP 1열 1번</span>
-                        <span th:if="${ticket != null and ticket.count > 1}"
-                              th:text="' 외 ' + (${ticket.count} - 1) + '장'"
-                              style="color: #64748b; font-size: 0.9em;"> 외 1장</span>
-                        </span>
-                    </div>
+                    <div class="summary-row"><span>좌석</span><span th:text="${ticket != null ? ticket.seatInfo : 'x열 x번'}">x열 x번</span></div>
                 </div>
 
                 <hr style="border-top: 1px solid #ddd; margin-bottom: 20px;">
