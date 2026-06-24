@@ -22,6 +22,7 @@ public class SeatService {
      * 공연 가격정보 기반 좌석 타입 판단
      * 예: VIP 200000,R 150000,S 100000 또는 스탠딩 99000
      */
+    @Transactional(readOnly = true)
     public String getSeatLayoutType(String concertId) {
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow(() -> new RuntimeException("공연 없음"));
@@ -44,11 +45,43 @@ public class SeatService {
     }
 
     /**
-     * 1. 좌석 조회
+     * 1. 좌석 조회 (💡 수정: DB에 좌석이 없을 경우 13행 18열 자동 동적 생성 로직 통합)
      */
-    @Transactional(readOnly = true)
     public List<Seat> getSeats(String concertId) {
-        return seatRepository.findByConcert_ConcertId(concertId);
+        // 1-1. 먼저 해당 공연의 좌석이 DB에 존재하는지 파악합니다.
+        List<Seat> seats = seatRepository.findByConcert_ConcertId(concertId);
+
+        // 1-2. 만약 조회된 좌석 개수가 0개라면? 아직 배치도가 생성이 안 된 공연이므로 즉석에서 생성합니다!
+        if (seats.isEmpty()) {
+            System.out.println("⚠️ [SeatService] " + concertId + " 공연의 좌석 데이터가 없어 13행 18열 동적 생성을 시작합니다.");
+
+            // 실제 Concert 정보가 DB에 존재치 않는 경우 예외 처리 및 연관관계 매핑용 객체 확보
+            Concert concert = concertRepository.findById(concertId)
+                    .orElseThrow(() -> new RuntimeException("존재하지 않는 공연입니다: " + concertId));
+
+            // 지정석 배치 규격에 맞춰 234개 좌석 밀어 넣기
+            for (int row = 1; row <= 13; row++) {
+                for (int col = 1; col <= 18; col++) {
+                    Seat seat = new Seat();
+
+                    // PK인 seatId 중복 방지를 위해 공연 ID를 접두어로 결합 (예: PF277688_R1_C1)
+                    seat.setSeatId(concertId + "_R" + row + "_C" + col);
+                    seat.setConcert(concert);
+                    seat.setSeatClass("STANDARD");
+                    seat.setSeatStatus((short) 1); // 1: 사용가능(일반석 기본값)
+                    seat.setSeatRow(String.valueOf(row));
+                    seat.setSeatCol(String.valueOf(col));
+
+                    seatRepository.save(seat);
+                }
+            }
+
+            // 데이터 쓰기 작업(인서트)이 끝났으므로 다시 정상 조회하여 리스트를 채웁니다.
+            seats = seatRepository.findByConcert_ConcertId(concertId);
+            System.out.println("✅ [SeatService] " + concertId + " 공연의 좌석 234개 실시간 동적 생성 완료.");
+        }
+
+        return seats;
     }
 
     /**
@@ -92,6 +125,7 @@ public class SeatService {
     /**
      * 5. 가격 계산
      */
+    @Transactional(readOnly = true)
     public int calculatePrice(String concertId, String seatClass) {
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow(() -> new RuntimeException("공연 없음"));
