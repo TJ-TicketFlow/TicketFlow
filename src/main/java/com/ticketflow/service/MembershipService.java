@@ -286,6 +286,10 @@ public class MembershipService {
                 .membershipInvoiceId(dto.getData().getId())
                 .build();
         paymentRepository.save(payment);
+
+        if ("PAID".equals(paymentStatus)) {
+            couponService.renewPremiumCouponsOnPayment(user);
+        }
     }
 
     private Instant parseInstantOrNull(String value) {

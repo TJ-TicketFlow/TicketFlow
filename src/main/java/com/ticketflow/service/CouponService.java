@@ -83,4 +83,18 @@ public class CouponService {
             }
         }
     }
+    
+    public void renewPremiumCouponsOnPayment(User user) {
+        userCouponRepository.findByUserAndUserCouponStatus(user, 0).stream()
+                .filter(uc -> !"신규가입 웰컴 쿠폰".equals(uc.getCoupon().getCouponName()))
+                .forEach(uc -> {
+                    uc.setUserCouponStatus(2);
+                    userCouponRepository.save(uc);
+                });
+
+        issueCoupon(user, "프리미엄 가입 쿠폰");
+        issueCoupon(user, "프리미엄 가입 쿠폰");
+        issueCoupon(user, "프리미엄 가입 스페셜 쿠폰");
+        System.out.println("🔄 결제 갱신에 따른 쿠폰 재발급 완료! (user: " + user.getUserEmail() + ")");
+    }
 }
