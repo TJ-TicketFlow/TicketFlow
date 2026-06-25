@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<script th:src="@{/js/membership/membership-checkout.js}"></script>
 <body>
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 결제 안내 - 티켓플로우', '결제 안내', 'benefits', ~{::content})}">
     <th:block th:fragment="content">
@@ -54,7 +55,6 @@
             </div>
         </div>
 
-        <script th:src="@{/js/membership-checkout.js}"></script>
 
     </th:block>
 </th:block>
