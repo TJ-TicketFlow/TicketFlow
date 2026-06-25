@@ -38,7 +38,6 @@ public class Seat {
     @Column(name = "seat_col", length = 50, nullable = false)
     private String seatCol;
 
-    @JsonIgnore
     @OneToMany(mappedBy = "seat", fetch = FetchType.LAZY)
     @Builder.Default
     private List<SelectedSeat> selectedSeats = new ArrayList<>();

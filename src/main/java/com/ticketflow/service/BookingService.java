@@ -260,7 +260,7 @@ public class BookingService {
         payment.setLsCustomerId(lsCustomerId);
         payment.setReceiptUrl(receiptUrl);
         payment.setLsWebhookEventId(lsWebhookEventId);
-        payment.setPayMethod("신용카드");
+        payment.setPayMethod("신용/체크카드");
 
         if (payment.getUserCoupon() != null) {
             // 이 결제에 쿠폰이 쓰였다면, 상태를 1(사용함)로 바꿔줍니다!
