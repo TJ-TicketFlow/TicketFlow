@@ -44,5 +44,6 @@ public class WebhookRequestDto {
         private Integer total;
         private String card_brand;
         private String card_last_four;
+        private Map<String, Object> urls;
     }
 }

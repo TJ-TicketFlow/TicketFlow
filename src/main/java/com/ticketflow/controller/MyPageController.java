@@ -12,6 +12,7 @@ import com.ticketflow.repository.MembershipPaymentRepository;
 import com.ticketflow.repository.MembershipRepository;
 import com.ticketflow.repository.UserCouponRepository;
 import com.ticketflow.service.BookingService;
+import com.ticketflow.service.LemonSqueezyRefundService;
 import com.ticketflow.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,6 +49,10 @@ public class MyPageController {
     private final UserCouponRepository userCouponRepository;
     private final BookingService bookingService;
     private final MembershipService membershipService;
+    private final LemonSqueezyRefundService lemonSqueezyRefundService;
+    private final MembershipRepository membershipRepository;
+    private final MembershipPaymentRepository paymentRepository;
+
 
 
     @GetMapping
@@ -78,17 +83,20 @@ public class MyPageController {
         return "mypage/mypage_benefits";
     }
 
+//  coupon
     @GetMapping("/coupons")
     public String mypageCoupons(@AuthenticationPrincipal UserDetails userDetails,
                                 Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
-        model.addAttribute("user", user);
+        addUserAndCouponsToModel(user, model);
 
+        return "mypage/mypage_coupons";
+    }
+    private void addUserAndCouponsToModel(User user, Model model) {
+        model.addAttribute("user", user);
         List<CouponViewDto> coupons = getAvailableCoupons(user);
         model.addAttribute("coupons", coupons);
         model.addAttribute("availableCouponCount", coupons.stream().filter(c -> c.getStatus() == 0).count());
-
-        return "mypage/mypage_coupons";
     }
     private List<CouponViewDto> getAvailableCoupons(User user) {
         List<UserCoupon> userCoupons = userCouponRepository.findByUser(user);
@@ -104,6 +112,88 @@ public class MyPageController {
                         uc.getUserCouponStatus()
                 ))
                 .collect(Collectors.toList());
+    }
+//  membership
+    @GetMapping("/membership/payments")
+    public String mypageMembershipPayments(@AuthenticationPrincipal UserDetails userDetails,
+                                           Model model) {
+        User user = userService.findByUserId(userDetails.getUsername());
+        model.addAttribute("user", user);
+
+        Membership membership = membershipRepository.findByUser(user)
+                .stream().findFirst().orElse(null);
+
+        List<PaymentViewDto> payments = membership == null
+                ? Collections.emptyList()
+                : paymentRepository.findByMembershipOrderByMembershipHistoryDateDesc(membership)
+                .stream()
+                .map(this::toPaymentViewDto)
+                .collect(Collectors.toList());
+
+        model.addAttribute("payments", payments);
+        model.addAttribute("refundEligibility", membershipService.checkRefundEligibility(user));
+
+        if (membership != null && membership.getMembershipCustomerId() != null) {
+            try {
+
+                String portalUrl = lemonSqueezyRefundService.getCustomerPortalUrl(membership.getMembershipCustomerId());
+                model.addAttribute("portalUrl", portalUrl);
+            } catch (Exception e) {
+                System.out.println("⚠️ Customer Portal URL 조회 실패: " + e.getMessage());
+            }
+        }
+
+        return "mypage/mypage_membership_history";
+    }
+
+    @GetMapping("/membership")
+    public String mypageMembership(@AuthenticationPrincipal UserDetails userDetails,
+                                   Model model) {
+        User user = userService.findByUserId(userDetails.getUsername());
+        model.addAttribute("user", user);
+
+        Membership membership = membershipRepository.findByUser(user).stream()
+                .max(java.util.Comparator.comparing(Membership::getMembershipId))
+                .orElse(null);
+
+        if (membership != null) {
+            model.addAttribute("memInfo", membership);
+        }
+
+        return "mypage/mypage_membership";
+    }
+
+    @GetMapping("/membership/subscribe")
+    public String mypageMembershipSubscribe(@AuthenticationPrincipal UserDetails userDetails,
+                                            @RequestParam(required = false) String plan,
+                                            Model model,
+                                            RedirectAttributes rttr) {
+
+        User user = userService.findByUserId(userDetails.getUsername());
+
+        if ("premium".equals(user.getMembership())) {
+            rttr.addFlashAttribute("errorMessage", "이미 프리미엄 멤버십을 이용 중입니다.");
+            return "redirect:/mypage/membership";
+        }
+
+        model.addAttribute("user", user);
+        model.addAttribute("plan", plan);
+
+        return "mypage/mypage_membership_subscribe";
+    }
+
+    @PostMapping("/membership/cancel")
+    public String mypageMembershipCancel(@AuthenticationPrincipal UserDetails userDetails,
+                                         RedirectAttributes rttr) {
+        User user = userService.findByUserId(userDetails.getUsername());
+        RefundEligibilityDto result = membershipService.cancel(user);
+
+        if (result.isEligible()) {
+            rttr.addFlashAttribute("successMessage", result.getReason());
+        } else {
+            rttr.addFlashAttribute("errorMessage", result.getReason());
+        }
+        return "redirect:/mypage/benefits";
     }
 
     @GetMapping("/profile")
@@ -174,57 +264,6 @@ public class MyPageController {
         }
     }
 
-    @GetMapping("/membership")
-    public String mypageMembership(@AuthenticationPrincipal UserDetails userDetails,
-                                   Model model) {
-        User user = userService.findByUserId(userDetails.getUsername());
-        model.addAttribute("user", user);
-        return "mypage/mypage_membership";
-    }
-
-    @GetMapping("/membership/subscribe")
-    public String mypageMembershipSubscribe(@AuthenticationPrincipal UserDetails userDetails,
-                                            @RequestParam(required = false) String plan,
-                                            Model model,
-                                            RedirectAttributes rttr) {
-
-        User user = userService.findByUserId(userDetails.getUsername());
-
-        if ("premium".equals(user.getMembership())) {
-            rttr.addFlashAttribute("errorMessage", "이미 프리미엄 멤버십을 이용 중입니다.");
-            return "redirect:/mypage/membership";
-        }
-
-        model.addAttribute("user", user);
-        model.addAttribute("plan", plan);
-
-        return "mypage/mypage_membership_subscribe";
-    }
-
-    private final MembershipRepository membershipRepository;
-    private final MembershipPaymentRepository paymentRepository;
-
-    @GetMapping("/membership/payments")
-    public String mypageMembershipPayments(@AuthenticationPrincipal UserDetails userDetails,
-                                           Model model) {
-        User user = userService.findByUserId(userDetails.getUsername());
-        model.addAttribute("user", user);
-
-        Membership membership = membershipRepository.findByUser(user)
-                .stream().findFirst().orElse(null);
-
-        List<PaymentViewDto> payments = membership == null
-                ? Collections.emptyList()
-                : paymentRepository.findByMembershipOrderByMembershipHistoryDateDesc(membership)
-                .stream()
-                .map(this::toPaymentViewDto)
-                .collect(Collectors.toList());
-
-        model.addAttribute("payments", payments);
-        model.addAttribute("refundEligibility", membershipService.checkRefundEligibility(user));
-        return "mypage/mypage_membership_history";
-    }
-
     private PaymentViewDto toPaymentViewDto(MembershipPayments p) {
         String statusLabel;
         String statusClass;
@@ -260,19 +299,6 @@ public class MyPageController {
         );
     }
 
-    @PostMapping("/membership/cancel")
-    public String mypageMembershipCancel(@AuthenticationPrincipal UserDetails userDetails,
-                                         RedirectAttributes rttr) {
-        User user = userService.findByUserId(userDetails.getUsername());
-        RefundEligibilityDto result = membershipService.cancel(user);
-
-        if (result.isEligible()) {
-            rttr.addFlashAttribute("successMessage", result.getReason());
-        } else {
-            rttr.addFlashAttribute("errorMessage", result.getReason());
-        }
-        return "redirect:/mypage/membership";
-    }
 
     @GetMapping("/wishlist")
     public String mypageWishlist(@AuthenticationPrincipal UserDetails userDetails,

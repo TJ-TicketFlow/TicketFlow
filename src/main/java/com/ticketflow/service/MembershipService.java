@@ -142,6 +142,7 @@ public class MembershipService {
             user.setMembershipEnd(LocalDate.now());
             userRepository.save(user);
         }
+        System.out.println("🔗 urls: " + attrs.getUrls());
     }
 
     public RefundEligibilityDto checkRefundEligibility(User user) {
@@ -225,6 +226,7 @@ public class MembershipService {
 
     }
 
+    @Transactional
     public RefundEligibilityDto cancel(User user) {
         Membership membership = membershipRepository.findByUser(user).stream().findFirst().orElse(null);
 
@@ -239,6 +241,17 @@ public class MembershipService {
 
         try {
             lemonSqueezyRefundService.cancelSubscription(subId);
+
+            membership.setMembershipStatus("CANCELLED");
+            membershipRepository.save(membership);
+            historyRepository.save(MembershipHistory.builder()
+                    .membership(membership)
+                    .actionType("CANCEL_REQUEST")
+                    .previousStatus("ACTIVE")
+                    .newStatus("CANCELLED")
+                    .historyNote("사용자 직접 해지 신청 (이번 달 혜택 유지)")
+                    .build());
+
         } catch (Exception e) {
             System.out.println("❌ Lemon Squeezy 구독 취소 API 호출 실패: " + e.getMessage());
             return new RefundEligibilityDto(false, "해지 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
@@ -301,6 +314,27 @@ public class MembershipService {
         } catch (Exception e) {
             System.err.println("⚠️ 날짜 파싱 실패: " + value);
             return null;
+        }
+    }
+
+    @Transactional
+    public void resume(User user) {
+        Membership membership = membershipRepository.findByUser(user).stream()
+                .max(java.util.Comparator.comparing(Membership::getMembershipId))
+                .orElseThrow(() -> new IllegalArgumentException("멤버십 정보가 없습니다."));
+
+        if ("ACTIVE".equals(membership.getMembershipStatus())) {
+            throw new IllegalStateException("이미 활성화된 멤버십입니다.");
+        }
+
+        try {
+            lemonSqueezyRefundService.resumeSubscription(membership.getMembershipSubId());
+
+            membership.setMembershipStatus("ACTIVE");
+            membershipRepository.save(membership);
+
+        } catch (Exception e) {
+            throw new RuntimeException("구독 재개 처리 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
     }
 
