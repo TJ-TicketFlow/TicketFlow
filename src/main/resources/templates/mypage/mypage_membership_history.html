@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<script th:src="@{/js/membership/membership-payment-history.js}"></script>
 <body>
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 결제 내역 - 티켓플로우', '멤버십 결제 내역', 'membershipPayments', ~{::content})}">
     <th:block th:fragment="content">
@@ -45,10 +46,16 @@
             </th:block>
         </div>
 
+<!--        <div th:if="${portalUrl != null}" style="margin-top:12px; text-align:center;">-->
+<!--            <a th:href="${portalUrl}" target="_blank" class="btn-mem-link" style="background:#6B7280;">-->
+<!--                결제 정보 전체 관리 (Lemon Squeezy Portal)-->
+<!--            </a>-->
+<!--        </div>-->
+
     </th:block>
 </th:block>
 
-<script th:src="@{/js/membership-payment-history.js}"></script>
+
 
 </body>
 </html>

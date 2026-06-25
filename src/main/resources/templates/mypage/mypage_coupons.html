@@ -10,6 +10,7 @@
             <div class="coupon-list">
                 <div class="coupon-item"
                      th:each="coupon : ${coupons}"
+                     th:if="${coupon.status != 2}"
                      th:classappend="${coupon.status != 0} ? ' expired'">
                     <div class="coupon-body">
                         <div class="coupon-type" th:text="${coupon.type}"></div>
