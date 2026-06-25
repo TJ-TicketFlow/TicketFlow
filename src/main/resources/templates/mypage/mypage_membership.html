@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<script th:src="@{/js/membership/membership-payment-history.js}"></script>
 <body>
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 혜택 - 티켓플로우', '멤버십 혜택', 'benefits', ~{::content})}">
     <th:block th:fragment="content">
@@ -27,11 +28,19 @@
                         <div class="coupon-chip premium-chip">15%</div>
                         <div class="coupon-chip-label">15% 쿠폰 1장</div>
                     </div>
-                    <button class="btn-join btn-current" disabled>현재 이용 중</button>
-                    <form th:action="@{/mypage/membership/cancel}" method="post"
-                          onsubmit="return confirm('정말 해지하시겠습니까? 이번 결제 기간이 끝나는 날까지는 계속 이용하실 수 있습니다.');">
-                        <button type="submit" class="btn-join btn-join-cancel" style="margin-top:8px;">해지하기</button>
-                    </form>
+
+                    <th:block th:if="${memInfo == null or memInfo.membershipStatus == 'ACTIVE'}">
+                        <button class="btn-join btn-current" disabled>현재 이용 중</button>
+                        <form th:action="@{/mypage/membership/cancel}" method="post"
+                              onsubmit="return confirm('정말 해지하시겠습니까? 이번 결제 기간이 끝나는 날까지는 계속 이용하실 수 있습니다.');">
+                            <button type="submit" class="btn-join btn-join-cancel" style="margin-top:8px;">해지하기</button>
+                        </form>
+                    </th:block>
+
+                    <th:block th:if="${memInfo != null and memInfo.membershipStatus == 'CANCELLED'}">
+                        <button class="btn-join btn-current" disabled style="background-color: #888; color: white;">해지 대기 (이번 달 혜택 유지)</button>
+                        <button type="button" class="btn-join btn-join-premium" style="margin-top:8px;" onclick="window.restartMembership()">다시 멤버십 시작하기</button>
+                    </th:block>
                 </div>
             </div>
         </th:block>
