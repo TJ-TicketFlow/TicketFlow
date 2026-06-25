@@ -201,6 +201,9 @@ public class MembershipService {
         membership.setMembershipStatus("REFUNDED");
         membershipRepository.save(membership);
 
+        latestPayment.setPaymentStatus("REFUNDED");
+        paymentRepository.save(latestPayment);
+
         user.setMembership("basic");
         user.setMembershipStart(null);
         user.setMembershipEnd(null);
