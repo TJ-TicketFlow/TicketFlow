@@ -24,12 +24,16 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/**")
+                )
+                .csrf(csrf -> csrf
                         .ignoringRequestMatchers("/concert/*/like") // "좋아요" 요청만 CSRF 예외 처리
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/login", "/register",
                                 "/api/check-userid",         // 아이디 중복확인 API
+                                "/api/create-checkout",
                                 "/register/send-code",
                                 "/register/verify-code",
                                 "/find-id", "/find-id/**",
@@ -45,13 +49,13 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("user_id")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/concert/", true)
+                        .defaultSuccessUrl("/mypage/benefits", true)
                         .failureUrl("/login?error")
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/concert/")
+                        .logoutSuccessUrl("/login")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()

@@ -538,18 +538,22 @@ body {
     gap: 32px;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 24px 60px;
+    padding: 32px 40px 60px;
     box-sizing: border-box;
+    width: 100%;
 }
 
 aside {
     flex: 0 0 220px;
     width: 220px;
+    min-width: 220px;
+    max-width: 220px;
 }
 
 .side-nav {
     position: sticky;
     top: 24px;
+    width: 220px;
     display: flex;
     flex-direction: column;
     background: #fff;
@@ -598,7 +602,13 @@ aside {
 .main-content {
     flex: 1;
     min-width: 0;
-    min-height: 500px;
+    min-height: 600px;
+    box-sizing: border-box;
+}
+
+.main-content > * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* 모바일 대응 */
@@ -885,16 +895,16 @@ aside {
     align-items: center;
     justify-content: center;
     padding: 60px 20px;
- /*   background: var(--bg);*/
+    /*   background: var(--bg);*/
 }
 
 /* 카드 박스 */
 .card {
-  /*  background: var(--white);
-    border-radius: 20px;
-    box-shadow: 0 4px 32px rgba(0,0,0,0.10);
-    border: 1px solid var(--border);
-    padding: 52px 44px 40px;*/
+    /*  background: var(--white);
+      border-radius: 20px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+      border: 1px solid var(--border);
+      padding: 52px 44px 40px;*/
     width: 100%;
     max-width: 440px;
 }
@@ -964,7 +974,7 @@ aside {
 .input-group .input-row {
     border: none;
     border-radius: 0;
-  /*  background: transparent;*/
+    /*  background: transparent;*/
     height: 52px;
     padding: 0 18px;
     gap: 12px;

@@ -2,6 +2,7 @@ package com.ticketflow.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -13,8 +14,14 @@ import java.util.Map;
 @RequestMapping("/api")
 public class PayController {
 
-    private final String LS_API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."; // 실제 환경변수나 application.yml에서 가져오는 것을 권장합니다.
-    private final String LS_STORE_ID = "374082";
+    @Value("${lemon-squeezy.api-key}")
+    private String LS_API_KEY;
+
+    @Value("${lemon-squeezy.store-id}")
+    private String LS_STORE_ID;
+
+    @Value("${lemon-squeezy.variant-id}")
+    private String LS_VARIANT_ID;
 
     @PostMapping("/create-checkout")
     public ResponseEntity<?> createCheckout(@RequestBody Map<String, String> data,
@@ -54,7 +61,7 @@ public class PayController {
 
             Map<String, Object> relationships = new HashMap<>();
             relationships.put("store", Map.of("data", Map.of("type", "stores", "id", LS_STORE_ID)));
-            relationships.put("variant", Map.of("data", Map.of("type", "variants", "id", variantId)));
+            relationships.put("variant", Map.of("data", Map.of("type", "variants", "id", LS_VARIANT_ID)));
             dataNode.put("relationships", relationships);
 
             body.put("data", dataNode);
@@ -82,4 +89,6 @@ public class PayController {
                     .body(Map.of("error", "네트워크 오류: " + e.getMessage()));
         }
     }
+
+
 }
