@@ -24,16 +24,13 @@
     <div class="detail-grid">
         <div class="info-left">
             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
-
             <div class="wishlist-box"
                  th:data-concert-id="${concert.concertId}"
                  onclick="toggleWishlist(this.getAttribute('data-concert-id'))"
                  style="display: flex; align-items: center; justify-content: flex-start; cursor: pointer; margin-top: 10px;">
-
                 <img th:id="'wish-icon-' + ${concert.concertId}"
                      th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}"
                      alt="찜" style="width: 24px; margin-right: 8px;">
-
                 <span style="margin-right: 8px; font-weight: 500;">위시리스트</span>
                 <span th:id="'wish-count-' + ${concert.concertId}" th:text="${wishCount}">0</span>
             </div>
@@ -79,12 +76,27 @@
                         <h3>회차 선택</h3>
                         <div id="session-container" class="session-wrapper"></div>
                     </div>
-                    <form th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
+                    <form id="bookingForm" th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
                         <input type="hidden" name="sessionId" id="selectedSessionId">
                         <input type="hidden" name="date" id="selectedDate">
                         <button type="submit" class="btn-primary">예매하기</button>
                     </form>
+                    <div class="prediction-info" style="margin-top: 20px; padding: 15px; border-top: 1px solid #eee;">
+                        <div th:if="${expectedSoldOutRate != null or expectedCancelRate != null}">
+                            <p style="margin: 5px 0; font-size: 0.9rem; color: #555;">
+                                예상 매진율: <strong th:text="${expectedSoldOutRate} + '%'">0%</strong>
+                            </p>
+                            <p style="margin: 5px 0; font-size: 0.9rem; color: #555;">
+                                예상 취소율: <strong th:text="${expectedCancelRate} + '%'">0%</strong>
+                            </p>
+                        </div>
+
+                        <div th:if="${expectedSoldOutRate == null and expectedCancelRate == null}"
+                             style="text-align: center; color: #999; font-size: 0.85rem; padding: 10px 0;">
+                            예상 데이터가 없습니다.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -108,157 +120,11 @@
     </section>
 </main>
 
+<div id="data-store" th:data-concert-id="${concert.concertId}" style="display:none;"></div>
+
 <div th:replace="~{fragments/footer :: footer}"></div>
 
-<script th:inline="javascript">
-    let genderChart, ageChart;
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const initialStats = /*[[${stats}]]*/ null;
-        if (initialStats) {
-            initCharts(initialStats);
-            setInterval(pollStats, 3000);
-        }
-
-        const calendarEl = document.querySelector('.concert-calendar');
-        const concertId = /*[[${concert.concertId}]]*/ null;
-
-        if (calendarEl) {
-            // 공연 가능 날짜를 서버에서 가져온 뒤 달력 생성
-            fetch(`/concert/${concertId}/available-dates`)
-                .then(res => res.json())
-                .then(availableDates => {
-                    var calendar = new FullCalendar.Calendar(calendarEl, {
-                        locale: 'ko',
-                        initialView: 'dayGridMonth',
-                        selectable: true,
-                        dateClick: (info) => {
-                            if (availableDates.includes(info.dateStr)) {
-                                loadSessions(info.dateStr);
-                            } else {
-                                alert("해당 날짜에는 공연이 없습니다.");
-                            }
-                        },
-                        dayCellDidMount: (info) => {
-                            if (availableDates.includes(info.dateStr)) {
-                                info.el.style.backgroundColor = '#f0f7ff';
-                            }
-                        }
-                    });
-                    calendar.render();
-                });
-        }
-    });
-
-    function initCharts(stats) {
-        genderChart = new Chart(document.getElementById('genderChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['남성', '여성'],
-                datasets: [{
-                    data: stats.genderData,
-                    backgroundColor: ['#3b82f6', '#f43f5e']
-                }]
-            },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                let value = context.raw;
-                                return `${label}: ${value}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        ageChart = new Chart(document.getElementById('ageChart'), {
-            type: 'bar',
-            data: {
-                labels: ['10대', '20대', '30대', '40대', '50대'],
-                datasets: [{
-                    label: '연령대별 예매율',
-                    data: stats.ageData,
-                    backgroundColor: '#3b82f6'
-                }]
-            },
-            options: {
-                scales: {
-                    y: { beginAtZero: true, max: 100, ticks: { callback: (val) => val + '%' } }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.raw}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    function pollStats() {
-        const concertId = /*[[${concert.concertId}]]*/ null;
-        fetch(`/concert/${concertId}/stats-json`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && genderChart && ageChart) {
-                    genderChart.data.datasets[0].data = data.genderData;
-                    ageChart.data.datasets[0].data = data.ageData;
-                    genderChart.update();
-                    ageChart.update();
-                }
-            })
-            .catch(err => console.error("통계 업데이트 실패", err));
-    }
-
-    function toggleWishlist(concertId) {
-        const csrfToken = document.querySelector('meta[name="_csrf"]').content;
-        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
-        fetch(`/concert/${concertId}/like`, {
-            method: 'POST',
-            headers: { [csrfHeader]: csrfToken, 'Content-Type': 'application/json' },
-            credentials: 'include'
-        })
-            .then(res => res.status === 401 ? (alert("로그인이 필요합니다."), window.location.href="/login", null) : res.json())
-            .then(data => {
-                if (!data) return;
-                document.getElementById(`wish-icon-${concertId}`).src = data.isLiked ? "/images/favicon.png" : "/images/notfavicon.png";
-                document.getElementById(`wish-count-${concertId}`).innerText = data.newCount;
-            });
-    }
-
-    function loadSessions(date) {
-
-        document.getElementById('selectedDate').value = date;
-
-        const concertId = document.querySelector('input[name="concertId"]').value;
-        fetch(`/concert/${concertId}/sessions?date=${date}`)
-            .then(res => res.json())
-            .then(data => {
-                const container = document.getElementById('session-container');
-                container.innerHTML = '';
-                data.forEach(s => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button'; btn.className = 'btn-session';
-                    btn.innerText = s.time;
-                    btn.onclick = () => {
-                        document.querySelectorAll('.btn-session').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        document.getElementById('selectedSessionId').value = s.id;
-                    };
-                    container.appendChild(btn);
-                });
-            });
-    }
-    function openCouponPopup() { document.getElementById('couponPopup').style.display = 'block'; }
-    function closeCouponPopup() { document.getElementById('couponPopup').style.display = 'none'; }
-</script>
+<script th:src="@{/js/concert/detail.js}"></script>
 
 <div id="couponPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#ffffff; padding:30px; border-radius:24px; z-index:1001; width:360px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); border: 1px solid #eee;">
     <h3 style="margin: 0 0 20px 0; text-align: center; font-size: 1.3rem;">보유 쿠폰</h3>

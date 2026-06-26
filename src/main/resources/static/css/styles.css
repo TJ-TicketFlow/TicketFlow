@@ -1216,3 +1216,12 @@ aside {
         grid-template-columns: repeat(2, 1fr) !important;
     }
 }
+/* 기존 스타일 아래에 추가 */
+.empty-message {
+    grid-column: 1 / -1; /* grid일 경우 전체 너비를 차지하게 함 */
+    text-align: center;
+    padding: 60px 0;
+    color: #999;
+    font-size: 1.1rem;
+    width: 100%; /* 부모 안에서 100% 너비 확보 */
+}
