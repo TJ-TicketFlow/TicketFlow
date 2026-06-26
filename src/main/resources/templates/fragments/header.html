@@ -78,17 +78,17 @@
             <a th:href="@{/concert/ranking}" class="cat-item" th:classappend="${genre == 'ranking'} ? ' active'">랭킹</a>
             <span class="cat-sep">|</span>
 
-            <a th:href="@{/concert/(genre='jazz')}" class="cat-item" th:classappend="${genre == 'jazz'} ? ' active'">재즈/팝</a>
+            <a th:href="@{/concert/(genre='jazz')}" class="cat-item" th:classappend="${(pageName != 'ranking' and genre == 'jazz')} ? ' active'">재즈/팝</a>
             <span class="cat-sep">|</span>
-            <a th:href="@{/concert/(genre='ballad')}" class="cat-item" th:classappend="${genre == 'ballad'} ? ' active'">발라드/R&B</a>
+            <a th:href="@{/concert/(genre='ballad')}" class="cat-item" th:classappend="${(pageName != 'ranking' and genre == 'ballad')} ? ' active'">발라드/R&B</a>
             <span class="cat-sep">|</span>
-            <a th:href="@{/concert/(genre='rock')}" class="cat-item" th:classappend="${genre == 'rock'} ? ' active'">록/메탈</a>
+            <a th:href="@{/concert/(genre='rock')}" class="cat-item" th:classappend="${(pageName != 'ranking' and genre == 'rock')} ? ' active'">록/메탈</a>
             <span class="cat-sep">|</span>
-            <a th:href="@{/concert/(genre='indie')}" class="cat-item" th:classappend="${genre == 'indie'} ? ' active'">인디/어쿠스틱</a>
+            <a th:href="@{/concert/(genre='indie')}" class="cat-item" th:classappend="${(pageName != 'ranking' and genre == 'indie')} ? ' active'">인디/어쿠스틱</a>
             <span class="cat-sep">|</span>
-            <a th:href="@{/concert/(genre='hiphop')}" class="cat-item" th:classappend="${genre == 'hiphop'} ? ' active'">힙합/랩</a>
+            <a th:href="@{/concert/(genre='hiphop')}" class="cat-item" th:classappend="${(pageName != 'ranking' and genre == 'hiphop')} ? ' active'">힙합/랩</a>
             <span class="cat-sep">|</span>
-            <a th:href="@{/concert/(genre='etc')}" class="cat-item" th:classappend="${genre == 'etc'} ? ' active'">기타 대중음악</a>
+            <a th:href="@{/concert/(genre='etc')}" class="cat-item" th:classappend="${(pageName != 'ranking' and genre == 'etc')} ? ' active'">기타 대중음악</a>
         </div>
     </div>
 </nav>
