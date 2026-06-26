@@ -120,7 +120,11 @@
     </section>
 </main>
 
-<div id="data-store" th:data-concert-id="${concert.concertId}" style="display:none;"></div>
+<div id="data-store"
+     th:data-concert-id="${concert.concertId}"
+     th:data-start-date="${concert.concertStartDate}"
+     th:data-end-date="${concert.concertEndDate}"
+     style="display:none;"></div>
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
