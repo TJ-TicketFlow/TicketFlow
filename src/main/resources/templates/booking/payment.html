@@ -115,10 +115,10 @@
                     <div class="summary-row"><span>매수</span><span th:text="${ticket != null ? ticket.count + '매' : '0매'}">0매</span></div>
                     <div class="summary-row">
                         <span>좌석</span>
-                        <span th:if="${param.detail != null}" th:text="${param.detail}" style="font-weight: bold; color: #3b82f6;">VIP석 2장, 일반석 1장</span>
+                        <span th:if="${param.detail != null}" th:text="${param.detail}" style="font-weight: bold; color: #3b82f6;">0장</span>
 
                         <span th:unless="${param.detail != null}">
-                            <span th:text="${ticket != null ? ticket.seatInfo : '좌석 정보 없음'}" style="line-height: 1.4;">VIP 1열 1번, R석 2열 5번</span>
+                            <span th:text="${ticket != null ? ticket.seatInfo : '좌석 정보 없음'}" style="line-height: 1.4;">0열 0번</span>
                         </span>
                     </div>
                 </div>

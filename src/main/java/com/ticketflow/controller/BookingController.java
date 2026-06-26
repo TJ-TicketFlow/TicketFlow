@@ -24,7 +24,6 @@ public class BookingController {
     // 0. 결제 화면 (여기에 쿠폰, 예매 정보가 다 나옴)
     @GetMapping("/payment")
     public String showPaymentPage(
-            //@RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
             @RequestParam(value = "reservationKey", required = true) Long reservationKey,
             java.security.Principal principal, // 💡 [핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
             Model model) {

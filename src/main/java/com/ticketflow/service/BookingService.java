@@ -778,7 +778,6 @@ public class BookingService {
         }
 
         // 4. 좌석을 다시 [예매 가능] 상태로 풀어주기
-        // 4. 좌석을 다시 [예매 가능] 상태로 풀어주기
         Reservation reservation = pay.getReservation();
         if (reservation != null && reservation.getSelectedSeat() != null) {
             reservation.getSelectedSeat().setSeatState((short) 0); // 껍데기 해제
