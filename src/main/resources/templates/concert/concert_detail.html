@@ -82,6 +82,21 @@
                         <input type="hidden" name="date" id="selectedDate">
                         <button type="submit" class="btn-primary">예매하기</button>
                     </form>
+                    <div class="prediction-info" style="margin-top: 20px; padding: 15px; border-top: 1px solid #eee;">
+                        <div th:if="${expectedSoldOutRate != null or expectedCancelRate != null}">
+                            <p style="margin: 5px 0; font-size: 0.9rem; color: #555;">
+                                예상 매진율: <strong th:text="${expectedSoldOutRate} + '%'">0%</strong>
+                            </p>
+                            <p style="margin: 5px 0; font-size: 0.9rem; color: #555;">
+                                예상 취소율: <strong th:text="${expectedCancelRate} + '%'">0%</strong>
+                            </p>
+                        </div>
+
+                        <div th:if="${expectedSoldOutRate == null and expectedCancelRate == null}"
+                             style="text-align: center; color: #999; font-size: 0.85rem; padding: 10px 0;">
+                            예상 데이터가 없습니다.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
