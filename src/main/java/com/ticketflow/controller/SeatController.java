@@ -9,6 +9,7 @@ import com.ticketflow.repository.SeatRepository;
 import com.ticketflow.repository.UserRepository;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.SeatService;
+import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -34,6 +35,8 @@ public class SeatController {
     private final ConcertService concertService;
     private final UserRepository userRepository;
     private final SelectedSeatRepository selectedSeatRepository;
+    private final UserService userService;
+
 
     private final SeatRepository seatRepository;
 
@@ -52,174 +55,46 @@ public class SeatController {
      * POST /seat/api/booking/prepare
      */
 
-    @ResponseBody
     @PostMapping("/api/booking/prepare")
-    @Transactional // 💡 데이터 정합성을 위해 트랜잭션 어노테이션을 붙여줍니다.
-    // 1. 매개변수 맨 뒤에 'Principal principal'을 추가해 로그인 정보를 확보합니다.
-    public ResponseEntity<?> prepareBooking(@RequestBody com.ticketflow.dto.selectedSeat request, Principal principal) {
-        System.out.println("====== ✈️ [백엔드] 예매 데이터 수신 및 DB 처리 시작 ======");
+    public ResponseEntity<?> prepareBooking(
+            @RequestBody Map<String, Object> bookingData,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
 
-        // 2. [인증 검증] 로그인 상태가 아니라면 즉시 차단합니다.
-        if (principal == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "로그인 세션이 만료되었습니다. 다시 로그인해주세요."));
+        System.out.println("====== ✈️ [백엔드] 프론트엔드 예매 데이터 수신 ======");
+        System.out.println("데이터 확인: " + bookingData);
+
+        // 1. 현재 로그인한 유저의 정보 가져오기
+        // 로그인 안 된 경우
+        if (userDetails == null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "로그인이 필요합니다.");
+
+            return ResponseEntity.status(401).body(response);
         }
 
-        // 3. 로그인한 유저의 ID(아이디 또는 이메일)로 실제 User 엔티티 객체를 조회합니다.
-        String username = principal.getName();
-        User currentUser = userRepository.findByUserId(username) // 💡 테이블 설계(findByUserEmail 등)에 맞게 커스텀 필요
-                .orElseThrow(() -> new RuntimeException("현재 로그인된 회원 정보를 찾을 수 없습니다."));
+        User user = userService.findByUserId(userDetails.getUsername());
+        Long userNo = user.getUserNo();
 
-        // ----------------------------------------------------
-        // 🎫 [케이스 1] 지정석(SEAT) 예매 처리
-        // ----------------------------------------------------
-        if ("SEAT".equalsIgnoreCase(request.getTicketType()) && request.getSelectedSeats() != null) {
-            for (String seatId : request.getSelectedSeats()) {
-                String dbFormatId = seatId.replace("SEAT_", "").replace("R", "").replace("C", "");
-                String realDbSeatId = request.getConcertId() + "_" + dbFormatId;
+        try {
+            // 2. 서비스 로직을 태워서 DB에 저장하고, 찐 영수증 번호 받아오기!
+            Long realReservationKey = seatService.processBookingAndGetReservationKey(bookingData, userNo);
 
-                Seat seat;
-                String detectedClass = "STANDARD";
+            // 3. 발급받은 번호를 프론트엔드에 다시 던져줍니다.
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "SUCCESS");
+            response.put("reservationKey", realReservationKey); // 🌟 여기가 핵심!
 
-                String rowVal = "1";
-                String colVal = "1";
-                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("R([A-Za-z0-9]+)_C(\\d+)").matcher(seatId);
-                if (matcher.find()) {
-                    rowVal = matcher.group(1);
-                    colVal = matcher.group(2);
-                }
+            System.out.println("✅ 예매 장부 생성 완료! 예약 번호: " + realReservationKey);
+            return ResponseEntity.ok(response);
 
-                try {
-                    seat = seatService.getSeatById(realDbSeatId);
-                    if (seat.getSeatClass() != null) {
-                        detectedClass = seat.getSeatClass();
-                    }
-                } catch (RuntimeException e) {
-                    seat = new Seat();
-                    seat.setSeatId(realDbSeatId);
-                    Concert dummyConcert = new Concert();
-                    dummyConcert.setConcertId(request.getConcertId());
-                    seat.setConcert(dummyConcert);
-                    seat.setSeatStatus((short) 1);
-                    detectedClass = rowVal;
-                    seat.setSeatClass(detectedClass);
-                    seat.setSeatRow(rowVal);
-                    seat.setSeatCol(colVal);
-                    seat = seatRepository.save(seat);
-                }
-
-                if (seat.getSeatStatus() == 0) {
-                    return ResponseEntity.badRequest().body(Map.of("message", "이미 선택된 좌석입니다."));
-                }
-
-                seat.setSeatStatus((short) 0);
-                seatRepository.save(seat);
-
-                SelectedSeat selectedSeat = new SelectedSeat();
-                selectedSeat.setSeat(seat);
-
-                Concert currentConcert = new Concert();
-                currentConcert.setConcertId(request.getConcertId());
-                selectedSeat.setConcert(currentConcert);
-
-                // 🎯 [해결 1] 'user_no'가 null이 되지 않도록 조회한 유저 객체를 주입합니다.
-                selectedSeat.setUser(currentUser);
-
-                int finalPrice = 0;
-                try {
-                    finalPrice = seatService.calculatePrice(request.getConcertId(), detectedClass);
-                } catch (Exception ex) {
-                    try {
-                        Concert c = concertService.findById(request.getConcertId());
-                        if (c.getConcertPriceInfo() != null) {
-                            String[] pTokens = c.getConcertPriceInfo().split(",");
-                            finalPrice = Integer.parseInt(pTokens[0].split(":")[1].trim());
-                        }
-                    } catch (Exception ex2) {
-                        finalPrice = 0;
-                    }
-                }
-
-                // 🎯 [해결 2] int형 변수를 Long 객체 형태로 안전하게 감싸 매핑 에러를 방지합니다.
-                selectedSeat.setPrice(Long.valueOf(finalPrice));
-
-                selectedSeatRepository.save(selectedSeat);
-            }
+        } catch (Exception e) {
+            System.err.println("🚨 예매 장부 생성 실패: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "FAIL");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
-
-        // ----------------------------------------------------
-        // 🏃 [케이스 2] 스탠딩(STANDING) 예매 처리
-        // ----------------------------------------------------
-        else if ("STANDING".equalsIgnoreCase(request.getTicketType()) && request.getQuantities() != null) {
-            for (Map.Entry<String, Integer> entry : request.getQuantities().entrySet()) {
-                String grade = entry.getKey();
-                int quantity = entry.getValue();
-
-                for (int i = 1; i <= quantity; i++) {
-                    String realDbSeatId = request.getConcertId() + "_" + grade + "_STAND_" + i;
-
-                    Seat seat;
-                    try {
-                        seat = seatService.getSeatById(realDbSeatId);
-                    } catch (RuntimeException e) {
-                        seat = new Seat();
-                        seat.setSeatId(realDbSeatId);
-                        Concert dummyConcert = new Concert();
-                        dummyConcert.setConcertId(request.getConcertId());
-                        seat.setConcert(dummyConcert);
-                        seat.setSeatStatus((short) 1);
-                        seat.setSeatClass(grade);
-                        seat.setSeatRow("STAND");
-                        seat.setSeatCol(String.valueOf(i));
-                        seat = seatRepository.save(seat);
-                    }
-
-                    if (seat.getSeatStatus() == 0) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "해당 구역의 티켓이 매진되었습니다."));
-                    }
-
-                    seat.setSeatStatus((short) 0);
-                    seatRepository.save(seat);
-
-                    SelectedSeat selectedSeat = new SelectedSeat();
-                    selectedSeat.setSeat(seat);
-
-                    Concert currentConcert = new Concert();
-                    currentConcert.setConcertId(request.getConcertId());
-                    selectedSeat.setConcert(currentConcert);
-
-                    // 🎯 [해결 1] 스탠딩 분기도 똑같이 유저 객체를 주입합니다.
-                    selectedSeat.setUser(currentUser);
-
-                    int standingPrice = 0;
-                    try {
-                        standingPrice = seatService.calculatePrice(request.getConcertId(), grade);
-                    } catch (Exception ex) {
-                        try {
-                            Concert c = concertService.findById(request.getConcertId());
-                            if (c.getConcertPriceInfo() != null) {
-                                String[] pTokens = c.getConcertPriceInfo().split(",");
-                                standingPrice = Integer.parseInt(pTokens[0].split(":")[1].trim());
-                            }
-                        } catch (Exception ex2) {
-                            standingPrice = 0;
-                        }
-                    }
-
-                    // 🎯 [해결 2] 스탠딩 가격 또한 Long 객체 형태로 감싸서 주입합니다.
-                    selectedSeat.setPrice(Long.valueOf(standingPrice));
-
-                    selectedSeatRepository.save(selectedSeat);
-                }
-            }
-        }
-
-        System.out.println("====== 🎉 [백엔드] 지정석/스탠딩 예매 데이터 정상 처리 완료 ======");
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "SUCCESS");
-        response.put("bookingId", "TEMP_B_" + System.currentTimeMillis());
-
-        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{concertId}")

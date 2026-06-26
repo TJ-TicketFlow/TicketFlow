@@ -1,14 +1,13 @@
 package com.ticketflow.service;
 
-import com.ticketflow.entity.Concert;
-import com.ticketflow.entity.Seat;
-import com.ticketflow.repository.ConcertRepository;
-import com.ticketflow.repository.SeatRepository;
+import com.ticketflow.entity.*;
+import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +16,9 @@ public class SeatService {
 
     private final SeatRepository seatRepository;
     private final ConcertRepository concertRepository;
+    private final UserRepository userRepository;
+    private final SelectedSeatRepository selectedSeatRepository;
+    private final ReservationRepository reservationRepository;
 
     /**
      * 공연 가격정보 기반 좌석 타입 판단
@@ -37,10 +39,10 @@ public class SeatService {
         // 과거에는 "GA"라는 문자열도 체크했지만, "GA석"처럼 좌석 등급명에
         //    "GA"라는 두 글자가 포함되기만 해도 STANDING으로 오판하는 버그가 있어 제거함.
         //    (예: "VIP석 99,000원, GA석 88,000원" → 지정석 공연인데도 스탠딩으로 잘못 분류됨)
-        if (priceInfo.contains("스탠딩")) {
-            return "STANDING"; // 앞서 seatmap.js 조건문과 맞추기 위해 "STANDING" 또는 "SEAT_B"를 리턴
+        if (priceInfo.contains("전석")) {
+            return "SEAT_A"; // 앞서 seatmap.js 조건문과 맞추기 위해 "STANDING" 또는 "SEAT_B"를 리턴
         } else {
-            return "SEAT_A";
+            return "STANDING";
         }
     }
 
@@ -161,5 +163,138 @@ public class SeatService {
     public Seat saveSeat(Seat seat) {
         return seatRepository.save(seat);
     }
+
+    // ===================================================
+    // 🌟 프론트엔드의 최종 예매 데이터를 받아 DB 장부 생성 (유저 표시 문구 최적화 버전)
+    // ===================================================
+    @Transactional
+    public Long processBookingAndGetReservationKey(Map<String, Object> bookingData, Long userNo) {
+        String concertId = bookingData.get("concertId").toString();
+        String ticketType = bookingData.get("ticketType").toString();
+        // 프론트엔드에서 연산해온 총 가격
+        Long totalPrice = Double.valueOf(bookingData.get("totalPrice").toString()).longValue();
+
+        User user = userRepository.findById(userNo).orElseThrow(() -> new RuntimeException("유저 찾을 수 없음"));
+        Concert concert = concertRepository.findById(concertId).orElseThrow(() -> new RuntimeException("공연 찾을 수 없음"));
+
+        int totalTicketCount = 0;
+        Seat representativeSeat = null;
+
+        // 백엔드가 취소할 때 기억할 진짜 좌석 ID들을 담을 바구니
+        List<String> realSeatIds = new java.util.ArrayList<>();
+
+        // 🌟 [새로 추가] 유저에게 보여줄 깔끔한 좌석 명칭("1열 1번")을 담을 바구니
+        List<String> formattedSeatsForUser = new java.util.ArrayList<>();
+
+        if ("SEAT".equals(ticketType)) {
+            List<String> seatIds = (List<String>) bookingData.get("selectedSeats");
+            totalTicketCount = seatIds.size();
+
+            for (String frontendSeatId : seatIds) {
+
+                // 🌟 [핵심] 프론트가 보낸 "SEAT_R1_C1"에서 "SEAT" 글자를 "공연ID(예: PF1234)"로 바꿉니다!
+                // 결과물: "PF1234_R1_C1" (DB에 들어있는 진짜 아이디와 완벽 일치)
+                String dbSeatId = frontendSeatId.replace("SEAT", concertId);
+
+                // 바꾼 진짜 아이디로 DB를 뒤집니다.
+                Seat seat = seatRepository.findById(dbSeatId)
+                        .orElseThrow(() -> new RuntimeException("유효하지 않은 좌석 번호입니다: " + dbSeatId));
+
+                if (seat.getSeatStatus() == 0) {
+                    throw new RuntimeException("이미 누군가 예매한 좌석입니다: " + dbSeatId);
+                }
+
+                // 좌석 잠금 처리
+                seat.setSeatStatus((short) 0);
+
+                try {
+                    seat = seatRepository.save(seat);
+                    seatRepository.flush();
+
+                    realSeatIds.add(seat.getSeatId()); // 💡 취소용 진짜 ID(예: PF277688_R1_C1)는 여기에 안전하게 보존!
+
+                    // 🌟 [핵심 수정] 엔티티가 가진 순수 숫자 데이터만 꺼내서 "1열 1번" 형태로 깨끗하게 조립합니다.
+                    formattedSeatsForUser.add(seat.getSeatRow() + "열 " + seat.getSeatCol() + "번");
+
+                } catch (Exception e) {
+                    throw new RuntimeException("동시 예매 충돌: " + dbSeatId);
+                }
+                if (representativeSeat == null) representativeSeat = seat;
+            }
+        }
+        // 💡 2. 스탠딩(STANDING) 수량형일 경우의 처리 로직
+        else if ("STANDING".equals(ticketType)) {
+            Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
+            for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+                String grade = entry.getKey();
+                int qty = entry.getValue();
+                totalTicketCount += qty;
+
+                for (int i = 0; i < qty; i++) {
+                    String shortGrade = grade.length() > 3 ? grade.substring(0, 3) : grade;
+                    long timeSeq = System.currentTimeMillis() % 10000;
+                    String tempSeatId = concertId + "_S_" + shortGrade + "_" + i;
+
+                    Seat seat = new Seat();
+                    seat.setSeatId(tempSeatId);
+                    seat.setConcert(concert);
+                    seat.setSeatStatus((short) 0);
+                    seat.setSeatClass(grade);
+                    seat.setSeatRow("0");
+                    seat.setSeatCol("0");
+
+                    seat = seatRepository.save(seat);
+                    realSeatIds.add(seat.getSeatId());
+
+                    if (representativeSeat == null) representativeSeat = seat;
+                }
+            }
+        }
+
+        // 💡 3. 최종 예약 장부(SelectedSeat, Reservation) 조립 및 저장
+        SelectedSeat selectedSeat = SelectedSeat.builder()
+                .user(user)
+                .seat(representativeSeat)
+                .concert(concert)
+                .price(totalPrice)
+                .seatState((short) 1) // 1 = 결제 대기 상태
+                .build();
+
+        SelectedSeat savedSelectedSeat = selectedSeatRepository.save(selectedSeat);
+
+        String seatsDisplayHtml = "선택된 티켓";
+
+        if ("SEAT".equals(ticketType)) {
+            // 🌟 [핵심 수정] 위에서 에러 없이 정밀하게 담아둔 "1열 1번, 1열 2번" 문자열을 그대로 합쳐줍니다!
+            seatsDisplayHtml = String.join(", ", formattedSeatsForUser);
+
+        } else if ("STANDING".equals(ticketType)) {
+            Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
+            List<String> standingDetails = new java.util.ArrayList<>();
+            if (quantities != null) {
+                for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+                    String gradeName = entry.getKey();
+                    if ("GENERAL".equalsIgnoreCase(gradeName)) {
+                        gradeName = "일반";
+                    }
+                    standingDetails.add(gradeName + entry.getValue() + "장");
+                }
+            }
+            seatsDisplayHtml = String.join(", ", standingDetails);
+        }
+
+        Reservation reservation = Reservation.builder()
+                .selectedSeat(savedSelectedSeat)
+                .reservationCount(totalTicketCount)
+                .reservationDate(concert.getConcertStartDate() != null ? concert.getConcertStartDate() : java.time.LocalDate.now())
+                .sessionTime(concert.getConcertTime() != null ? concert.getConcertTime() : "시간 미정")
+                .selectedSeatsText(seatsDisplayHtml) // 🌟 여기에 완전 깨끗한 글자가 들어갑니다!
+                .reservedSeatIds(String.join(",", realSeatIds)) // 💡 진짜 식별자 ID 목록도 컴마로 완벽 저장!
+                .build();
+
+        Reservation savedReservation = reservationRepository.save(reservation);
+        return savedReservation.getReservationKey();
+    }
+
 
 }

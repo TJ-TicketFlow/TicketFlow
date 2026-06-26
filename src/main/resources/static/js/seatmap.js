@@ -491,6 +491,8 @@ function submitBooking() {
         })
         .then(result => {
             alert("데이터 전송 성공! 결제부로 진입합니다.");
+            const reservationKey = result.reservationKey;
+            window.location.href = `/booking/payment?reservationKey=${reservationKey}`;
         })
         .catch(err => {
             alert("예매 처리 중 오류가 발생했습니다.");
