@@ -42,32 +42,49 @@ document.addEventListener("DOMContentLoaded", function() {
     const reservationMeta = document.querySelector("meta[name='reservation_key']");
     const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute("content")) : 0;
 
-    // [타이머 설정]
-    let timeout = 30; // 현재 30분으로 설정되어 있네요!
-    let timeLeft = timeout * 60;
+    const remainingMeta = document.querySelector("meta[name='remaining_seconds']");
+    let timeLeft = remainingMeta ? Number(remainingMeta.getAttribute("content")) : 30 * 60;
+
     const timerDisplay = document.getElementById('countdownTimer');
 
-    // 1초마다 똑딱거리는 초시계
-    const timerInterval = setInterval(function() {
+    // 🌟 1. 시간을 예쁘게 포장해서 화면에 그리는 작업을 '함수'로 따로 빼냅니다.
+    function renderTimer() {
+        // 혹시 시간이 마이너스면 0으로 고정
+        if (timeLeft <= 0) timeLeft = 0;
+
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
-
         const minutesString = String(minutes).padStart(2, '0');
         const secondsString = String(seconds).padStart(2, '0');
 
         if (timerDisplay) {
             timerDisplay.textContent = minutesString + ":" + secondsString;
         }
+    }
 
+    // 🌟 2. [핵심] setInterval이 1초 멍 때리기 전에, 화면이 켜지자마자 즉시 1번 그려버립니다!
+    renderTimer();
+
+    // 🌟 3. 그 직후부터 1초마다 남은 시간을 줄이며 똑딱거리게 만듭니다.
+    const timerInterval = setInterval(function() {
+        timeLeft--; // 1초를 먼저 빼고
+
+        // 시간이 다 되었을 때
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            alert("결제 대기 시간("+ timeout + "분)이 초과되었습니다. 메인 화면으로 돌아갑니다.");
+            renderTimer(); // 화면에 00:00을 확실히 찍어줍니다.
 
-            // 💡 [추가] 시간이 다 되면 메인으로 쫓아내기 전에 좌석부터 풉니다!
-            sendReleaseRequest();
-            window.location.href = '/';
+            // 0.1초 정도 여유를 주어 00:00이 화면에 보인 직후 알림창을 띄웁니다.
+            setTimeout(() => {
+                alert("결제 대기 시간이 초과되었습니다. 메인 화면으로 돌아갑니다.");
+                sendReleaseRequest();
+                window.location.href = '/';
+            }, 100);
+            return;
         }
-        timeLeft--;
+
+        // 남은 시간 화면에 다시 그리기
+        renderTimer();
     }, 1000);
 
     // [기초 HTML 상자들 가져오기]

@@ -949,4 +949,30 @@ public class BookingService {
             System.err.println("🚨 이메일 발송 실패: " + e.getMessage());
         }
     }
+
+    // ==========================================
+    // 💡 15. 결제창 타이머 동기화를 위한 남은 시간 계산기
+    // ==========================================
+    public long getRemainingSeconds(Long reservationKey) {
+        Reservation reservation = reservationRepository.findById(reservationKey)
+                .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
+
+        // 🌟 예약 장부가 DB에 생성된 진짜 시간을 가져옵니다.
+        // (주의: 엔티티에 만들어두신 등록일자 필드명에 맞게 getCreatedAt() 등을 수정해 주세요!)
+        java.time.LocalDateTime createdAt = reservation.getReservationCreatedAt();
+
+        // 혹시라도 생성 시간이 기록 안 되어 있다면 안전하게 기본값 30분(1800초)을 줍니다.
+        if (createdAt == null) {
+            return 1800L;
+        }
+
+        // 만료 시간 = 생성 시간 + 30분
+        java.time.LocalDateTime expiresAt = createdAt.plusMinutes(30);
+
+        // 현재 시간과 만료 시간 사이의 남은 초 계산
+        long remainingSeconds = java.time.Duration.between(java.time.LocalDateTime.now(), expiresAt).getSeconds();
+
+        // 30분이 이미 지났다면 마이너스 대신 0초를 반환합니다.
+        return remainingSeconds > 0 ? remainingSeconds : 0;
+    }
 }

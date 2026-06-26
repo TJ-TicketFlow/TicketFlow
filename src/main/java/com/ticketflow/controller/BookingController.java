@@ -49,6 +49,9 @@ public class BookingController {
             Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
             model.addAttribute("user", buyer);
 
+             long remainingSeconds = bookingService.getRemainingSeconds(reservationKey);
+             model.addAttribute("remainingSeconds", remainingSeconds);
+
         } catch (IllegalStateException | IllegalArgumentException e) {
             System.out.println("🚨 잘못된 결제창 접근 차단 완료: " + e.getMessage());
             return "redirect:/"; // 문제 있으면 즉시 메인으로 쫓아냄
