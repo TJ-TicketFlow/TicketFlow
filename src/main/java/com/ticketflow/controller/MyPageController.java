@@ -13,6 +13,7 @@ import com.ticketflow.repository.MembershipRepository;
 import com.ticketflow.repository.UserCouponRepository;
 import com.ticketflow.service.BookingService;
 import com.ticketflow.service.UserService;
+import com.ticketflow.service.WishlistService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
@@ -48,6 +50,7 @@ public class MyPageController {
     private final UserCouponRepository userCouponRepository;
     private final BookingService bookingService;
     private final MembershipService membershipService;
+    private final WishlistService wishlistService;
 
 
     @GetMapping
@@ -279,7 +282,28 @@ public class MyPageController {
                                  Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
+        model.addAttribute("wishlist", wishlistService.findWishlistByUserId(user.getUserId()));
         return "mypage/mypage_wishlist";
+    }
+
+    @ResponseBody
+    @PostMapping("/wishlist/delete")
+    public ResponseEntity<?> deleteWishlist(@RequestBody Map<String, List<String>> request,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        List<String> concertIds = request.get("concertIds");
+
+        if (concertIds == null || concertIds.isEmpty()) {
+            return ResponseEntity.badRequest().body("삭제할 항목이 없습니다.");
+        }
+
+        // 로그인한 유저의 ID 확인
+        String userId = userDetails.getUsername();
+
+        // 서비스에서 삭제 로직 수행 (본인의 WishlistService 메서드명에 맞게 수정하세요)
+        // 예: wishlistService.removeSelectedWishlist(userId, concertIds);
+        wishlistService.deleteSelected(userId, concertIds);
+
+        return ResponseEntity.ok().body(Map.of("success", true));
     }
 
     @GetMapping("/withdraw")

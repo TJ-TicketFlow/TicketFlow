@@ -42,7 +42,7 @@ public class BookingCleanupScheduler {
                         bookingService.releaseUnpaidSeat(pay.getReservation().getReservationKey());
                     }
 
-                    System.out.println("✅ 예매번호 TF-0000" + pay.getPayNo() + " 자동 취소 및 좌석 회수 완료.");
+                    System.out.println("✅ 예매번호 TF-" + String.format("%06d", pay.getPayNo()) + " 자동 취소 및 좌석 회수 완료.");
                 } catch (Exception e) {
                     System.err.println("🚨 예매번호 " + pay.getPayNo() + " 자동 취소 중 에러: " + e.getMessage());
                 }
