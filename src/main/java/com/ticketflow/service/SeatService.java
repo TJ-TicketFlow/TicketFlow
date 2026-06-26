@@ -148,4 +148,18 @@ public class SeatService {
 
         throw new RuntimeException("해당 좌석 등급 없음");
     }
+
+    @Transactional(readOnly = true)
+    public Seat getSeatById(String realDbSeatId) {
+        // seatRepository(Spring Data JPA)를 이용해 primary key(ID)로 좌석을 찾습니다.
+        return seatRepository.findById(realDbSeatId)
+                .orElseThrow(() -> new RuntimeException("해당 좌석 데이터를 찾을 수 없습니다. ID: " + realDbSeatId));
+    }
+
+    // 🎯 SeatService 클래스 내부에 아래 메서드를 추가해 주세요.
+    @Transactional
+    public Seat saveSeat(Seat seat) {
+        return seatRepository.save(seat);
+    }
+
 }

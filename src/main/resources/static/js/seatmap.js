@@ -1,7 +1,9 @@
 // ==========================================
 // 🔌 1. Socket.io 실시간 클라이언트 설정 (Netty 서버 연동)
 // ==========================================
-const socket = { emit: () => {}, on: () => {} }; // 👈 임시 가짜 소켓 객체 주입
+if (typeof socket === 'undefined') {
+    window.socket = { emit: () => {}, on: () => {} };
+}
 
 // ==========================================
 // 공연 ID 및 전역 설정
@@ -57,6 +59,11 @@ socket.on('seat_cancelled_by_other', (data) => {
 if (concertId) {
     console.log("🔍 [디버깅] 현재 자바스크립트가 파싱한 concertId:", concertId);
 
+    // 스코프 문제 해결을 위해 상위 스코프에 변수 마련
+    let fetchedConcertData = null;
+
+    // [Step 1] 공연 기본 정보 가져오기
+    // [Step 1] 공연 기본 정보 가져오기
     // [Step 1] 공연 기본 정보 가져오기
     fetch(`/seat/api/concert/${concertId}`)
         .then(res => {
@@ -66,63 +73,49 @@ if (concertId) {
         .then(concert => {
             console.log("✈️ [디버깅] 백엔드에서 받은 원본 공연 데이터:", concert);
 
+            // 🎯 [핵심] 꼬이지 않도록 여기에 변수를 안전하게 전역 저장합니다.
+            window.currentLayoutType = concert.layoutType || "SEAT";
+
             const nameEl = document.getElementById("concert-name");
             const posterEl = document.getElementById("concert-poster");
             const runtimeEl = document.getElementById("concert-runtime");
             const dateEl = document.getElementById("concert-date");
 
-            if (nameEl) nameEl.innerText = concert.concertName;
-            if (posterEl) posterEl.src = concert.concertPosterUrl;
-            if (dateEl) dateEl.innerText = concert.concertDate;
-            if (runtimeEl) runtimeEl.innerText = concert.concertTime || concert.concertRuntime;
+            if (nameEl) nameEl.innerText = concert.concertName || "공연명 없음";
+            if (posterEl) posterEl.src = concert.concertPosterUrl || "";
+            if (dateEl) dateEl.innerText = concert.concertDate || "날짜 정보 없음";
+            if (runtimeEl) runtimeEl.innerText = concert.concertTime || concert.concertRuntime || "시간 정보 없음";
 
-            // 💡 [완전 개조] 정규식 매칭 에러 우회형 정밀 분리 알고리즘
-            // 💡 [완전 개조] 숫자가 세 자리(천 단위 이하)로 잘렸을 경우 x1000 자동 보정 알고리즘
             window.concertPriceMap = {};
 
             if (concert.concertPriceInfo) {
                 const priceInfo = concert.concertPriceInfo.trim();
                 console.log("🔍 [가격 파싱] 원본 문자열:", priceInfo);
 
-                // 1. 쉼표(,)를 기준으로 항목 분리
                 const items = priceInfo.split(',');
-
                 items.forEach(item => {
                     const target = item.trim();
                     if (!target) return;
 
-                    // 기호나 공백에 상관없이 해당 항목 내부의 순수 '숫자' 문자만 전부 추출
                     const pureNumbers = target.replace(/[^0-9]/g, "");
-
                     if (pureNumbers) {
                         let priceValue = parseInt(pureNumbers, 10);
-
-                        // 💡 [핵심 보정] 추출된 가격이 10,000원 미만(예: 150)이라면 잘린 것으로 판단하고 1000을 곱함
                         if (priceValue > 0 && priceValue < 10000) {
-                            console.log(`⚠️ 가격 잘림 감지 보정 전: ${priceValue} -> 보정 후: ${priceValue * 1000}`);
                             priceValue = priceValue * 1000;
                         }
-
-                        // 등급명 추출: 전체 텍스트에서 숫자, 원, 콜론(:), 공백을 깔끔히 지움
                         const gradeName = target.replace(/[0-9원\s:]/g, "").trim() || "일반석";
-
                         if (priceValue > 0) {
                             window.concertPriceMap[gradeName] = priceValue;
                         }
                     }
                 });
 
-                // 3. 폴백(단일가) 처리 영역에도 동일한 x1000 보정 적용
                 if (Object.keys(window.concertPriceMap).length === 0) {
                     window.isSinglePrice = true;
                     let singlePrice = parseInt(priceInfo.replace(/[^0-9]/g, ""), 10);
-
                     if (!isNaN(singlePrice) && singlePrice > 0) {
-                        if (singlePrice < 10000) {
-                            singlePrice = singlePrice * 1000;
-                        }
+                        if (singlePrice < 10000) singlePrice = singlePrice * 1000;
                         window.defaultSinglePrice = singlePrice;
-
                         const extractedLabel = priceInfo.replace(/[0-9원\s:]/g, "").trim() || "전석 일반석";
                         window.concertPriceMap[extractedLabel] = window.defaultSinglePrice;
                     }
@@ -131,8 +124,8 @@ if (concertId) {
 
             console.log("✅ [가격 파싱 완료] 구조화된 가격 객체:", window.concertPriceMap);
 
-            // [Step 2] 백엔드 DB에서 실제 좌석 목록 가져오기 (연속 체이닝 유지)
-            return fetch(`/seat/api/${concertId}`);
+            // [Step 2] 백엔드 DB에서 실제 좌석 목록 가져오기
+            return fetch(`/seat/api/seats/${concertId}`);
         })
         .then(res => {
             if (!res.ok) throw new Error(`좌석 목록 요청 실패 (Status: ${res.status})`);
@@ -142,22 +135,18 @@ if (concertId) {
             console.log("✈️ [디버깅] 백엔드 DB에서 조회된 실제 좌석 개수:", seats.length, "개");
             window.dbSeatsData = seats;
 
-            // [Step 3] 레이아웃 타입 조회
-            return fetch(`/seat/layout/${concertId}`);
-        })
-        .then(res => res.text())
-        .then(type => {
-            const cleanType = type.trim();
-            console.log("🔍 [디버깅] 백엔드가 리턴한 최종 레이아웃 타입 문자열:", `"${cleanType}"`);
+            // 🎯 [핵심 교정] 아까 window에 안전하게 박아둔 레이아웃 타입을 가져와 대문자로 치환합니다.
+            const cleanType = (window.currentLayoutType || "SEAT").trim().toUpperCase();
+            console.log("🔍 [디버깅] 최종 판별된 레이아웃 타입:", cleanType);
 
             // 🎫 지정석(SEAT) vs 스탠딩(STANDING) 타입별 화면 분기 제어
-            if (cleanType === "SEAT" || cleanType === "SEAT_A") {
+            if (cleanType.includes("STANDING") || cleanType.startsWith("STAND")) {
+                console.log("🚀 스탠딩 타입 확인: 등급별 수량 선택 폼을 렌더링합니다.");
+                showQuantitySelectionForm();
+            } else {
                 console.log("🚀 지정석 타입 확인: 13행 18열 좌석 배치를 시작합니다.");
                 seatLayout = seatLayouts.map1;
                 renderSeat();
-            } else {
-                console.log("🚀 스탠딩 타입 확인: 등급별 수량 선택 폼을 렌더링합니다.");
-                showQuantitySelectionForm();
             }
         })
         .catch(err => {
@@ -224,15 +213,17 @@ function renderSeat() {
 
             const actualRow = rowIndex + 1;
             const actualCol = seatColIndex + 1;
+
+            // 🎯 [수정] 백엔드 Controller가 무조건 기대하는 규격("SEAT_R4_C11" 등)으로 강제 고정합니다.
             const seatId = `SEAT_R${actualRow}_C${actualCol}`;
 
-            const foundSeat = window.dbSeatsData.find(s => s.seatRow == actualRow && s.seatCol == actualCol);
-
+            const foundSeat = window.dbSeatsData.find(s => s.seatId === seatId || (s.seatRow == String(actualRow) && s.seatCol == String(actualCol)));
             let targetSeat = foundSeat;
             if (!targetSeat) {
                 targetSeat = { seatClass: "STANDARD", price: defaultPrice, seatStatus: 1 };
             }
 
+            // HTML 데이터셋에 백엔드가 파싱 가능한 포맷을 안전하게 주입
             seatDiv.dataset.seatId = seatId;
             seatDiv.title = seatId;
             seatDiv.dataset.selected = "false";
@@ -429,23 +420,18 @@ function handleQuantityChange(changedSelect) {
 }
 
 function submitBooking() {
-    // 1. 현재 화면이 지정석(배치도)인지 스탠딩(수량 선택)인지 판별
-    // 화면에 수량 선택 select 박스가 있으면 스탠딩, 없으면 지정석입니다.
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
     const isStanding = qtySelects.length > 0;
 
     let bookingData = {
         concertId: concertId,
         ticketType: isStanding ? "STANDING" : "SEAT",
-        quantities: {}, // 스탠딩용 수량 정보
-        selectedSeats: [], // 지정석용 좌석 ID 리스트
+        quantities: {},
+        selectedSeats: [],
         totalPrice: 0
     };
 
     if (isStanding) {
-        // ==========================================
-        // [스탠딩 모드 처리] 드롭다운 수량 수집
-        // ==========================================
         let totalQty = 0;
         let calculatedPrice = 0;
 
@@ -456,9 +442,13 @@ function submitBooking() {
                 bookingData.quantities[select.dataset.grade] = qty;
                 totalQty += qty;
                 calculatedPrice += (qty * price);
+
+                // 💡 [수정] 스탠딩인 경우 백엔드 포문이 정상 작동하도록 가상의 좌석 식별자를 수량만큼 추가해줍니다.
+                for(let i=0; i<qty; i++) {
+                    bookingData.selectedSeats.push(`STANDING_${select.dataset.grade}_${i+1}`);
+                }
             }
         });
-
         if (totalQty === 0) {
             alert("티켓 수량을 1장 이상 선택해 주세요.");
             return;
@@ -466,9 +456,6 @@ function submitBooking() {
         bookingData.totalPrice = calculatedPrice;
 
     } else {
-        // ==========================================
-        // [지정석 모드 처리] 선택된 사각형(div) 좌석 수집
-        // ==========================================
         const activeSelectedSeats = seatContainer.querySelectorAll('[data-selected="true"]');
 
         if (activeSelectedSeats.length === 0) {
@@ -478,7 +465,6 @@ function submitBooking() {
 
         let calculatedPrice = 0;
         activeSelectedSeats.forEach(seatEl => {
-            // 선택된 좌석들의 ID(예: SEAT_R1_C1)를 배열에 담음
             bookingData.selectedSeats.push(seatEl.dataset.seatId);
             calculatedPrice += parseInt(seatEl.dataset.price || 0, 10);
         });
@@ -486,9 +472,6 @@ function submitBooking() {
         bookingData.totalPrice = calculatedPrice;
     }
 
-    // ==========================================
-    // ✈️ 백엔드 전송 서버 통신부
-    // ==========================================
     console.log("✈ 백엔드로 전송할 최종 예매 데이터:", bookingData);
 
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
@@ -508,7 +491,6 @@ function submitBooking() {
         })
         .then(result => {
             alert("데이터 전송 성공! 결제부로 진입합니다.");
-            // 💡 필요 시 여기서 결제 페이지로 window.location.href 이동 처리
         })
         .catch(err => {
             alert("예매 처리 중 오류가 발생했습니다.");
