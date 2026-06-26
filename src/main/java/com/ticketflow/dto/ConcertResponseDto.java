@@ -20,6 +20,6 @@ public class ConcertResponseDto {
         this.startDate = c.getConcertStartDate();
         this.endDate = c.getConcertEndDate();
         // NullPointerException 방지를 위해 엔티티에서 가져올 때 안전하게 처리
-        this.hallName = (c.getHall() != null) ? c.getHall().getHallName() : "미정";.
+        this.hallName = (c.getHall() != null) ? c.getHall().getHallName() : "미정";
     }
 }
