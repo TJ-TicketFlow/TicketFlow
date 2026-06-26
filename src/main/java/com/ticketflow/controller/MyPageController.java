@@ -74,6 +74,8 @@ public class MyPageController {
                 bookingService.getMyTicketHistory(userDetails.getUsername(), startDate, endDate, org.springframework.data.domain.PageRequest.of(0, 2));
 
         model.addAttribute("wishCount", wishlistService.countByUserId(user.getUserId()));
+        model.addAttribute("tickets", Collections.emptyList());
+        model.addAttribute("coupons", Collections.emptyList());
         model.addAttribute("tickets", ticketPage.getContent());                // 최근 내역 2개
         model.addAttribute("totalTicketCount", ticketPage.getTotalElements());
         model.addAttribute("coupons", getAvailableCoupons(user));
