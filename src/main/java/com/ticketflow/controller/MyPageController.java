@@ -11,9 +11,7 @@ import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.repository.MembershipPaymentRepository;
 import com.ticketflow.repository.MembershipRepository;
 import com.ticketflow.repository.UserCouponRepository;
-import com.ticketflow.service.BookingService;
-import com.ticketflow.service.LemonSqueezyRefundService;
-import com.ticketflow.service.UserService;
+import com.ticketflow.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,17 +26,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.time.LocalDate;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Map;
-
-import com.ticketflow.service.MembershipService;
 
 @Controller
 @RequestMapping("/mypage")
@@ -52,7 +48,7 @@ public class MyPageController {
     private final LemonSqueezyRefundService lemonSqueezyRefundService;
     private final MembershipRepository membershipRepository;
     private final MembershipPaymentRepository paymentRepository;
-
+    private final WishlistService wishlistService;
 
 
     @GetMapping
@@ -77,13 +73,14 @@ public class MyPageController {
         org.springframework.data.domain.Page<java.util.Map<String, Object>> ticketPage =
                 bookingService.getMyTicketHistory(userDetails.getUsername(), startDate, endDate, org.springframework.data.domain.PageRequest.of(0, 2));
 
+        model.addAttribute("wishCount", wishlistService.countByUserId(user.getUserId()));
         model.addAttribute("tickets", ticketPage.getContent());                // 최근 내역 2개
         model.addAttribute("totalTicketCount", ticketPage.getTotalElements());
         model.addAttribute("coupons", getAvailableCoupons(user));
         return "mypage/mypage_benefits";
     }
 
-//  coupon
+    //  coupon
     @GetMapping("/coupons")
     public String mypageCoupons(@AuthenticationPrincipal UserDetails userDetails,
                                 Model model) {
@@ -113,7 +110,7 @@ public class MyPageController {
                 ))
                 .collect(Collectors.toList());
     }
-//  membership
+    //  membership
     @GetMapping("/membership/payments")
     public String mypageMembershipPayments(@AuthenticationPrincipal UserDetails userDetails,
                                            Model model) {
@@ -305,7 +302,28 @@ public class MyPageController {
                                  Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
+        model.addAttribute("wishlist", wishlistService.findWishlistByUserId(user.getUserId()));
         return "mypage/mypage_wishlist";
+    }
+
+    @ResponseBody
+    @PostMapping("/wishlist/delete")
+    public ResponseEntity<?> deleteWishlist(@RequestBody Map<String, List<String>> request,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        List<String> concertIds = request.get("concertIds");
+
+        if (concertIds == null || concertIds.isEmpty()) {
+            return ResponseEntity.badRequest().body("삭제할 항목이 없습니다.");
+        }
+
+        // 로그인한 유저의 ID 확인
+        String userId = userDetails.getUsername();
+
+        // 서비스에서 삭제 로직 수행 (본인의 WishlistService 메서드명에 맞게 수정하세요)
+        // 예: wishlistService.removeSelectedWishlist(userId, concertIds);
+        wishlistService.deleteSelected(userId, concertIds);
+
+        return ResponseEntity.ok().body(Map.of("success", true));
     }
 
     @GetMapping("/withdraw")
