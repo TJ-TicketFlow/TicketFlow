@@ -89,9 +89,13 @@
 
                         <input type="hidden" id="captchaKey" value="">
 
-                        <input type="text" id="captchaInput" placeholder="위 이미지를 보고 글자를 입력하세요" style="width: 200px; padding: 5px;">
+                        <input type="text" id="captchaInput" placeholder="위 이미지를 보고 글자를 입력하세요" autocomplete="off" style="width: 200px; padding: 5px;">
 
                         <button type="button" id="refreshCaptcha" style="padding: 5px 10px; cursor: pointer;">새로고침</button>
+
+                        <div id="captchaWarning" style="color: #ef4444; font-size: 12px; font-weight: bold; margin-top: 8px; display: none;">
+                            ⚠️ 한/영 키를 눌러 영문으로 입력해 주세요!
+                        </div>
                     </div>
                 </div>
             </div>

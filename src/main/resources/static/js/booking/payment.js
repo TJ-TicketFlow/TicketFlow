@@ -226,6 +226,28 @@ document.addEventListener("DOMContentLoaded", function() {
     // 화면 켜지자마자 캡차 한번 불러오기 (loadCoupons(); 밑에 추가)
     loadCaptcha();
 
+    const captchaInputEl = document.getElementById('captchaInput');
+    const captchaWarning = document.getElementById('captchaWarning');
+
+    if (captchaInputEl) {
+        captchaInputEl.addEventListener('input', function(e) {
+            const currentVal = e.target.value;
+
+            // 1. 입력된 글자 중에 한글(자음, 모음, 완성형)이 단 1개라도 섞여 있는지 검사합니다.
+            const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(currentVal);
+
+            if (hasKorean) {
+                // 한글이 감지되면 숨겨뒀던 빨간 경고창을 짠! 하고 보여줍니다.
+                if (captchaWarning) captchaWarning.style.display = 'block';
+            } else {
+                // 영어로 다시 잘 치고 있으면 경고창을 자연스럽게 숨깁니다.
+                if (captchaWarning) captchaWarning.style.display = 'none';
+            }
+
+            // 2. 입력된 한글 및 특수문자를 실시간으로 싹 지우고 영문 대소문자와 숫자만 입력창에 남깁니다.
+            e.target.value = currentVal.replace(/[^A-Za-z0-9]/g, "");
+        });
+    }
     // 새로고침 버튼 누르면 다시 불러오기
     const refreshBtn = document.getElementById('refreshCaptcha');
     if (refreshBtn) {

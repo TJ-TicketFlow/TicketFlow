@@ -1,42 +1,50 @@
 // ==========================================
-// 1. 취소 버튼을 눌렀을 때: 수수료를 먼저 확인하고 의사를 묻는 함수
+// 1. 취소 버튼을 눌렀을 때: 수수료를 먼저 확인하고 의사를 묻는 함수 (수정 버전)
 // ==========================================
 function checkAndCancel(payNo) {
-    // 혹시라도 HTML에서 결제 번호가 안 넘어왔다면 여기서 막아줍니다.
     if (!payNo) {
         alert("잘못된 접근입니다. 결제 번호를 찾을 수 없습니다.");
         return;
     }
 
-    // 💡 백엔드에 만들어둔 '미리보기(getCancelFeeInfo)' 컨트롤러로 GET 요청을 보냅니다.
-    // 주의: 개발자님의 실제 컨트롤러 매핑 주소에 맞춰 URL을 확인해 주세요!
     fetch(`/booking/${payNo}/cancelable`)
-        .then(response => {
+        .then(async response => {
             if (!response.ok) {
-                throw new Error("취소 수수료 정보를 불러오는데 실패했습니다.");
+                // 1. 백엔드가 보낸 데이터를 일단 문자열로 읽습니다.
+                const errorText = await response.text();
+                try {
+                    // 2. 만약 데이터가 {"message":"..."} 형태의 상자(JSON)라면?
+                    const errorJson = JSON.parse(errorText);
+                    // 3. 상자 안에서 'message' 알맹이만 쏙 빼서 던집니다!
+                    throw new Error(errorJson.message || "취소 처리에 실패했습니다.");
+                } catch (e) {
+                    // 4. JSON 상자가 아니라 일반 글자라면 그냥 던집니다.
+                    if (e.name !== "SyntaxError") throw e;
+                    throw new Error(errorText || "취소 정보를 불러오는데 실패했습니다.");
+                }
             }
-            return response.json(); // 백엔드가 보내준 Map 데이터(cancelable, fee, refundAmount)를 JSON으로 변환
+            return response.json();
         })
         .then(data => {
-            // 백엔드에서 방어 로직으로 "취소 기한 지남" 등을 판단하여 cancelable: false를 주었을 경우
+            // 💡 [핵심] 200 OK 정상 통신이지만, 백엔드에서 cancelable: false를 준 경우!
             if (data.cancelable === false) {
-                alert("현재 예매를 취소할 수 없는 상태이거나, 취소 마감 시간이 지났습니다.");
+                // 백엔드가 포장해서 보내준 진짜 한국어 메시지를 꺼내서 보여줍니다.
+                alert(data.message || "현재 예매를 취소할 수 없는 상태이거나, 마감 시간이 지났습니다.");
                 return;
             }
 
-            // 화면에 띄워줄 확인 메시지 예쁘게 조립하기 (toLocaleString()으로 콤마 찍기)
             const confirmMsg = `정말 예매를 취소하시겠습니까?\n\n` +
                 `📉 예상 취소 수수료: ${data.fee.toLocaleString()}원\n` +
                 `💸 최종 환불 금액: ${data.refundAmount.toLocaleString()}원`;
 
-            // 사용자가 알림창에서 '확인'을 누르면!
             if (confirm(confirmMsg)) {
-                executeCancel(payNo); // 2단계인 '진짜 취소' 함수로 넘깁니다.
+                executeCancel(payNo);
             }
         })
         .catch(error => {
             console.error("❌ 취소 수수료 조회 중 에러 발생:", error);
-            alert("취소 수수료 정보를 확인하는 중 문제가 발생했습니다.");
+            // 드디어 깔끔하게 "취소 마감시간이 지나 취소할 수 없습니다." 만 화면에 뜹니다!
+            alert(error.message);
         });
 }
 
