@@ -5,6 +5,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!dataStore) return;
 
     const concertId = dataStore.dataset.concertId;
+    const bookingForm = document.getElementById('bookingForm');
+
+    // 예매하기 버튼 초기 비활성화
+    const submitBtn = bookingForm ? bookingForm.querySelector('button[type="submit"]') : null;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        submitBtn.style.cursor = "not-allowed";
+    }
+
+    // 폼 제출 시 최종 검증 (ID로 정확하게 타겟팅)
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(event) {
+            const date = document.getElementById('selectedDate').value;
+            const sessionId = document.getElementById('selectedSessionId').value;
+
+            if (!date || !sessionId) {
+                event.preventDefault();
+                alert("관람일과 회차를 모두 선택해주세요.");
+            }
+        });
+    }
 
     // 1. 통계 데이터 API 호출
     fetch(`/concert/${concertId}/stats-json`)
@@ -15,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setInterval(pollStats, 3000);
             }
         })
-        .catch(err => console.error("통계 데이터 로드 실패", err));
+        .catch(err => console.log("통계 데이터 로드 생략"));
 
     // 2. 달력 생성
     const calendarEl = document.querySelector('.concert-calendar');
@@ -46,36 +68,32 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts(stats) {
-    genderChart = new Chart(document.getElementById('genderChart'), {
+    const genderCtx = document.getElementById('genderChart');
+    const ageCtx = document.getElementById('ageChart');
+    if (!genderCtx || !ageCtx) return;
+
+    genderChart = new Chart(genderCtx, {
         type: 'doughnut',
         data: {
             labels: ['남성', '여성'],
-            datasets: [{
-                data: stats.genderData,
-                backgroundColor: ['#3b82f6', '#f43f5e']
-            }]
+            datasets: [{ data: stats.genderData, backgroundColor: ['#3b82f6', '#f43f5e'] }]
         }
     });
 
-    ageChart = new Chart(document.getElementById('ageChart'), {
+    ageChart = new Chart(ageCtx, {
         type: 'bar',
         data: {
             labels: ['10대', '20대', '30대', '40대', '50대'],
-            datasets: [{
-                label: '연령대별 예매율',
-                data: stats.ageData,
-                backgroundColor: '#3b82f6'
-            }]
+            datasets: [{ label: '연령대별 예매율', data: stats.ageData, backgroundColor: '#3b82f6' }]
         },
-        options: {
-            scales: { y: { beginAtZero: true, max: 100 } }
-        }
+        options: { scales: { y: { beginAtZero: true, max: 100 } } }
     });
 }
 
 function pollStats() {
-    const concertId = document.getElementById("data-store").dataset.concertId;
-    fetch(`/concert/${concertId}/stats-json`)
+    const dataStore = document.getElementById("data-store");
+    if (!dataStore) return;
+    fetch(`/concert/${dataStore.dataset.concertId}/stats-json`)
         .then(res => res.json())
         .then(data => {
             if (data && genderChart && ageChart) {
@@ -89,6 +107,15 @@ function pollStats() {
 
 function loadSessions(date, concertId) {
     document.getElementById('selectedDate').value = date;
+    document.getElementById('selectedSessionId').value = '';
+
+    const submitBtn = document.querySelector('#bookingForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        submitBtn.style.cursor = "not-allowed";
+    }
+
     fetch(`/concert/${concertId}/sessions?date=${date}`)
         .then(res => res.json())
         .then(data => {
@@ -102,6 +129,12 @@ function loadSessions(date, concertId) {
                     document.querySelectorAll('.btn-session').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     document.getElementById('selectedSessionId').value = s.id;
+
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = "1";
+                        submitBtn.style.cursor = "pointer";
+                    }
                 };
                 container.appendChild(btn);
             });
@@ -113,8 +146,7 @@ function toggleWishlist(concertId) {
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
     fetch(`/concert/${concertId}/like`, {
         method: 'POST',
-        headers: { [csrfHeader]: csrfToken, 'Content-Type': 'application/json' },
-        credentials: 'include'
+        headers: { [csrfHeader]: csrfToken, 'Content-Type': 'application/json' }
     })
         .then(res => res.status === 401 ? (alert("로그인이 필요합니다."), window.location.href="/login", null) : res.json())
         .then(data => {

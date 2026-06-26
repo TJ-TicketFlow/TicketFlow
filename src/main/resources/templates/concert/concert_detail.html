@@ -76,7 +76,7 @@
                         <h3>회차 선택</h3>
                         <div id="session-container" class="session-wrapper"></div>
                     </div>
-                    <form th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
+                    <form id="bookingForm" th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
                         <input type="hidden" name="sessionId" id="selectedSessionId">
                         <input type="hidden" name="date" id="selectedDate">
