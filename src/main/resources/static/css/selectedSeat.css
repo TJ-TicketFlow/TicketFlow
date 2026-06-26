@@ -127,3 +127,10 @@ body {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
+.sidebar-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* 🎯 맨 위 요소와 맨 아래 버튼을 양끝으로 쫙 벌림 */
+    height: 100%;                  /* 🎯 부모(늘어난 좌석판)의 높이를 100% 다 흡수 */
+    align-self: stretch;           /* 🎯 Flex 구조에서 형제들과 높이를 강제로 맞춤 */
+}
