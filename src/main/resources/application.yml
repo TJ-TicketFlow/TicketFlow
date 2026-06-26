@@ -3,7 +3,7 @@ spring:
     url: jdbc:mysql://localhost:3306/ticketflow?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: "0331"
+    password: tjee1234
 
   jpa:
     hibernate:
@@ -13,12 +13,17 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+    defer-datasource-initialization: true
 
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
     cache: false
     encoding: UTF-8
+
+  sql:
+    init:
+      mode: never
 
   # ── Gmail SMTP 설정 ──────────────────────────────────
   mail:
@@ -62,3 +67,17 @@ logging:
   level:
     org.hibernate.SQL: debug
     com.ticketflow: debug
+
+
+lemonsqueezy:
+  api-key: "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NGQ1OWNlZi1kYmI4LTRlYTUtYjE3OC1kMjU0MGZjZDY5MTkiLCJqdGkiOiJjNjA5Yzc3NDYxZjAwMDIxMDlhYTdjNzI3ODMyMzA5OWU5ZDliZWFjOTVhZDhlOTE0NTFhOGJiZGQwNGZmYjc0NDNmMzk3ZDAyN2Y2NGI5NyIsImlhdCI6MTc4MTU5MjgxNy4wMjU4NjYsIm5iZiI6MTc4MTU5MjgxNy4wMjU4NjksImV4cCI6MjAxODIxNzYwMC4wMzEyMzcsInN1YiI6IjcwOTQ1ODIiLCJzY29wZXMiOltdfQ.SjQ6RxZz8Dnh2qdk9fgeAeCaM71AFh1lHPnCP4NIOp3U0X_AW3NXjSUndxvlHPqB09cpGYy8Q4QzIj7kySpae5R3peU-wVe_BXSiaf4GDaI0sOjU--a0aKjcyUb3AfGlrJeb0xTEl35BJ_smht-Q05IY1LQouTkZJHVjCs6gQkH81kVNz_AuQm2xdc_x6T44FbRMu_y4fbIXBM7p9NTwHmk73-IrkSswTMLv9j7VsF52FGQTGaPv2Oca6Ulfa8KQ26x2rTUz_AmIOEJcp-sCI3gB4KxkI-tVPorhxw-GlrKOIzL5JpiHQ4Mz25bCK334xaRrR88k7XF5wkk7kFIE7OS1QCdPADoyvY9bbr0HqDwaZE5ASyA54Frok_82bNIyTnnTbnN3iGnV7djjZ66UaigG7G8eBgFyeNoYwAUi35Q-DyKlhlEBNfyEnLC5KkBzoI1ocCRmTycOjBAj8_-tk_Ai7iHoRW7bueZlwjzcWO6WkiLjPWE81DaTH_qoz2gcp_S4cUxODZuTO3thfn77vd6LdjvHI0d_dLKTJrHVrJ6QKEikgvgfn3Re0_AUu5pvX6IEdjuR_9CTK4C1IIIk2mCg_RUwR7x38DwHH2FiVhLe-oHGu1lmYMeWpExMqr2vWsUbSHP3chiRay0Uu3QoGrpcWetltcUaOqU3941SO5E"
+  store-id: "381473"
+  variant-id: "1678832"
+  api-key2: "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NGQ1OWNlZi1kYmI4LTRlYTUtYjE3OC1kMjU0MGZjZDY5MTkiLCJqdGkiOiI0MTk3MzczMGEzMDAxZTNjZjUwZjhlOGI2OTBkOTFlODk0ZGI0MDhhNDMwZjAwMDFiMTgyODI1NDI0YWM4OTlhOGNmZTI0ZDk5Y2M3Y2ExMiIsImlhdCI6MTc4MTQ5MjA5OS4yNzQwMDQsIm5iZiI6MTc4MTQ5MjA5OS4yNzQwMDYsImV4cCI6MTg2MDE5MjAwMC4wMzE4MDcsInN1YiI6IjczNzU5MzciLCJzY29wZXMiOltdfQ.vnz9fa1KPsLJ_h9FIR708MXTaeQqxA8xjFaeRwDZjIe68hM4nwSgceG389ixwMNyL5cqkh82asXXKk5Qhx8plJsGNLMqr7cj9Uo1MzB47Mz9J5OkksJaCb-OW63F0H8zhd6j_K6_yJ_Q6yfPxUOPId93hKDS0IZso6Fjf2mfve1MpczgzjcvmLmOZ0qNFqet11ZA0rMHdZ4KKWTBLi3sGCa5PaSWKHenlhe8N2Q5Ya4wZLyuXNILFPCQB6hIoMawiM3gixWaLuiVpEo00q9H_VQN9thT-AEJSe1x37X1AwZic8LyJm6XT_UNUxw_p0YKoBJRUpwfEEeKF7hVNBjfJmOR5eB9xoT7heYanrYI9R-YN6OQm1yjKEidEyF_kluqUGJwtNX2yS80JhZ7tjqmiwpEBXNTvSH9J5_uqKOYbMBMXKR7jX5kOOZLLEs9Mv2KqgxaM0JIuq0zE5rZFogdLhrRQKJWx5162_if6lTIvskby_HocCaefnN4WPBdMdysg4ALjzHXpIAIKed6B5eM8JJORc1YUaztz2Ic9jshg18cGisMsDySXKLiFng1hsk9AMOwEsAWowW9bdu3he9Zr5Y7czWU1JKWqmclDf0FjTxb4I8r0qgd31GShMvVDj57x0j9V-1AU90-M7U2cC8NFNoqwjwMjI-POaXlqsZowzM"
+  store-id2: "407803"
+  variant-Id2: "1792135"
+  webhook-secret2: "my_super_secret_webhook_password_1234"
+
+naverCaptcha:
+  client-id: "j82BcDOcZidEC0RkI7Px"
+  client-secret: "N3rNbXmToa"

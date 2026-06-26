@@ -24,10 +24,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/**")
-                )
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/concert/*/like") // "좋아요" 요청만 CSRF 예외 처리
+                        .ignoringRequestMatchers("/api/**","/concert/*/like")
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
