@@ -232,8 +232,9 @@ public class SeatService {
 
                 for (int i = 0; i < qty; i++) {
                     String shortGrade = grade.length() > 3 ? grade.substring(0, 3) : grade;
+                    String finalshortGrade = shortGrade.replaceAll("석|스", "").trim();
                     long timeSeq = System.currentTimeMillis() % 10000;
-                    String tempSeatId = concertId + "_S_" + shortGrade + "_" + i;
+                    String tempSeatId = concertId + "_S_" + finalshortGrade + timeSeq;
 
                     Seat seat = new Seat();
                     seat.setSeatId(tempSeatId);
