@@ -39,7 +39,7 @@
         </div>
 
         <div class="ticket-table-wrap">
-            <table class="ticket-table">
+            <table class="ticket-table" style="border-bottom: 1px solid #e5e7eb;">
                 <thead>
                 <tr>
                     <th>예매번호</th>
@@ -55,84 +55,49 @@
                         th:data-url="@{/mypage/tickets/} + ${ticket['booking_no']}"
                         onclick="location.href=this.dataset.url"
                         style="cursor:pointer;">
-                        <td th:text="${ticket['booking_no']}"></td>
+                        <td th:text="${ticket['display_no']}"></td>
                         <td class="col-name" th:text="${ticket['show_name']}"></td>
                         <td th:text="${ticket['date']}"></td>
                         <td th:text="${ticket['count']}"></td>
                         <td>
                                 <span class="ticket-status"
-                                      th:classappend="${ticket['status'] == '취소'} ? ' status-cancel' : ' status-booked'"
+                                      th:classappend="${ticket['status'] == '결제 취소' or ticket['status'] == '결제 실패'} ? ' status-cancel' : ' status-booked'"
                                       th:text="${ticket['status']}"></span>
                         </td>
                     </tr>
                 </th:block>
                 <th:block th:if="${tickets == null or tickets.isEmpty()}">
-                    <tr onclick="location.href='/mypage/tickets/123456789'">
-                        <td>123456789</td>
-                        <td class="col-name">해리포터와 죽음의 성물</td>
-                        <td>2026.05.16</td><td>2</td>
-                        <td><span class="ticket-status status-booked">예매완료</span></td>
-                    </tr>
+                    <td colspan="5" style="text-align: center; padding: 20px;">
+                        예매 내역이 없습니다.
+                    </td>
                 </th:block>
                 </tbody>
             </table>
-            <div class="pagination">
-                <a class="page-btn" href="#">&lt;</a>
-                <a class="page-btn active" href="#">1</a>
-                <a class="page-btn" href="#">2</a>
-                <a class="page-btn" href="#">&gt;</a>
+            <div class="pagination" th:if="${page.totalPages > 0}">
+
+                <a class="page-btn"
+                   th:if="${!page.first}"
+                   th:href="@{/mypage/tickets(page=${page.number - 1}, startDate=${startDate}, endDate=${endDate})}">&lt;</a>
+
+                <a class="page-btn"
+                   th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}"
+                   th:href="@{/mypage/tickets(page=${i}, startDate=${startDate}, endDate=${endDate})}"
+                   th:text="${i + 1}"
+                   th:classappend="${i == page.number} ? 'active'">1</a>
+
+                <a class="page-btn"
+                   th:if="${!page.last}"
+                   th:href="@{/mypage/tickets(page=${page.number + 1}, startDate=${startDate}, endDate=${endDate})}">&gt;</a>
+
             </div>
         </div>
 
     </th:block>
 </th:block>
-
-<script>
-    const state = { from:{year:2026,month:0,selected:'2026-01-01'}, to:{year:2026,month:11,selected:'2026-12-31'} };
-    const today = new Date();
-    function pad(n){return String(n).padStart(2,'0');}
-    function formatDate(y,m,d){return`${y}-${pad(m+1)}-${pad(d)}`;}
-    function renderCalendar(which){
-        const s=state[which], popup=document.getElementById('cal-'+which);
-        const firstDay=new Date(s.year,s.month,1).getDay(), daysInMonth=new Date(s.year,s.month+1,0).getDate(), daysInPrev=new Date(s.year,s.month,0).getDate();
-        const monthNames=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-        let cells='';
-        for(let i=firstDay-1;i>=0;i--) cells+=`<div class="cal-cell"><button disabled class="other-month">${daysInPrev-i}</button></div>`;
-        for(let d=1;d<=daysInMonth;d++){
-            const dateStr=formatDate(s.year,s.month,d);
-            const isToday=(s.year===today.getFullYear()&&s.month===today.getMonth()&&d===today.getDate());
-            const cls=dateStr===s.selected?'selected':(isToday?'today':'');
-            cells+=`<div class="cal-cell"><button class="${cls}" onclick="event.stopPropagation();selectDate('${which}','${dateStr}')">${d}</button></div>`;
-        }
-        const remain=(firstDay+daysInMonth)%7===0?0:7-((firstDay+daysInMonth)%7);
-        for(let d=1;d<=remain;d++) cells+=`<div class="cal-cell"><button disabled class="other-month">${d}</button></div>`;
-        popup.innerHTML=`<div class="cal-header"><div class="cal-month-label">${s.year}년 ${monthNames[s.month]}</div><div class="cal-nav"><button onclick="event.stopPropagation();changeMonth('${which}',-1)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><button onclick="event.stopPropagation();changeMonth('${which}',1)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button></div></div><div class="cal-grid"><div class="cal-day-label sun">일</div><div class="cal-day-label">월</div><div class="cal-day-label">화</div><div class="cal-day-label">수</div><div class="cal-day-label">목</div><div class="cal-day-label">금</div><div class="cal-day-label sat">토</div>${cells}</div><div class="cal-footer"><button class="cal-cancel" onclick="event.stopPropagation();closeCalendar('${which}')">Cancel</button><button class="cal-ok" onclick="event.stopPropagation();closeCalendar('${which}')">OK</button></div>`;
-    }
-    function toggleCalendar(e,which){
-        e.stopPropagation();
-        const popup=document.getElementById('cal-'+which), input=document.getElementById('input-'+which), isOpen=popup.classList.contains('show');
-        document.querySelectorAll('.calendar-popup').forEach(p=>p.classList.remove('show'));
-        document.querySelectorAll('.custom-date-input').forEach(i=>i.classList.remove('open'));
-        if(!isOpen){renderCalendar(which);popup.classList.add('show');input.classList.add('open');}
-    }
-    function closeCalendar(which){document.getElementById('cal-'+which).classList.remove('show');document.getElementById('input-'+which).classList.remove('open');}
-    function changeMonth(which,delta){const s=state[which];s.month+=delta;if(s.month<0){s.month=11;s.year--;}if(s.month>11){s.month=0;s.year++;}renderCalendar(which);}
-    function selectDate(which,dateStr){state[which].selected=dateStr;document.getElementById('text-'+which).textContent=dateStr;const[y,m]=dateStr.split('-').map(Number);state[which].year=y;state[which].month=m-1;renderCalendar(which);}
-    function setFilter(btn,status){
-        document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        const rows=document.querySelectorAll('#ticket-tbody tr');
-        rows.forEach(row=>{
-            const s=row.querySelector('.ticket-status')?.textContent.trim()||'';
-            row.style.display=(status==='전체'||(status==='취소'&&s.includes('취소'))||s===status)?'':'none';
-        });
-    }
-    function searchByDate(){alert(state.from.selected+' ~ '+state.to.selected+' 기간의 예매 내역을 조회합니다.');}
-    function resetDate(){selectDate('from','2026-01-01');selectDate('to','2026-12-31');closeCalendar('from');closeCalendar('to');}
-    document.addEventListener('click',function(){
-        document.querySelectorAll('.calendar-popup').forEach(p=>p.classList.remove('show'));
-        document.querySelectorAll('.custom-date-input').forEach(i=>i.classList.remove('open'));
-    });
+<script th:inline="javascript">
+    const serverStartDate = /*[[${startDate}]]*/ '2026-01-01';
+    const serverEndDate = /*[[${endDate}]]*/ '2026-12-31';
 </script>
+<script src="/js/booking/mypage_tickets.js"></script>
 </body>
 </html>

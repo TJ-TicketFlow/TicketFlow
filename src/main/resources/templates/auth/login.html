@@ -13,9 +13,8 @@
 <div class="content-wrap">
     <div class="card">
 
-        <div class="logo">
-            <img th:src="@{/images/header-logo.png}" alt="티켓플로우">
-        </div>
+        <h1 class="auth-title" style="text-align:center; margin-bottom: 40px;">로그인</h1>
+
 
         <!-- 로그인 실패 메시지 (Spring Security가 ?error 파라미터 추가) -->
         <div th:if="${param.error}" class="flash-msg">

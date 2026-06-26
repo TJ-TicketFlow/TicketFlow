@@ -25,6 +25,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers("/api/**","/concert/*/like")
+                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook")
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -36,7 +37,8 @@ public class SecurityConfig {
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
-                                "/concert/","/concert/**","/concert/{id}/sessions","/search"
+                                "/concert/","/concert/**","/concert/{id}/sessions",
+                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()
@@ -46,13 +48,18 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("user_id")
                         .passwordParameter("password")
+                        .defaultSuccessUrl("/concert/", true)
+                        .successHandler((request, response, authentication) -> {
+                            request.getSession().setAttribute("logged_in", true);
+                            response.sendRedirect("/mypage/benefits");
+                        })
                         .defaultSuccessUrl("/mypage/benefits", true)
                         .failureUrl("/login?error")
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login")
+                        .logoutSuccessUrl("/concert/")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()

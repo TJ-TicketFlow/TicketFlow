@@ -4,13 +4,14 @@
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('쿠폰함 - 티켓플로우', '쿠폰함', 'coupons', ~{::content})}">
     <th:block th:fragment="content">
 
-        <div class="coupon-header">사용 가능 쿠폰 (<span th:text="${coupons != null ? #lists.size(coupons) : 0}">0</span>장)</div>
+        <div class="coupon-header">사용 가능 쿠폰 (<span th:text="${availableCouponCount != null ? availableCouponCount : 0}">0</span>장)</div>
 
         <th:block th:if="${coupons != null and !#lists.isEmpty(coupons)}">
             <div class="coupon-list">
                 <div class="coupon-item"
                      th:each="coupon : ${coupons}"
-                     th:classappend="${coupon.daysLeft == 0} ? ' expired'">
+                     th:if="${coupon.status != 2}"
+                     th:classappend="${coupon.status != 0} ? ' expired'">
                     <div class="coupon-body">
                         <div class="coupon-type" th:text="${coupon.type}"></div>
                         <div class="coupon-discount">
@@ -19,19 +20,22 @@
                         <div class="coupon-expire">
                             <span th:text="${coupon.startDate}"></span> ~
                             <span th:text="${coupon.expireDate}"></span>
-                            <th:block th:if="${coupon.daysLeft > 0}">
+                            <th:block th:if="${coupon.status == 0}">
                                 (<span class="days" th:text="${coupon.daysLeft} + '일 남음'"></span>)
                             </th:block>
-                            <th:block th:if="${coupon.daysLeft == 0}">
+                            <th:block th:if="${coupon.status == 1}">
+                                (<span style="color:#6B7280;font-weight:600;">사용완료</span>)
+                            </th:block>
+                            <th:block th:if="${coupon.status == 2}">
                                 (<span style="color:#EF4444;font-weight:600;">기간 만료</span>)
                             </th:block>
                         </div>
                     </div>
-                    <th:block th:if="${coupon.daysLeft > 0}">
+                    <th:block th:if="${coupon.status == 0}">
                         <button class="coupon-btn available">사용가능</button>
                     </th:block>
-                    <th:block th:if="${coupon.daysLeft == 0}">
-                        <button class="coupon-btn unavailable" disabled>사용완료</button>
+                    <th:block th:if="${coupon.status != 0}">
+                        <button class="coupon-btn unavailable" disabled th:text="${coupon.status == 1} ? '사용완료' : '기간만료'"></button>
                     </th:block>
                 </div>
             </div>

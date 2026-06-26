@@ -1,11 +1,61 @@
 <!DOCTYPE html>
-
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<script th:src="@{/js/membership/membership-payment-history.js}"></script>
 <body>
+<th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 결제 내역 - 티켓플로우', '멤버십 결제 내역', 'membershipPayments', ~{::content})}">
+    <th:block th:fragment="content">
+
+        <div class="ticket-table-wrap">
+            <table class="ticket-table">
+                <thead>
+                <tr>
+                    <th>결제일</th>
+                    <th>주문번호</th>
+                    <th>결제금액</th>
+                    <th>결제수단</th>
+                    <th>상태</th>
+                </tr>
+                </thead>
+                <tbody>
+                <th:block th:if="${payments != null and !payments.isEmpty()}">
+                    <tr th:each="payment : ${payments}">
+                        <td th:text="${#temporals.format(payment.paidAt, 'yyyy-MM-dd HH:mm')}"></td>
+                        <td th:text="${payment.orderId}"></td>
+                        <td th:text="${#numbers.formatInteger(payment.amount, 0, 'COMMA')} + '원'"></td>
+                        <td th:text="${payment.cardInfo}"></td>
+                        <td>
+                            <span class="ticket-status" th:classappend="${payment.statusClass}" th:text="${payment.statusLabel}"></span>
+                        </td>
+                    </tr>
+                </th:block>
+                <th:block th:if="${payments == null or payments.isEmpty()}">
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">결제 내역이 없습니다.</td>
+                    </tr>
+                </th:block>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${refundEligibility != null}" style="margin-top:16px; text-align:center;">
+            <th:block th:if="${refundEligibility.eligible}">
+                <button type="button" class="btn-mem-link" onclick="requestRefund()">환불 신청</button>
+            </th:block>
+            <th:block th:if="${!refundEligibility.eligible}">
+                <p style="color:var(--text-muted); font-size:13px;" th:text="${refundEligibility.reason}"></p>
+            </th:block>
+        </div>
+
+<!--        <div th:if="${portalUrl != null}" style="margin-top:12px; text-align:center;">-->
+<!--            <a th:href="${portalUrl}" target="_blank" class="btn-mem-link" style="background:#6B7280;">-->
+<!--                결제 정보 전체 관리 (Lemon Squeezy Portal)-->
+<!--            </a>-->
+<!--        </div>-->
+
+    </th:block>
+</th:block>
+
+
 
 </body>
 </html>

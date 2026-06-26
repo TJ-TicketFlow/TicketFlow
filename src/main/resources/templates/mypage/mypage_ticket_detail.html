@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<meta name="_csrf" th:content="${_csrf?.token}">
+<meta name="_csrf_header" th:content="${_csrf?.headerName}">
+<link th:href="@{/css/booking/cancel_alert.css}" rel="stylesheet" />
 <body>
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('예매 확인/취소 - 티켓플로우', '예매 확인/취소', 'tickets', ~{::content})}">
     <th:block th:fragment="content">
@@ -14,7 +17,12 @@
             <div class="booking-title-bar" th:text="${ticket['title'] ?: ticket['show_name']}"></div>
             <div class="booking-header">
                 <div class="booking-poster">
-                    <div class="booking-poster-placeholder">
+                    <img th:if="${ticket['poster_url'] != null and ticket['poster_url'] != ''}"
+                         th:src="${ticket['poster_url']}"
+                         alt="공연 포스터"
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+
+                    <div th:unless="${ticket['poster_url'] != null and ticket['poster_url'] != ''}" class="booking-poster-placeholder">
                         <svg width="36" height="36" fill="none" stroke="#3B6FFF" stroke-width="1.5" viewBox="0 0 24 24">
                             <path d="M3 9l1-2h16l1 2M3 15l1 2h16l1-2M9 9v6M15 9v6"/>
                         </svg>
@@ -27,7 +35,7 @@
                     </tr>
                     <tr>
                         <td>예매 번호</td>
-                        <td class="val-highlight" th:text="${ticket['booking_no']}"></td>
+                        <td class="val-highlight" th:text="${ticket['display_no']}"></td>
                         <td class="label-cell">예매자</td>
                         <td th:text="${ticket['buyer']}"></td>
                     </tr>
@@ -77,21 +85,51 @@
                 취소 일자에 따라서 취소수수료가 발생합니다.<br>
                 <ul>
                     <li>단, 예매 발권 전 12시 이전 취소시에는 취소수수료 없음(취소기한내에한함)</li>
+                    <li>예매 후 7일 이내라도 취소시점이 관람일로부터 10일 이내라면 그에 해당하는 취소수수료가 부과됩니다.</li>
+                    <table class="cancel-fee-table">
+                        <thead>
+                            <tr>
+                                <th>취소 시점</th>
+                                <th>취소수수료</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>예매 후 7일 이내</td>
+                                <td>없음</td>
+                            </tr>
+                            <tr>
+                                <td>예매 후 8일 ~ 관람일 10일 전</td>
+                                <td>장당 4,000원 (단, 티켓 금액의 10% 이내)</td>
+                            </tr>
+                            <tr>
+                                <td>관람일 9일 전 ~ 관람일 7일 전</td>
+                                <td>티켓 금액의 10%</td>
+                            </tr>
+                            <tr>
+                                <td>관람일 6일 전 ~ 관람일 3일 전</td>
+                                <td>티켓 금액의 20%</td>
+                            </tr>
+                            <tr>
+                                <td>관람일 2일 전 ~ 취소 마감 일시</td>
+                                <td>티켓 금액의 30%</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </ul>
             </div>
-            <button class="btn-cancel" onclick="confirmCancel()">예매 취소</button>
+            <button class="btn-cancel"
+                    th:if="${ticket['status'] == '예매완료'}"
+                    th:onclick="'checkAndCancel(' + ${ticket['pay_no']} + ')'">예매 취소</button>
+
+            <div th:if="${ticket['status'] == '결제 취소' or ticket['status'] == '결제 실패'}" style="color: #ef4444; font-weight: bold; margin-top: 15px;">
+                * 현재 취소 및 환불 처리가 완료된 예매 내역입니다.
+            </div>
         </div>
 
     </th:block>
 </th:block>
 
-<script>
-    function confirmCancel() {
-        if (confirm('정말로 예매를 취소하시겠습니까?')) {
-            alert('예매가 취소되었습니다.');
-            location.href = '/mypage/tickets';
-        }
-    }
-</script>
+<script src="/js/booking/mypage_ticket_detail.js"></script>
 </body>
 </html>

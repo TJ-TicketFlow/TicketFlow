@@ -724,9 +724,20 @@ aside {
 ══════════════════════════════════════ */
 .detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
 .booking-title-bar { padding: 16px 20px; font-size: 16px; font-weight: 700; color: var(--text-main); border-bottom: 1.5px solid var(--border); background: #F8F9FB; }
-.booking-header { display: flex; align-items: stretch; }
-.booking-poster { width: 120px; flex-shrink: 0; overflow: hidden; }
-.booking-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.booking-header { display: flex;
+    gap: 30px; /* 포스터와 표 사이의 간격을 넓혀서 답답하지 않게 띄워줍니다 */
+    align-items: center; /* 핵심! 포스터가 표 높이에 맞춰 위아래로 강제로 늘어나지 않게 막아줍니다 */
+    padding: 20px; }
+.booking-poster { flex-shrink: 0; /* 창이 좁아져도 포스터가 찌그러지지 않게 보호합니다 */
+    width: 210px;   /* 가로 너비를 충분히 넓혀줍니다 */
+    height: 297px;  /* 실제 공연 포스터들이 가장 예뻐 보이는 황금비율(A4 비율) 높이입니다 */
+    background-color: #f8f9fa; /* 이미지가 안 채워진 빈 공간은 연한 회색으로 깔끔하게 처리합니다 */
+    border-radius: 8px; /* 모서리 둥글게 */
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center; }
+.booking-poster img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .booking-poster-placeholder { width: 100%; height: 100%; min-height: 160px; background: linear-gradient(135deg,#3B6FFF22,#7C3AED22); display: flex; align-items: center; justify-content: center; }
 .booking-info-table { flex: 1; border-collapse: collapse; }
 .booking-info-table td { padding: 14px 18px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -781,10 +792,10 @@ aside {
 /* ══════════════════════════════════════
    MYPAGE BENEFITS / MEMBERSHIP
 ══════════════════════════════════════ */
-.mypage-hero { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 28px 36px; margin-bottom: 20px; display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.mypage-hero { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 28px 36px; margin-bottom: 20px; display: flex; align-items: center; gap: 0; flex-wrap: wrap;  justify-content: space-evenly;  }
 .hero-greeting { font-size: 15px; font-weight: 700; line-height: 1.7; min-width: 110px; }
 .hero-divider { width: 1px; background: var(--border); height: 60px; flex-shrink: 0; margin: 0 36px; }
-.hero-stat { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.hero-stat { display: flex; flex-direction: column; align-items: center; gap: 6px;}
 .hero-stat-label { font-size: 13px; color: var(--text-sub); font-weight: 500; }
 .grade-block { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .membership-icon { width: 52px; height: 52px; object-fit: contain; }
