@@ -27,19 +27,22 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel", "/ws-seat/**") // "좋아요" 요청 + 좌석 API + 웹소켓 핸드셰이크는 CSRF 예외 처리
+                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook","/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel", "/ws-seat/**")
                 )
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/login", "/register",
                                 "/api/check-userid",         // 아이디 중복확인 API
+                                "/api/create-checkout",
                                 "/register/send-code",
                                 "/register/verify-code",
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/concert/","/concert/**","/concert/{id}/sessions","/search",
-                                "/ws-seat/**" // 좌석 실시간 알림 웹소켓 핸드셰이크(SockJS) 허용
+                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult",
+                                "/ws-seat/**"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()
@@ -50,6 +53,10 @@ public class SecurityConfig {
                         .usernameParameter("user_id")
                         .passwordParameter("password")
                         .defaultSuccessUrl("/concert/", true)
+                        .successHandler((request, response, authentication) -> {
+                            request.getSession().setAttribute("logged_in", true);
+                            response.sendRedirect("/mypage/benefits");
+                        })
                         .failureUrl("/login?error")
                         .permitAll()
                 )

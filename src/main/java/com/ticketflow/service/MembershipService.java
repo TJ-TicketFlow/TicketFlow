@@ -142,7 +142,6 @@ public class MembershipService {
             user.setMembershipEnd(LocalDate.now());
             userRepository.save(user);
         }
-        System.out.println("🔗 urls: " + attrs.getUrls());
     }
 
     public RefundEligibilityDto checkRefundEligibility(User user) {
