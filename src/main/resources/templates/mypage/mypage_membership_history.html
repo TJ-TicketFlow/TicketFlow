@@ -5,6 +5,18 @@
 <th:block th:replace="~{mypage/mypage_base :: mypageLayout('멤버십 결제 내역 - 티켓플로우', '멤버십 결제 내역', 'membershipPayments', ~{::content})}">
     <th:block th:fragment="content">
 
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:18px; font-weight:700;">결제 내역</h3>
+            <div th:if="${refundEligibility != null}">
+                <th:block th:if="${refundEligibility.eligible}">
+                    <button type="button" class="btn-mem-link" onclick="requestRefund()">환불 신청</button>
+                </th:block>
+                <th:block th:if="${!refundEligibility.eligible}">
+                    <span style="color:var(--text-muted); font-size:13px;" th:text="${refundEligibility.reason}"></span>
+                </th:block>
+            </div>
+        </div>
+
         <div class="ticket-table-wrap">
             <table class="ticket-table">
                 <thead>
@@ -35,27 +47,37 @@
                 </th:block>
                 </tbody>
             </table>
+
+            <div class="pagination" th:if="${page.totalPages > 0}">
+                <a class="page-btn"
+                   th:if="${!page.first}"
+                   th:href="@{/mypage/membership/payments(page=${page.number - 1})}">&lt;</a>
+
+                <a class="page-btn"
+                   th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}"
+                   th:href="@{/mypage/membership/payments(page=${i})}"
+                   th:text="${i + 1}"
+                   th:classappend="${i == page.number} ? ' active'"></a>
+
+                <a class="page-btn"
+                   th:if="${!page.last}"
+                   th:href="@{/mypage/membership/payments(page=${page.number + 1})}">&gt;</a>
+            </div>
         </div>
 
-        <div th:if="${refundEligibility != null}" style="margin-top:16px; text-align:center;">
-            <th:block th:if="${refundEligibility.eligible}">
-                <button type="button" class="btn-mem-link" onclick="requestRefund()">환불 신청</button>
-            </th:block>
-            <th:block th:if="${!refundEligibility.eligible}">
-                <p style="color:var(--text-muted); font-size:13px;" th:text="${refundEligibility.reason}"></p>
-            </th:block>
+        <div style="background:#F3F4F6; border-radius:8px; padding:10px 16px; margin-top:12px; text-align:center;">
+            <span style="color:#6B7280; font-size:13px;">💡 결제 직후에는 내역 반영까지 최대 1분 정도 소요될 수 있어요.</span>
         </div>
 
-<!--        <div th:if="${portalUrl != null}" style="margin-top:12px; text-align:center;">-->
-<!--            <a th:href="${portalUrl}" target="_blank" class="btn-mem-link" style="background:#6B7280;">-->
-<!--                결제 정보 전체 관리 (Lemon Squeezy Portal)-->
-<!--            </a>-->
-<!--        </div>-->
+        <!--
+        <div th:if="${portalUrl != null}" style="margin-top:12px; text-align:center;">
+            <a th:href="${portalUrl}" target="_blank" class="btn-mem-link" style="background:#6B7280;">
+                결제 정보 전체 관리 (Lemon Squeezy Portal)
+            </a>
+        </div>
+        -->
 
     </th:block>
 </th:block>
-
-
-
 </body>
 </html>
