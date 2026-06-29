@@ -24,7 +24,6 @@ public class BookingController {
     // 0. 결제 화면 (여기에 쿠폰, 예매 정보가 다 나옴)
     @GetMapping("/payment")
     public String showPaymentPage(
-            //@RequestParam(value = "reservationKey", required = false, defaultValue = "1") Long reservationKey,
             @RequestParam(value = "reservationKey", required = true) Long reservationKey,
             java.security.Principal principal, // 💡 [핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
             Model model) {
@@ -49,6 +48,9 @@ public class BookingController {
             // 유저 정보 가져오기
             Map<String, Object> buyer = bookingService.getUserInfoMap(currentUserNo);
             model.addAttribute("user", buyer);
+
+             long remainingSeconds = bookingService.getRemainingSeconds(reservationKey);
+             model.addAttribute("remainingSeconds", remainingSeconds);
 
         } catch (IllegalStateException | IllegalArgumentException e) {
             System.out.println("🚨 잘못된 결제창 접근 차단 완료: " + e.getMessage());
@@ -95,9 +97,20 @@ public class BookingController {
             return ResponseEntity.status(400).body("이미 결제가 완료된 예매건입니다.");
         }
 
-        // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
-        String checkoutUrl = bookingService.createTemporaryPayment(requestDto);
-        return ResponseEntity.ok(checkoutUrl);
+        // ==============================================================
+        // 🌟 [수정된 부분] try-catch로 감싸서 캡차 실패 메시지를 프론트로 전달합니다!
+        // ==============================================================
+        try {
+            // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
+            String checkoutUrl = bookingService.createTemporaryPayment(requestDto);
+            return ResponseEntity.ok(checkoutUrl);
+
+        } catch (IllegalArgumentException e) {
+            // 💡 캡차가 틀렸을 때 서비스에서 던진 메시지를 400 에러와 함께 보냅니다.
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("결제 준비 중 서버 오류가 발생했습니다.");
+        }
     }
 
     // 3. 쿠폰 목록 가져오기

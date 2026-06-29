@@ -1,0 +1,96 @@
+/* ==========================================================================
+   예매 취소 알림 & 경고창 (Cancel Alert) 스타일
+   ========================================================================== */
+
+/* 1. 기본 경고 박스 스타일 (화면에 띄워주는 용도) */
+.cancel-alert-box {
+    background-color: #fef2f2; /* 연한 빨간색 배경 */
+    border: 1px solid #f87171; /* 빨간색 테두리 */
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    color: #991b1b;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1);
+}
+
+.cancel-alert-box .icon {
+    margin-right: 12px;
+    font-size: 20px;
+}
+
+.cancel-alert-box strong {
+    font-weight: 600;
+    color: #7f1d1d;
+    margin-right: 8px;
+}
+
+/* 2. 예매 취소 버튼 전용 스타일 */
+.btn-cancel-ticket {
+    background-color: #ef4444; /* 강렬한 빨간색 */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-cancel-ticket:hover {
+    background-color: #dc2626; /* 마우스 올렸을 때 더 진해짐 */
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px); /* 살짝 위로 뜨는 효과 */
+}
+
+/* 3. 취소 수수료 안내 텍스트 스타일 */
+.cancel-fee-info {
+    font-size: 14px;
+    color: #4b5563;
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 15px;
+    border-left: 4px solid #3b82f6; /* 파란색 포인트 줄 */
+}
+
+.cancel-fee-info span.highlight {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+/* ==========================================
+   취소 수수료 안내 표 (사진 디자인 적용)
+   ========================================== */
+.cancel-fee-table {
+    width: 100%;
+    border-collapse: collapse; /* 선을 한 줄로 깔끔하게 겹침 */
+    margin-top: 15px;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.cancel-fee-table th,
+.cancel-fee-table td {
+    padding: 10px 8px;
+    text-align: left; /* 왼쪽 정렬 */
+    border-bottom: 1px solid #e5e7eb; /* 연한 회색 가로선 */
+}
+
+.cancel-fee-table th {
+    font-weight: bold;
+    color: #374151;
+}
+
+/* 표의 맨 위쪽과 맨 아래쪽 선은 조금 더 진하게 (사진과 동일) */
+.cancel-fee-table thead tr th {
+    border-top: 2px solid #9ca3af;
+    border-bottom: 1px solid #9ca3af;
+}
+
+.cancel-fee-table tbody tr:last-child td {
+    border-bottom: 1px solid #9ca3af;
+}
