@@ -443,7 +443,7 @@ function submitBooking() {
                 totalQty += qty;
                 calculatedPrice += (qty * price);
 
-                // 💡 [수정] 스탠딩인 경우 백엔드 포문이 정상 작동하도록 가상의 좌석 식별자를 수량만큼 추가해줍니다.
+                // 💡 스탠딩 가상 좌석 식별자 추가
                 for(let i=0; i<qty; i++) {
                     bookingData.selectedSeats.push(`STANDING_${select.dataset.grade}_${i+1}`);
                 }
@@ -480,6 +480,7 @@ function submitBooking() {
     const headers = { "Content-Type": "application/json" };
     if(csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
 
+    // 서버로 예매 정보 임시 저장 API 호출
     fetch("/seat/api/booking/prepare", {
         method: "POST",
         headers: headers,
@@ -490,10 +491,21 @@ function submitBooking() {
             return res.json();
         })
         .then(result => {
-            alert("데이터 전송 성공! 결제부로 진입합니다.");
+            // 💡 [연동 완료] 서버에서 성공적으로 처리가 끝나면 결제 페이지로 리다이렉트합니다.
+            // result 안에 백엔드가 반환한 예매 고유 ID(예: bookingId 등)가 있다면 주소 뒤에 붙여서 보낼 수 있습니다.
+
+            alert("좌석이 가선점되었습니다. 결제 단계로 이동합니다.");
+
+            // 예시 A: 백엔드에서 생성된 예매 ID나 주문 번호가 반환되는 경우 (권장)
+            if (result.bookingId) {
+                window.location.href = `/booking/payment?bookingId=${result.bookingId}`;
+            } else {
+                // 예시 B: 별도의 키 없이 단순 페이지 이동만 필요한 경우
+                window.location.href = "/booking/payment";
+            }
         })
         .catch(err => {
-            alert("예매 처리 중 오류가 발생했습니다.");
+            alert("예매 처리 중 오류가 발생했습니다. 다시 시도해 주세요.");
             console.error(err);
         });
 }
