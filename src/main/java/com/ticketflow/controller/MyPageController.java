@@ -115,6 +115,7 @@ public class MyPageController {
     //  membership
     @GetMapping("/membership/payments")
     public String mypageMembershipPayments(@AuthenticationPrincipal UserDetails userDetails,
+                                           @PageableDefault(size = 5) Pageable pageable,
                                            Model model) {
         User user = userService.findByUserId(userDetails.getUsername());
         model.addAttribute("user", user);
@@ -122,19 +123,17 @@ public class MyPageController {
         Membership membership = membershipRepository.findByUser(user)
                 .stream().findFirst().orElse(null);
 
-        List<PaymentViewDto> payments = membership == null
-                ? Collections.emptyList()
-                : paymentRepository.findByMembershipOrderByMembershipHistoryDateDesc(membership)
-                .stream()
-                .map(this::toPaymentViewDto)
-                .collect(Collectors.toList());
+        Page<PaymentViewDto> paymentPage = membership == null
+                ? Page.empty(pageable)
+                : paymentRepository.findByMembershipOrderByMembershipHistoryDateDesc(membership, pageable)
+                .map(this::toPaymentViewDto);
 
-        model.addAttribute("payments", payments);
+        model.addAttribute("payments", paymentPage.getContent());
+        model.addAttribute("page", paymentPage);
         model.addAttribute("refundEligibility", membershipService.checkRefundEligibility(user));
 
         if (membership != null && membership.getMembershipCustomerId() != null) {
             try {
-
                 String portalUrl = lemonSqueezyRefundService.getCustomerPortalUrl(membership.getMembershipCustomerId());
                 model.addAttribute("portalUrl", portalUrl);
             } catch (Exception e) {

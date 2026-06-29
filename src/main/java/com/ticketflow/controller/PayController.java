@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -14,21 +16,22 @@ import java.util.Map;
 @RequestMapping("/api")
 public class PayController {
 
-    @Value("${lemon-squeezy.api-key}")
+    @Value("${lemonsqueezy.api-key}")
     private String LS_API_KEY;
 
-    @Value("${lemon-squeezy.store-id}")
+    @Value("${lemonsqueezy.store-id}")
     private String LS_STORE_ID;
 
-    @Value("${lemon-squeezy.variant-id}")
+    @Value("${lemonsqueezy.variant-id}")
     private String LS_VARIANT_ID;
 
     @PostMapping("/create-checkout")
     public ResponseEntity<?> createCheckout(@RequestBody Map<String, String> data,
-                                            HttpSession session, HttpServletRequest request) {
+                                            @AuthenticationPrincipal UserDetails userDetails,
+                                            HttpServletRequest request) {
 
-        if (!Boolean.TRUE.equals(session.getAttribute("logged_in"))) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
         }
 
         String email = data.get("email");
