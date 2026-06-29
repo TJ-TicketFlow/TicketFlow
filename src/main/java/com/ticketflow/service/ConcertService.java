@@ -173,14 +173,16 @@ public class ConcertService {
         return totalSeats > 0 && reservedSeats >= totalSeats;
     }
 
-    // ConcertService.java
-    public boolean isSessionSoldOut(String concertId, String sessionTime) {
-        // 1. 해당 공연의 총 좌석 수 (Seat 엔티티 활용)
-        long totalSeats = seatRepository.countByConcert_ConcertId(concertId);
-        // 2. 해당 회차에 예약된 좌석 수 (Reservation 엔티티 활용)
-        long reservedSeats = reservationRepository.countBySelectedSeat_Concert_ConcertIdAndSessionTime(concertId, sessionTime);
+    public boolean isSessionSoldOut(String concertId, String sessionTime, LocalDate date) {
+        // DB에 저장된 실제 좌석 등급 이름("일반석", "스탠딩" 등)을 정확히 넣으세요.
+        long reservedGeneral = reservationRepository.countBySeatClass(concertId, sessionTime, date, "일반석");
+        long reservedStanding = reservationRepository.countBySeatClass(concertId, sessionTime, date, "스탠딩");
 
-        return reservedSeats >= totalSeats;
+        // 총 좌석수를 구하는 로직 (각 클래스별로 좌석 개수를 미리 알고 있다면 하드코딩해도 됩니다)
+        long totalGeneral = 200;
+        long totalStanding = 400;
+
+        return (reservedGeneral >= totalGeneral) || (reservedStanding >= totalStanding);
     }
 
     public List<ConcertResponseDto> getPopularConcerts(int limit) {

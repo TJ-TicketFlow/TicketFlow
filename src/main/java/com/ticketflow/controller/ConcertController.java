@@ -2,7 +2,10 @@ package com.ticketflow.controller;
 
 import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.Concert;
+import com.ticketflow.entity.User;
 import com.ticketflow.service.ConcertService;
+import com.ticketflow.service.MembershipService;
+import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +27,8 @@ import java.util.stream.Collectors;
 public class ConcertController {
 
     private final ConcertService concertService;
+    private final MembershipService membershipService;
+    private final UserService userService;
 
     private boolean checkLogin(HttpSession session) {
         return Boolean.TRUE.equals(session.getAttribute("logged_in"));
@@ -80,11 +85,9 @@ public class ConcertController {
         model.addAttribute("stats", concertService.getStatsData(id));
         model.addAttribute("today", LocalDate.now());
 
-        // [추가] 전체 매진 여부 확인 (서비스에 해당 로직 구현 필요)
         boolean isAllSoldOut = concertService.isAllSoldOut(id);
         model.addAttribute("isAllSoldOut", isAllSoldOut);
 
-        // 1. 좋아요 여부 확인
         boolean isLiked = false;
         if (principal != null) {
             String userId = principal.getName();
@@ -92,11 +95,9 @@ public class ConcertController {
         }
         model.addAttribute("isLiked", isLiked);
 
-        // 2. [추가] 실시간 위시리스트 개수 가져오기 (DB에서 직접 조회)
         int wishCount = concertService.getWishlistCount(id);
         model.addAttribute("wishCount", wishCount);
 
-        // 날짜 및 가격 정보 처리 (기존과 동일)
         String dateRange = concert.getConcertStartDate().equals(concert.getConcertEndDate())
                 ? concert.getConcertStartDate().toString()
                 : concert.getConcertStartDate() + " ~ " + concert.getConcertEndDate();
@@ -107,19 +108,29 @@ public class ConcertController {
             model.addAttribute("priceList", Arrays.stream(prices).map(String::trim).collect(Collectors.toList()));
         }
 
+        // [수정된 부분] 로그인 상태에 따른 혜택 정보 처리
         if (principal != null) {
-            // 로그인 상태: 멤버십 혜택 표시
             model.addAttribute("isLoggedIn", true);
-            model.addAttribute("isMember", true); // 멤버십 가입자라고 가정
 
-            // 쿠폰 0장으로 초기화 (나중에 서비스 로직으로 대체 가능)
-            Map<Integer, Integer> coupons = new TreeMap<>();
-            coupons.put(5, 0);
-            coupons.put(10, 0);
-            coupons.put(15, 0);
-            model.addAttribute("coupons", coupons);
+            // 1. 유저 정보 조회
+            User user = userService.findByUserId(principal.getName());
+
+            // 2. 혜택 계산 (기본 할인율 + 쿠폰 개수)
+            double baseDiscount = membershipService.getDiscountRate(user);
+            long couponCount = user.getUserCoupons().stream()
+                    .filter(uc -> uc.getUserCouponStatus() == 0)
+                    .count();
+
+            // 3. 모델에 혜택 관련 정보 추가
+            model.addAttribute("baseDiscount", (int)(baseDiscount * 100));
+            model.addAttribute("couponCount", couponCount);
+            model.addAttribute("hasBenefit", baseDiscount > 0 || couponCount > 0);
+
+            // 4. 쿠폰 상세 팝업용 데이터 (필요 시)
+            model.addAttribute("coupons", user.getUserCoupons());
         } else {
             model.addAttribute("isLoggedIn", false);
+            model.addAttribute("hasBenefit", false);
         }
 
         return "concert/concert_detail";
@@ -147,17 +158,32 @@ public class ConcertController {
     // [2] 순수 데이터 API 영역 (REST API)
     // =========================================================================
 
+    // 먼저 DTO가 없다면 임시로 Map을 사용하거나, DTO 클래스를 생성하세요.
+// 아래는 DTO 없이 Map으로 처리하는 예시입니다.
+
     @GetMapping("/{id}/sessions")
     @ResponseBody
     public ResponseEntity<?> getSessionsByDate(@PathVariable String id, @RequestParam String date) {
+        LocalDate localDate = LocalDate.parse(date);
         List<String> rawTimes = concertService.findSessionsByDate(id, date);
         if (rawTimes == null || rawTimes.isEmpty()) return ResponseEntity.ok(Collections.emptyList());
 
-        List<Map<String, String>> cleanedSessions = rawTimes.stream().map(time -> {
+        // [수정된 부분] 매진 여부를 확인하여 맵에 담아 반환
+        List<Map<String, Object>> sessionData = rawTimes.stream().map(time -> {
+            // 시간에서 불필요한 문자 제거 (기존 로직 유지)
             String cleanTime = time.replaceAll("[가-힣\\s\\(\\)\\~\\-]", "");
-            return Map.of("id", cleanTime, "time", cleanTime);
+
+            // 날짜를 포함해서 매진 확인
+            boolean isSoldOut = concertService.isSessionSoldOut(id, cleanTime, localDate);
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", cleanTime);
+            map.put("time", cleanTime);
+            map.put("soldOut", isSoldOut); // 이 정보가 프론트로 전달됩니다.
+            return map;
         }).collect(Collectors.toList());
-        return ResponseEntity.ok(cleanedSessions);
+
+        return ResponseEntity.ok(sessionData);
     }
 
     @PostMapping("/{id}/like")
@@ -244,7 +270,6 @@ public class ConcertController {
     @GetMapping("/{id}/stats-json")
     @ResponseBody
     public ResponseEntity<?> getStatsJson(@PathVariable String id) {
-        // 기존에 model에 담아주던 데이터를 그대로 가져옵니다.
         Object stats = concertService.getStatsData(id);
         if (stats == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         return ResponseEntity.ok(stats);

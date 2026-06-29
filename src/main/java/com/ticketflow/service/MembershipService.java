@@ -341,4 +341,19 @@ public class MembershipService {
         }
     }
 
+    /**
+     * 유저의 등급(membership 필드)에 따른 할인율을 반환합니다.
+     * premium: 0.03 (3%), 그 외(basic 등): 0.0
+     */
+    @Transactional(readOnly = true)
+    public double getDiscountRate(User user) {
+        if (user.getMembership() == null) return 0.0;
+
+        // User 엔티티의 membership 필드 값을 기준으로 판단
+        if ("premium".equalsIgnoreCase(user.getMembership())) {
+            return 0.03;
+        }
+        return 0.0;
+    }
+
 }

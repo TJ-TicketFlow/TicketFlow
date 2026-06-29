@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="_csrf" th:content="${_csrf.token}"/>
@@ -14,6 +14,23 @@
         .chart-box-bar { width: 450px; text-align: center; }
         .chart-box-doughnut canvas, .chart-box-bar canvas { width: 100% !important; height: auto !important; }
         .disabled-box { opacity: 0.6; pointer-events: none; }
+
+        /* --- 달력 높이 최적화 스타일 --- */
+        .concert-calendar {
+            height: auto !important;
+            width: 100%;
+            max-height: 480px; /* 포스터 높이에 맞춘 최대 높이 제한 */
+        }
+        .fc .fc-daygrid-day-frame {
+            min-height: 40px !important; /* 날짜 칸 높이 축소 */
+        }
+        .fc .fc-col-header-cell-cushion {
+            font-size: 0.8rem; /* 요일 텍스트 크기 축소 */
+            padding: 5px 0;
+        }
+        .fc {
+            font-size: 0.8rem; /* 달력 전체 폰트 크기 축소 */
+        }
     </style>
 </head>
 <body>
@@ -24,13 +41,8 @@
     <div class="detail-grid">
         <div class="info-left">
             <img th:src="${concert.concertPosterUrl}" alt="포스터" class="detail-poster">
-            <div class="wishlist-box"
-                 th:data-concert-id="${concert.concertId}"
-                 onclick="toggleWishlist(this.getAttribute('data-concert-id'))"
-                 style="display: flex; align-items: center; justify-content: flex-start; cursor: pointer; margin-top: 10px;">
-                <img th:id="'wish-icon-' + ${concert.concertId}"
-                     th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}"
-                     alt="찜" style="width: 24px; margin-right: 8px;">
+            <div class="wishlist-box" th:data-concert-id="${concert.concertId}" onclick="toggleWishlist(this.getAttribute('data-concert-id'))" style="display: flex; align-items: center; justify-content: flex-start; cursor: pointer; margin-top: 10px;">
+                <img th:id="'wish-icon-' + ${concert.concertId}" th:src="${isLiked} ? @{/images/favicon.png} : @{/images/notfavicon.png}" alt="찜" style="width: 24px; margin-right: 8px;">
                 <span style="margin-right: 8px; font-weight: 500;">위시리스트</span>
                 <span th:id="'wish-count-' + ${concert.concertId}" th:text="${wishCount}">0</span>
             </div>
@@ -43,18 +55,17 @@
                 <p><strong>공연기간</strong> <span th:text="${dateRange}"></span></p>
                 <p><strong>공연시간</strong> <span th:text="${concert.concertTime}"></span></p>
                 <p><strong>관람연령</strong> <span th:text="${concert.concertAgeLimit}"></span></p>
-                <div class="price-section">
-                    <p><strong>가격</strong></p>
-                    <div class="price-list">
-                        <span th:each="price : ${priceList}" th:text="${price}"></span>
-                    </div>
-                </div>
+
                 <div class="membership-section" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 10px; background: #fff;">
                     <p><strong>멤버십 혜택</strong></p>
-                    <div sec:authorize="isAnonymous()"><p>멤버십 혜택이 없습니다.</p></div>
+                    <div sec:authorize="isAnonymous()"><p>멤버십 혜택이 존재하지 않습니다.</p></div>
                     <div sec:authorize="isAuthenticated()">
-                        <p>기본할인 3%</p>
-                        <a href="javascript:void(0);" onclick="openCouponPopup()" style="color: #0056b3; text-decoration: underline; font-weight: bold;">내 쿠폰 확인하기 ◀</a>
+                        <div th:if="${hasBenefit}">
+                            <p th:if="${baseDiscount > 0}">기본 할인: <strong th:text="${baseDiscount} + '%'"></strong></p>
+                            <p th:if="${couponCount > 0}">사용 가능 쿠폰: <strong th:text="${couponCount} + '장'"></strong></p>
+                            <a href="javascript:void(0);" onclick="openCouponPopup()" style="color: #0056b3; text-decoration: underline; font-weight: bold; cursor:pointer;">내 쿠폰 확인하기 ◀</a>
+                        </div>
+                        <div th:unless="${hasBenefit}"><p>현재 적용 가능한 혜택이 없습니다.</p></div>
                     </div>
                 </div>
             </div>
@@ -65,7 +76,7 @@
                 <div th:if="${isEnded}" class="disabled-box">
                     <h3>관람일 선택</h3>
                     <div class="concert-calendar"></div>
-                    <button type="button" class="btn-primary" style="background-color: #ccc; border-color: #ccc; cursor: not-allowed; width: 100%; margin-top: 20px;" disabled>판매종료</button>
+                    <button type="button" class="btn-primary" disabled style="width: 100%; margin-top: 20px;">판매종료</button>
                 </div>
                 <div th:unless="${isEnded}" style="display: flex; flex-direction: column; gap: 24px;">
                     <div>
@@ -80,23 +91,8 @@
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
                         <input type="hidden" name="sessionId" id="selectedSessionId">
                         <input type="hidden" name="date" id="selectedDate">
-                        <button type="submit" class="btn-primary">예매하기</button>
+                        <button type="submit" class="btn-primary" id="submitBtn">예매하기</button>
                     </form>
-                    <div class="prediction-info" style="margin-top: 20px; padding: 15px; border-top: 1px solid #eee;">
-                        <div th:if="${expectedSoldOutRate != null or expectedCancelRate != null}">
-                            <p style="margin: 5px 0; font-size: 0.9rem; color: #555;">
-                                예상 매진율: <strong th:text="${expectedSoldOutRate} + '%'">0%</strong>
-                            </p>
-                            <p style="margin: 5px 0; font-size: 0.9rem; color: #555;">
-                                예상 취소율: <strong th:text="${expectedCancelRate} + '%'">0%</strong>
-                            </p>
-                        </div>
-
-                        <div th:if="${expectedSoldOutRate == null and expectedCancelRate == null}"
-                             style="text-align: center; color: #999; font-size: 0.85rem; padding: 10px 0;">
-                            예상 데이터가 없습니다.
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -112,31 +108,24 @@
         <div class="stats-section">
             <h3>예매자 통계</h3>
             <div th:if="${stats != null}" class="stats-chart-wrapper">
-                <div class="chart-box-doughnut"><canvas id="genderChart"></canvas></div>
-                <div class="chart-box-bar"><canvas id="ageChart"></canvas></div>
+                <div class="chart-box-doughnut"><h3>성별 예매 비율</h3><canvas id="genderChart"></canvas></div>
+                <div class="chart-box-bar"><h3>연령대별 예매 비율</h3><canvas id="ageChart"></canvas></div>
             </div>
             <div th:unless="${stats != null}" class="empty-msg"><p>아직 예매 데이터가 없습니다.</p></div>
         </div>
     </section>
 </main>
 
-<div id="data-store"
-     th:data-concert-id="${concert.concertId}"
-     th:data-start-date="${concert.concertStartDate}"
-     th:data-end-date="${concert.concertEndDate}"
-     style="display:none;"></div>
-
+<div id="data-store" th:data-concert-id="${concert.concertId}" th:data-start-date="${concert.concertStartDate}" th:data-end-date="${concert.concertEndDate}" style="display:none;"></div>
 <div th:replace="~{fragments/footer :: footer}"></div>
-
 <script th:src="@{/js/concert/detail.js}"></script>
 
 <div id="couponPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#ffffff; padding:30px; border-radius:24px; z-index:1001; width:360px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); border: 1px solid #eee;">
     <h3 style="margin: 0 0 20px 0; text-align: center; font-size: 1.3rem;">보유 쿠폰</h3>
-    <div th:each="entry : ${coupons}" style="background: #fdfdfd; margin-bottom: 12px; padding: 12px; border-radius: 16px; display:flex; align-items:center; border: 1px solid #f0f0f0;">
-        <img th:src="@{'/images/' + ${entry.key} + 'percent.png'}" style="width: 50px; height: 50px; object-fit: contain; margin-right: 15px;">
+    <div th:each="uc : ${coupons}" style="background: #fdfdfd; margin-bottom: 12px; padding: 12px; border-radius: 16px; display:flex; align-items:center; border: 1px solid #f0f0f0;">
         <div style="display:flex; flex-direction: column;">
-            <span style="font-weight: bold; font-size: 1rem;" th:text="${entry.key} + '% 할인권'"></span>
-            <span style="font-size: 0.85rem; color: #666;" th:text="'소지개수 : ' + ${entry.value} + '매'"></span>
+            <span style="font-weight: bold; font-size: 1rem;" th:text="${uc.coupon.couponName}"></span>
+            <span style="font-size: 0.85rem; color: #666;" th:text="'할인율 : ' + ${uc.coupon.couponDiscountRate} + '%'"></span>
         </div>
     </div>
     <button onclick="closeCouponPopup()" style="width:100%; padding:14px; margin-top:20px; cursor:pointer; background:#111; color:white; border:none; border-radius:12px; font-weight:bold; font-size: 1rem;">닫기</button>
