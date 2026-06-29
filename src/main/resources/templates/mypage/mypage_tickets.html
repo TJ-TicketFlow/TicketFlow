@@ -77,17 +77,17 @@
 
                 <a class="page-btn"
                    th:if="${!page.first}"
-                   th:href="@{/mypage/tickets(page=${page.number - 1}, startDate=${startDate}, endDate=${endDate})}">&lt;</a>
+                   th:href="@{/mypage/tickets(page=${page.number - 1}, status=${param.status}, startDate=${startDate}, endDate=${endDate})}">&lt;</a>
 
                 <a class="page-btn"
                    th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}"
-                   th:href="@{/mypage/tickets(page=${i}, startDate=${startDate}, endDate=${endDate})}"
+                   th:href="@{/mypage/tickets(page=${i}, status=${param.status}, startDate=${startDate}, endDate=${endDate})}"
                    th:text="${i + 1}"
                    th:classappend="${i == page.number} ? 'active'">1</a>
 
                 <a class="page-btn"
                    th:if="${!page.last}"
-                   th:href="@{/mypage/tickets(page=${page.number + 1}, startDate=${startDate}, endDate=${endDate})}">&gt;</a>
+                   th:href="@{/mypage/tickets(page=${page.number + 1}, status=${param.status}, startDate=${startDate}, endDate=${endDate})}">&gt;</a>
 
             </div>
         </div>

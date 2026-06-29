@@ -73,7 +73,7 @@ public class MyPageController {
         LocalDate startDate = endDate.minusYears(1);
 
         org.springframework.data.domain.Page<java.util.Map<String, Object>> ticketPage =
-                bookingService.getMyTicketHistory(userDetails.getUsername(), startDate, endDate, org.springframework.data.domain.PageRequest.of(0, 2));
+                bookingService.getMyTicketHistory(userDetails.getUsername(), startDate, endDate, "전체",org.springframework.data.domain.PageRequest.of(0, 2));
 
         model.addAttribute("tickets", ticketPage.getContent());                // 최근 내역 2개
         model.addAttribute("totalTicketCount", ticketPage.getTotalElements());
@@ -132,25 +132,29 @@ public class MyPageController {
 
     @GetMapping("/tickets")
     public String mypageTickets(@AuthenticationPrincipal UserDetails userDetails,
+                                @RequestParam(value = "status", defaultValue = "전체") String status,
                                 @RequestParam(value = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
                                 @RequestParam(value = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
                                 @PageableDefault(size = 5) Pageable pageable, // 💡 한 페이지에 n개씩!
                                 Model model) {
 
-        // 💡 1. 날짜 기본값 세팅 (1달 전 ~ 오늘)
+        // 💡 날짜 기본값 세팅 (1달 전 ~ 오늘)
         if (endDate == null) endDate = LocalDate.now();
         if (startDate == null) startDate = endDate.minusMonths(1);
 
         String userId = userDetails.getUsername();
         model.addAttribute("user", userService.findByUserId(userId));
 
-        // 💡 2. 진짜 페이징된 데이터 가져오기
-        Page<Map<String, Object>> ticketPage = bookingService.getMyTicketHistory(userId, startDate, endDate, pageable);
+        // 'status(상태값)'를 서비스(계산기)로 함께 넘겨줍니다!
+        Page<Map<String, Object>> ticketPage = bookingService.getMyTicketHistory(userId, startDate, endDate, status, pageable);
 
         model.addAttribute("tickets", ticketPage.getContent()); // 실제 데이터 목록
         model.addAttribute("page", ticketPage);                 // 페이지네이션용 정보 (총 페이지 수 등)
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
+
+        // 뷰(HTML)에서도 현재 상태를 편하게 쓸 수 있도록 모델에 담아줍니다.
+        model.addAttribute("status", status);
 
         return "mypage/mypage_tickets";
     }

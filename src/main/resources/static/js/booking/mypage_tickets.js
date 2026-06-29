@@ -64,61 +64,57 @@ function selectDate(which,dateStr){
     renderCalendar(which);
 }
 
-// 상태 필터 버튼 로직
-// 💡 상태 필터 버튼 로직 (내역이 없을 때 빈 메시지 띄우기 기능 추가!)
-function setFilter(btn, status) {
-    // 1. 눌린 버튼을 파란색으로 활성화합니다.
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+// ==========================================
+// 🌟 1. 페이지 로딩 완료 시 날짜 및 탭 활성화 세팅
+// ==========================================
+document.addEventListener("DOMContentLoaded", function() {
+    // 날짜 세팅
+    document.getElementById('text-from').textContent = state.from.selected;
+    document.getElementById('text-to').textContent = state.to.selected;
 
-    // 2. 테이블 데이터를 확인합니다.
-    const tbody = document.getElementById('ticket-tbody');
-    const rows = tbody.querySelectorAll('tr'); // 테이블 안의 모든 줄을 가져옵니다.
-    let visibleCount = 0; // 화면에 보이는 '진짜 데이터'의 개수를 세는 변수입니다.
+    // 현재 주소창(URL)에 있는 status(예매상태) 값을 읽어옵니다. 없으면 '전체'로 간주!
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentStatus = urlParams.get('status') || '전체';
 
-    rows.forEach(row => {
-        // 이미 만들어진 '빈 메시지' 줄(td가 1개인 경우)은 데이터를 셀 때 방해되므로 잠시 숨겨둡니다.
-        if (row.id === 'js-empty-row' || row.cells.length === 1) {
-            row.style.display = 'none';
-            return;
-        }
-
-        // 진짜 데이터 줄에서 상태(예매완료, 취소 등) 글자를 가져옵니다.
-        const s = row.querySelector('.ticket-status')?.textContent.trim() || '';
-
-        // 필터 조건에 맞는지 확인합니다.
-        const isMatch = (status === '전체' || (status === '취소' && (s.includes('취소') || s.includes('실패'))) || s === status);
-
-        if (isMatch) {
-            row.style.display = ''; // 조건에 맞으면 보여줍니다.
-            visibleCount++;         // 화면에 보이는 개수를 1개 늘려줍니다!
+    // 탭 버튼들을 돌면서, 현재 상태와 이름이 일치하는 버튼에만 파란색(active)을 칠해줍니다.
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        const btnText = btn.textContent.trim();
+        // HTML버튼명은 '취소/환불'이고 DB조건은 '취소'인 경우를 위해 예외 처리
+        if (btnText === currentStatus || (currentStatus === '취소' && btnText === '취소/환불')) {
+            btn.classList.add('active');
         } else {
-            row.style.display = 'none'; // 조건에 안 맞으면 숨깁니다.
+            btn.classList.remove('active');
         }
     });
+});
 
-    // 3. 만약 화면에 보이는 데이터가 0개라면? "내역이 없습니다" 메시지 띄우기
-    if (visibleCount === 0) {
-        let emptyRow = document.getElementById('js-empty-row');
 
-        // 빈 줄이 없다면 자바스크립트로 새로 하나 만들어서 테이블 밑에 찰싹 붙여줍니다.
-        if (!emptyRow) {
-            emptyRow = document.createElement('tr');
-            emptyRow.id = 'js-empty-row';
-            emptyRow.innerHTML = '<td colspan="5" style="text-align: center; padding: 30px; color: #666;">해당 상태의 예매 내역이 없습니다.</td>';
-            tbody.appendChild(emptyRow);
-        }
-        emptyRow.style.display = ''; // 만들어진 빈 줄을 화면에 보여줍니다.
-    }
+// ==========================================
+// 🌟 2. 상태 필터 버튼 로직 (서버로 찐 데이터 요청하기!)
+// ==========================================
+function setFilter(btn, status) {
+    // 현재 달력에 선택된 날짜 가져오기 (날짜 안 날아가게 꽉 쥐기!)
+    const startStr = state.from.selected;
+    const endStr = state.to.selected;
+
+    // 💡 [핵심] CSS로 숨기는 게 아니라, 서버에 "상태+날짜+1페이지(page=0)" 조건을 달아서 페이지를 새로 이동시킵니다!
+    // (스프링부트 Pageable은 보통 0이 1페이지입니다)
+    window.location.href = `/mypage/tickets?status=${status}&startDate=${startStr}&endDate=${endStr}&page=0`;
 }
-
-// 조회 버튼 로직 (서버로 날짜 전송)
+// ==========================================
+// 🌟 3. 조회 버튼 로직 (날짜 검색 시에도 탭 유지 및 1페이지 리셋)
+// ==========================================
 function searchByDate(){
     const startStr = state.from.selected;
     const endStr = state.to.selected;
-    window.location.href = `/mypage/tickets?startDate=${startStr}&endDate=${endStr}`;
-}
 
+    // 현재 선택된 탭(상태) 가져오기
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentStatus = urlParams.get('status') || '전체';
+
+    // 💡 [핵심] 날짜를 검색해도 기존 탭 상태를 유지한 채 1페이지(page=0)로 리셋합니다!
+    window.location.href = `/mypage/tickets?status=${currentStatus}&startDate=${startStr}&endDate=${endStr}&page=0`;
+}
 // 초기화 버튼 로직
 function resetDate(){
     window.location.href = `/mypage/tickets`;

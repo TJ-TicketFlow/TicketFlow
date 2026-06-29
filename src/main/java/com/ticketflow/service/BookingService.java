@@ -426,89 +426,82 @@ public class BookingService {
         return String.format("TF-%06d", payNo);
     }
 
-    // 💡 2. 내 예매 내역 가져오기 (화면 전달용)
-    public Page<Map<String, Object>> getMyTicketHistory(String userId, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    // 💡 2. 내 예매 내역 가져오기 (백엔드 필터링 + 수동 페이징 완벽 적용 버전)
+    // 🌟 파라미터에 String filterStatus 가 추가되었습니다!
+    public Page<Map<String, Object>> getMyTicketHistory(String userId, LocalDate startDate, LocalDate endDate, String filterStatus, Pageable pageable) {
 
-        // 1. 날짜를 시간(00:00:00 ~ 23:59:59)까지 꽉 채워줍니다.
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        // 2. Repository에서 List가 아닌 Page 객체로 받아옵니다.
-        Page<Pay> payPage = payRepository.findMyPaymentsByDateRange(userId, startDateTime, endDateTime, pageable);
+        // 1. DB에서 해당 기간의 데이터를 일단 넉넉하게(최대 1만개) 다 가져옵니다. (자바에서 필터링하기 위함)
+        // (기존 레포지토리 메서드 재사용)
+        Page<Pay> rawPage = payRepository.findMyPaymentsByDateRange(
+                userId, startDateTime, endDateTime,
+                org.springframework.data.domain.PageRequest.of(0, 10000)
+        );
+        List<Pay> allPays = rawPage.getContent();
 
-        // 3. Page 안의 데이터(Pay)를 화면에 뿌리기 좋은 Map으로 변환해서 그대로 다시 Page로 묶어 반환합니다.
-        return payPage.map(pay -> {
+        // 2. 가공 및 상태 필터링을 거친 데이터를 담을 바구니
+        List<Map<String, Object>> filteredList = new ArrayList<>();
+
+        for (Pay pay : allPays) {
             Map<String, Object> map = new HashMap<>();
 
             map.put("booking_no", pay.getPayNo());
             map.put("display_no", generateReadableOrderNo(pay.getPayNo()));
 
-            // 공연명
             String showName = "알 수 없는 공연";
-            if (pay.getReservation() != null && pay.getReservation().getSelectedSeat() != null && pay.getReservation().getSelectedSeat().getSeat() != null && pay.getReservation().getSelectedSeat().getSeat().getConcert() != null) {
+            if (pay.getReservation() != null && pay.getReservation().getSelectedSeat() != null
+                    && pay.getReservation().getSelectedSeat().getSeat() != null
+                    && pay.getReservation().getSelectedSeat().getSeat().getConcert() != null) {
                 showName = pay.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
             }
             map.put("show_name", showName);
 
-            // 관람일시
             String date = "-";
             if (pay.getReservation() != null) {
                 Reservation reservation = pay.getReservation();
-
-                // 1) reservationDate(LocalDate)가 null인지 확인하고 문자열로 바꿉니다.
                 if (reservation.getReservationDate() != null) {
-                    String dateStr = reservation.getReservationDate().toString();
-                    date = dateStr;
-
-                    // 2) sessionTime(String)을 확인하고 뒤에 띄어쓰기와 함께 붙여줍니다.
-                    // 🚨 주의: 엔티티에 만들어두신 getter 이름에 맞게 getSessionTime()을 수정해 주세요!
+                    date = reservation.getReservationDate().toString();
                     String timeStr = reservation.getSessionTime();
                     if (timeStr != null && !timeStr.isBlank()) {
-                        date += " " + timeStr; // 결과 예시: "2026-06-18 19:00"
+                        date += " " + timeStr;
                     }
                 }
             }
             map.put("date", date);
 
-            // 매수
             int count = 1;
             if (pay.getReservation() != null && pay.getReservation().getReservationCount() != null) {
                 count = pay.getReservation().getReservationCount();
             }
             map.put("count", count);
-            // 만약 개별 좌석 수를 세어야 한다면 이 방식이 더 정확할 수도 있습니다!
-            // int count = pay.getReservation().getSelectedSeats().size();
 
-            // 예매상태
-            // 💡 [수정] 예매상태 결정 로직 (+ 관람완료 처리 추가)
+            // ==========================================
+            // 🌟 예매상태 결정 로직 (기존과 동일하게 작동)
+            // ==========================================
             String statusStr = "진행중";
             String currentStatus = pay.getPayStatus();
 
             if ("PAID".equals(currentStatus)) {
-                statusStr = "예매완료"; // 일단 기본은 예매완료로 설정
+                statusStr = "예매완료";
 
-                // 🚨 방어막: 예약 날짜 정보가 잘 있는지 확인
                 if (pay.getReservation() != null && pay.getReservation().getReservationDate() != null) {
                     LocalDate rDate = pay.getReservation().getReservationDate();
                     String rTimeStr = pay.getReservation().getSessionTime();
 
                     try {
                         LocalDateTime concertDateTime;
-                        // "19:00" 처럼 시간 글자가 있다면 날짜와 합쳐서 정확한 '관람일시' 생성
                         if (rTimeStr != null && !rTimeStr.isBlank()) {
                             concertDateTime = LocalDateTime.of(rDate, LocalTime.parse(rTimeStr));
                         } else {
-                            // 시간 정보가 없으면 그날 자정(밤 12시)을 기준으로 잡음
                             concertDateTime = rDate.atTime(LocalTime.MAX);
                         }
 
-                        // 💡 현재 시간이 관람일시를 지나버렸다면? -> 관람완료!
                         if (LocalDateTime.now().isAfter(concertDateTime)) {
                             statusStr = "관람완료";
                         }
                     } catch (Exception e) {
-                        // 만약 DB에 시간이 "오후 7시" 처럼 글자로 들어있어서 파싱 에러가 난다면,
-                        // 안전하게 '날짜'만 비교해서 어제 이전이면 관람완료로 처리!
                         if (LocalDate.now().isAfter(rDate)) {
                             statusStr = "관람완료";
                         }
@@ -522,8 +515,38 @@ public class BookingService {
             }
             map.put("status", statusStr);
 
-            return map;
-        });
+            // ==========================================
+            // 🌟 [핵심] 프론트에서 넘어온 탭(filterStatus)과 일치하는 것만 바구니에 담기!
+            // ==========================================
+            boolean isMatch = false;
+            if (filterStatus == null || "전체".equals(filterStatus)) {
+                isMatch = true;
+            } else if ("취소".equals(filterStatus) && (statusStr.equals("결제 취소") || statusStr.equals("결제 실패"))) {
+                isMatch = true; // 프론트의 "취소" 탭은 취소와 실패를 모두 보여줌
+            } else if (statusStr.equals(filterStatus)) {
+                isMatch = true;
+            }
+
+            if (isMatch) {
+                filteredList.add(map);
+            }
+        }
+
+        // ==========================================
+        // 🌟 3. 필터링된 데이터를 자바에서 직접 페이지 단위로 자르기 (수동 페이징)
+        // ==========================================
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), filteredList.size());
+
+        List<Map<String, Object>> pageContent = new ArrayList<>();
+
+        // 에러 방지: 데이터가 10개인데 20번째부터 달라고 하면 빈 배열 반환
+        if (start < filteredList.size()) {
+            pageContent = filteredList.subList(start, end);
+        }
+
+        // List를 스프링의 Page 객체로 예쁘게 재포장해서 반환
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, filteredList.size());
     }
 
     // ==========================================
