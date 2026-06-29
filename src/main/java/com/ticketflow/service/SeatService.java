@@ -1,8 +1,11 @@
 package com.ticketflow.service;
 
+import com.ticketflow.dto.ConcertNoticeMessage;
+import com.ticketflow.dto.SeatEventMessage;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,7 @@ public class SeatService {
     private final UserRepository userRepository;
     private final SelectedSeatRepository selectedSeatRepository;
     private final ReservationRepository reservationRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * 공연 가격정보 기반 좌석 타입 판단
@@ -36,18 +40,15 @@ public class SeatService {
         }
 
         // "스탠딩"이라는 단어가 명확히 포함된 경우에만 배치도가 없는 스탠딩형으로 판단
-        // 과거에는 "GA"라는 문자열도 체크했지만, "GA석"처럼 좌석 등급명에
-        //    "GA"라는 두 글자가 포함되기만 해도 STANDING으로 오판하는 버그가 있어 제거함.
-        //    (예: "VIP석 99,000원, GA석 88,000원" → 지정석 공연인데도 스탠딩으로 잘못 분류됨)
-        if (priceInfo.contains("전석")) {
-            return "SEAT_A"; // 앞서 seatmap.js 조건문과 맞추기 위해 "STANDING" 또는 "SEAT_B"를 리턴
+        if (priceInfo.contains("스탠딩")) {
+            return "STANDING"; // 앞서 seatmap.js 조건문과 맞추기 위해 STANDING 리턴
         } else {
-            return "STANDING";
+            return "SEAT_A";
         }
     }
 
     /**
-     * 1. 좌석 조회 (수정: DB에 좌석이 없을 경우 13행 18열 자동 동적 생성 로직 통합)
+     * 1. 좌석 조회 (DB에 좌석이 없을 경우 13행 18열 자동 동적 생성 로직 통합)
      */
     public List<Seat> getSeats(String concertId) {
         // 1-1. 먼저 해당 공연의 좌석이 DB에 존재하는지 파악합니다.
@@ -87,7 +88,7 @@ public class SeatService {
     }
 
     /**
-     * 2. 좌석 선택 (1 = 가능, 0 = 불가능)
+     * 2. 좌석 선택 (1 = 가능, 0 = 불가능) 및 실시간 소켓 브로드캐스팅
      */
     public void selectSeat(String seatId, Long userNo) {
         Seat seat = seatRepository.findById(seatId)
@@ -97,13 +98,24 @@ public class SeatService {
             throw new RuntimeException("이미 선택된 좌석");
         }
 
-        // 좌석 선점 (Dirty Checking으로 인해 save 생략 가능하나 명시 유지)
+        // 좌석 선점
         seat.setSeatStatus((short) 0);
         seatRepository.save(seat);
+
+        String concertId = seat.getConcert().getConcertId();
+
+        // 🔔 같은 공연 페이지를 보고 있는 다른 사용자들에게 실시간으로 좌석 잠금을 알림
+        messagingTemplate.convertAndSend(
+                "/topic/seat/" + concertId,
+                new SeatEventMessage("SELECTED", seatId, userNo)
+        );
+
+        // 🔔 마지막 남은 좌석이었다면 마감(매진) 공지를 한 번 더 보냄
+        notifyIfSoldOut(concertId);
     }
 
     /**
-     * 3. 좌석 취소
+     * 3. 좌석 취소 및 실시간 소켓 브로드캐스팅
      */
     public void cancelSeat(String seatId) {
         Seat seat = seatRepository.findById(seatId)
@@ -111,10 +123,16 @@ public class SeatService {
 
         seat.setSeatStatus((short) 1);
         seatRepository.save(seat);
+
+        // 🔔 좌석이 다시 풀렸음을 실시간으로 알림 (다른 사용자가 선택 가능해짐)
+        messagingTemplate.convertAndSend(
+                "/topic/seat/" + seat.getConcert().getConcertId(),
+                new SeatEventMessage("CANCELLED", seatId, null)
+        );
     }
 
     /**
-     * 4. 예약 상태 변경
+     * 4. 예약 상태 변경 및 실시간 소켓 연동
      */
     public void updateSeatStatus(String seatId, Short status) {
         Seat seat = seatRepository.findById(seatId)
@@ -122,10 +140,36 @@ public class SeatService {
 
         seat.setSeatStatus(status);
         seatRepository.save(seat);
+
+        String concertId = seat.getConcert().getConcertId();
+        String type = (status != null && status == 0) ? "SELECTED" : "CANCELLED";
+
+        messagingTemplate.convertAndSend(
+                "/topic/seat/" + concertId,
+                new SeatEventMessage(type, seatId, null)
+        );
+
+        if ("SELECTED".equals(type)) {
+            notifyIfSoldOut(concertId);
+        }
     }
 
     /**
-     * 5. 가격 계산
+     * 해당 공연의 선택 가능한(seatStatus=1) 좌석이 0개가 되면 매진 공지를 실시간 전송
+     */
+    private void notifyIfSoldOut(String concertId) {
+        long remaining = seatRepository.countByConcert_ConcertIdAndSeatStatus(concertId, (short) 1);
+
+        if (remaining == 0) {
+            messagingTemplate.convertAndSend(
+                    "/topic/concert/" + concertId + "/notice",
+                    new ConcertNoticeMessage("SOLD_OUT", "전 좌석이 마감되었습니다.", 0)
+            );
+        }
+    }
+
+    /**
+     * 5. 특정 좌석 등급의 가격 계산
      */
     @Transactional(readOnly = true)
     public int calculatePrice(String concertId, String seatClass) {
@@ -140,7 +184,7 @@ public class SeatService {
         String[] prices = priceInfo.split(",");
         for (String price : prices) {
             String[] data = price.split(":");
-            String grade = data[0].trim(); // 공백 방지용 trim 추가
+            String grade = data[0].trim();
             int amount = Integer.parseInt(data[1].trim());
 
             if (grade.equals(seatClass)) {
@@ -151,27 +195,30 @@ public class SeatService {
         throw new RuntimeException("해당 좌석 등급 없음");
     }
 
+    /**
+     * 6. ID 기반 단일 좌석 데이터 단독 조회
+     */
     @Transactional(readOnly = true)
     public Seat getSeatById(String realDbSeatId) {
-        // seatRepository(Spring Data JPA)를 이용해 primary key(ID)로 좌석을 찾습니다.
         return seatRepository.findById(realDbSeatId)
                 .orElseThrow(() -> new RuntimeException("해당 좌석 데이터를 찾을 수 없습니다. ID: " + realDbSeatId));
     }
 
-    // 🎯 SeatService 클래스 내부에 아래 메서드를 추가해 주세요.
-    @Transactional
+    /**
+     * 7. 단일 좌석 정보 강제 업데이트 및 엔티티 저장
+     */
     public Seat saveSeat(Seat seat) {
         return seatRepository.save(seat);
     }
 
-    // ===================================================
-    // 🌟 프론트엔드의 최종 예매 데이터를 받아 DB 장부 생성 (유저 표시 문구 최적화 버전)
-    // ===================================================
-    @Transactional
+    // =========================================================================
+    // 🌟 8. 프론트엔드의 최종 예매 데이터를 받아 DB 결제 가선점 임시 장부 생성 및 저장 로직
+    // =========================================================================
     public Long processBookingAndGetReservationKey(Map<String, Object> bookingData, Long userNo) {
         String concertId = bookingData.get("concertId").toString();
         String ticketType = bookingData.get("ticketType").toString();
-        // 프론트엔드에서 연산해온 총 가격
+
+        // 프론트엔드로부터 전송받은 총 금액 안전 변환
         Long totalPrice = Double.valueOf(bookingData.get("totalPrice").toString()).longValue();
 
         User user = userRepository.findById(userNo).orElseThrow(() -> new RuntimeException("유저 찾을 수 없음"));
@@ -180,20 +227,17 @@ public class SeatService {
         int totalTicketCount = 0;
         Seat representativeSeat = null;
 
-        // 백엔드가 취소할 때 기억할 진짜 좌석 ID들을 담을 바구니
+        // 결제 취소 시 복구 처리를 위해 식별할 데이터 바구니 설계
         List<String> realSeatIds = new java.util.ArrayList<>();
-
-        //유저에게 보여줄 깔끔한 좌석 명칭("1열 1번")을 담을 바구니
         List<String> formattedSeatsForUser = new java.util.ArrayList<>();
 
+        // 8-A. 지정석(SEAT) 배치 형태의 예매 데이터 가선점 처리 로직
         if ("SEAT".equals(ticketType)) {
             List<String> seatIds = (List<String>) bookingData.get("selectedSeats");
             totalTicketCount = seatIds.size();
 
             for (String frontendSeatId : seatIds) {
-
-                // 프론트가 보낸 "SEAT_R1_C1"에서 "SEAT" 글자를 "공연ID(예: PF1234)"로 바꾸기
-                // 결과물: "PF1234_R1_C1" (DB에 들어있는 진짜 아이디와 완벽 일치)
+                // 프론트 임시 ID인 "SEAT_R1_C1" 단어를 DB 실제 매핑 PK 양식인 "공연ID_R1_C1"로 변환
                 String dbSeatId = frontendSeatId.replace("SEAT", concertId);
 
                 Seat seat = seatRepository.findById(dbSeatId)
@@ -203,25 +247,31 @@ public class SeatService {
                     throw new RuntimeException("이미 누군가 예매한 좌석입니다: " + dbSeatId);
                 }
 
-                // 좌석 잠금 처리
+                // 좌석 사용 불가 상태로 잠금 확정
                 seat.setSeatStatus((short) 0);
 
                 try {
                     seat = seatRepository.save(seat);
                     seatRepository.flush();
 
-                    realSeatIds.add(seat.getSeatId()); // 💡 취소용 진짜 ID(예: PF277688_R1_C1)는 여기에 안전하게 보존
-
-                    // 엔티티가 가진 순수 숫자 데이터만 꺼내서 "1열 1번" 형태로 깨끗하게 조립합니다.
+                    realSeatIds.add(seat.getSeatId());
                     formattedSeatsForUser.add(seat.getSeatRow() + "열 " + seat.getSeatCol() + "번");
 
+                    // 🔔 해당 좌석이 선점 처리되었음을 실시간 소켓으로 동시 공유하여 중복 클릭 원천 방지
+                    messagingTemplate.convertAndSend(
+                            "/topic/seat/" + concertId,
+                            new SeatEventMessage("SELECTED", seat.getSeatId(), userNo)
+                    );
+
                 } catch (Exception e) {
-                    throw new RuntimeException("동시 예매 충돌: " + dbSeatId);
+                    throw new RuntimeException("동시 예매 충돌이 발생했습니다: " + dbSeatId);
                 }
                 if (representativeSeat == null) representativeSeat = seat;
             }
+            // 🔔 일괄 좌석 선택에 따른 최종 매진 여부 재스크리닝 후 공지 처리
+            notifyIfSoldOut(concertId);
         }
-        // 💡 2. 스탠딩(STANDING) 수량형일 경우의 처리 로직
+        // 8-B. 스탠딩(STANDING) 수량 지정 선택 형태의 예매 가선점 처리 로직
         else if ("STANDING".equals(ticketType)) {
             Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
             for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
@@ -231,9 +281,7 @@ public class SeatService {
 
                 for (int i = 0; i < qty; i++) {
                     String shortGrade = grade.length() > 3 ? grade.substring(0, 3) : grade;
-                    String finalshortGrade = shortGrade.replaceAll("석|스", "").trim();
-                    long timeSeq = System.currentTimeMillis() % 10000;
-                    String tempSeatId = concertId + "_S_" + finalshortGrade + timeSeq;
+                    String tempSeatId = concertId + "_S_" + shortGrade + "_" + i;
 
                     Seat seat = new Seat();
                     seat.setSeatId(tempSeatId);
@@ -251,23 +299,20 @@ public class SeatService {
             }
         }
 
-        // 💡 3. 최종 예약 장부(SelectedSeat, Reservation) 조립 및 저장
+        // 8-C. 가선점 및 결제 대기용 연관 장부 엔티티 조립 (SelectedSeat, Reservation 영수증)
         SelectedSeat selectedSeat = SelectedSeat.builder()
                 .user(user)
                 .seat(representativeSeat)
                 .concert(concert)
                 .price(totalPrice)
-                .seatState((short) 1) // 1 = 결제 대기 상태
+                .seatState((short) 1) // 1 = 결제 승인 대기 상태값 지정
                 .build();
 
         SelectedSeat savedSelectedSeat = selectedSeatRepository.save(selectedSeat);
-
         String seatsDisplayHtml = "선택된 티켓";
 
         if ("SEAT".equals(ticketType)) {
-            //위에서 에러 없이 정밀하게 담아둔 "1열 1번, 1열 2번" 문자열을 그대로 합쳐줍니다
             seatsDisplayHtml = String.join(", ", formattedSeatsForUser);
-
         } else if ("STANDING".equals(ticketType)) {
             Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
             List<String> standingDetails = new java.util.ArrayList<>();
@@ -277,7 +322,7 @@ public class SeatService {
                     if ("GENERAL".equalsIgnoreCase(gradeName)) {
                         gradeName = "일반";
                     }
-                    standingDetails.add(gradeName + entry.getValue() + "장");
+                    standingDetails.add(gradeName + " " + entry.getValue() + "장");
                 }
             }
             seatsDisplayHtml = String.join(", ", standingDetails);
@@ -288,13 +333,11 @@ public class SeatService {
                 .reservationCount(totalTicketCount)
                 .reservationDate(concert.getConcertStartDate() != null ? concert.getConcertStartDate() : java.time.LocalDate.now())
                 .sessionTime(concert.getConcertTime() != null ? concert.getConcertTime() : "시간 미정")
-                .selectedSeatsText(seatsDisplayHtml) //여기에 완전 깨끗한 글자가 들어갑니다
-                .reservedSeatIds(String.join(",", realSeatIds)) // 진짜 식별자 ID 목록도 컴마로저장
+                .selectedSeatsText(seatsDisplayHtml)
+                .reservedSeatIds(String.join(",", realSeatIds))
                 .build();
 
         Reservation savedReservation = reservationRepository.save(reservation);
         return savedReservation.getReservationKey();
     }
-
-
 }

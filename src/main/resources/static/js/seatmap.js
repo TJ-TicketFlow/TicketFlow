@@ -1,14 +1,94 @@
 // ==========================================
-// 🔌 1. Socket.io 실시간 클라이언트 설정 (Netty 서버 연동)
+// 🔌 1. WebSocket(STOMP) 실시간 클라이언트 설정
 // ==========================================
-if (typeof socket === 'undefined') {
-    window.socket = { emit: () => {}, on: () => {} };
+// 현재 로그인한 사용자 번호 (없으면 비로그인 상태)
+const currentUserNo = (() => {
+    const raw = document.querySelector('meta[name="_userNo"]')?.getAttribute('content');
+    return raw ? Number(raw) : null;
+})();
+
+let stompClient = null;
+let isConcertClosed = false; // 매진(마감) 여부 - true가 되면 좌석 선택 자체를 막음
+
+// 페이지 로드 시 소켓 연결 및 구독 시작
+function connectSeatSocket(targetConcertId) {
+    // 💡 백엔드 Spring WebSocket Endpoint인 /ws-seat로 SockJS 연결 생성
+    const socket = new SockJS('/ws-seat');
+    stompClient = new StompJs.Client({
+        webSocketFactory: () => socket,
+        reconnectDelay: 5000, // 연결이 끊기면 5초마다 자동 재접속
+
+        onConnect: () => {
+            console.log("✅ [WebSocket] 좌석 실시간 알림 서버에 연결되었습니다.");
+
+            // [구독 1] 다른 사용자가 이 공연의 좌석을 선점/해제할 때마다 알림 수신
+            stompClient.subscribe(`/topic/seat/${targetConcertId}`, (message) => {
+                const data = JSON.parse(message.body);
+                handleRemoteSeatEvent(data);
+            });
+
+            // [구독 2] 이 공연의 전 좌석이 마감(매진)되었을 때 알림 수신
+            stompClient.subscribe(`/topic/concert/${targetConcertId}/notice`, (message) => {
+                const data = JSON.parse(message.body);
+                handleConcertNotice(data);
+            });
+        },
+
+        onStompError: (frame) => {
+            console.error('🚨 [WebSocket] STOMP 프로토콜 에러 발생:', frame.headers['message']);
+        }
+    });
+
+    stompClient.activate();
+}
+
+// 실시간 소켓 이벤트 핸들러: 타인의 선점/취소 액션 처리
+function handleRemoteSeatEvent(data) {
+    if (!data || !data.seatId) return;
+
+    // 본인이 발생시킨 이벤트는 브라우저 자체 UI 로직에서 선처리하므로 타인의 이벤트만 수용
+    if (currentUserNo && Number(data.userNo) === currentUserNo) {
+        return;
+    }
+
+    const targetSeat = document.querySelector(`[data-seat-id="${data.seatId}"]`);
+    if (!targetSeat) return;
+
+    if (data.status === "SELECTED") {
+        console.log(`🔒 타인이 좌석 선점함: ${data.seatId}`);
+        targetSeat.style.background = "#d1d5db";
+        targetSeat.style.border = "1px solid #9ca3af";
+        targetSeat.style.cursor = "not-allowed";
+        targetSeat.dataset.status = "locked";
+
+        // 만약 내가 선택 중이던 좌석을 뺏긴 경우 선택 상태 해제
+        if (targetSeat.dataset.selected === "true") {
+            targetSeat.dataset.selected = "false";
+            const activeSelectedSeats = seatContainer.querySelectorAll('[data-selected="true"]');
+            updateSelectedSeatsUI(activeSelectedSeats);
+            calculateAndDisplayTotalPrice(activeSelectedSeats);
+        }
+    } else if (data.status === "CANCELLED") {
+        console.log(`🔓 타인이 좌석 해제함: ${data.seatId}`);
+        targetSeat.dataset.status = "available";
+        targetSeat.style.cursor = "pointer";
+        targetSeat.style.background = "#3b82f6";
+        targetSeat.style.border = "1px solid #2563eb";
+    }
+}
+
+// 실시간 마감 공지 핸들러
+function handleConcertNotice(data) {
+    if (data && data.noticeType === "SOLD_OUT") {
+        alert(`📢 공지사항: ${data.message}`);
+        isConcertClosed = true;
+    }
 }
 
 // ==========================================
 // 공연 ID 및 전역 설정
 // ==========================================
-console.log("seatmap.js 실행됨 (실시간 소켓 및 DB 데이터 연동 활성화)");
+console.log("seatmap.js 실행됨 (실시간 STOMP 소켓 및 DB 데이터 연동 활성화)");
 
 const seatContainer = document.getElementById("seat-container");
 const pathSegments = window.location.pathname.split('/');
@@ -17,53 +97,23 @@ const concertId = pathSegments[pathSegments.length - 1];
 let seatLayout;
 let vipRows = [];
 
-// 중복 선언 에러(SyntaxError) 방지를 위한 안전한 글로벌 윈도우 스코프 바인딩
+// 중복 선언 에러 방지를 위한 글로벌 윈도우 스코프 바인딩
 window.isSinglePrice = false;
 window.defaultSinglePrice = 0;
 window.concertPriceMap = {};
 window.dbSeatsData = [];
 
-// 페이지 로드 시 백엔드 소켓 서버의 해당 공연 전용 'Room'에 입장
+// 소켓 기동
 if (concertId) {
-    socket.emit('join_concert', concertId);
+    connectSeatSocket(concertId);
 }
 
 // ==========================================
-// 📥 2. 서버로부터 수신하는 실시간 소켓 이벤트 리스너
-// ==========================================
-socket.on('seat_selected_by_other', (data) => {
-    console.log(`🔒 타인이 좌석 선점함: ${data.seatId}`);
-    const targetSeat = document.querySelector(`[data-seat-id="${data.seatId}"]`);
-    if (targetSeat) {
-        targetSeat.style.background = "#d1d5db";
-        targetSeat.style.border = "1px solid #9ca3af";
-        targetSeat.style.cursor = "not-allowed";
-        targetSeat.dataset.status = "locked";
-    }
-});
-
-socket.on('seat_cancelled_by_other', (data) => {
-    console.log(`🔓 타인이 좌석 해제함: ${data.seatId}`);
-    const targetSeat = document.querySelector(`[data-seat-id="${data.seatId}"]`);
-    if (targetSeat) {
-        targetSeat.dataset.status = "available";
-        targetSeat.style.cursor = "pointer";
-        targetSeat.style.background = "#3b82f6";
-        targetSeat.style.border = "1px solid #2563eb";
-    }
-});
-
-// ==========================================
-// 🌟 3. 공연 정보 & 레이아웃 순서 제어 (지정석은 배치도 / 스탠딩은 등급분리 수량창)
+// 📥 2. 공연 정보 & 레이아웃 순서 제어 (지정석 vs 스탠딩)
 // ==========================================
 if (concertId) {
     console.log("🔍 [디버깅] 현재 자바스크립트가 파싱한 concertId:", concertId);
 
-    // 스코프 문제 해결을 위해 상위 스코프에 변수 마련
-    let fetchedConcertData = null;
-
-    // [Step 1] 공연 기본 정보 가져오기
-    // [Step 1] 공연 기본 정보 가져오기
     // [Step 1] 공연 기본 정보 가져오기
     fetch(`/seat/api/concert/${concertId}`)
         .then(res => {
@@ -73,7 +123,7 @@ if (concertId) {
         .then(concert => {
             console.log("✈️ [디버깅] 백엔드에서 받은 원본 공연 데이터:", concert);
 
-            // 🎯 [핵심] 꼬이지 않도록 여기에 변수를 안전하게 전역 저장합니다.
+            // 안전하게 전역 저장
             window.currentLayoutType = concert.layoutType || "SEAT";
 
             const nameEl = document.getElementById("concert-name");
@@ -135,7 +185,6 @@ if (concertId) {
             console.log("✈️ [디버깅] 백엔드 DB에서 조회된 실제 좌석 개수:", seats.length, "개");
             window.dbSeatsData = seats;
 
-            // 🎯 [핵심 교정] 아까 window에 안전하게 박아둔 레이아웃 타입을 가져와 대문자로 치환합니다.
             const cleanType = (window.currentLayoutType || "SEAT").trim().toUpperCase();
             console.log("🔍 [디버깅] 최종 판별된 레이아웃 타입:", cleanType);
 
@@ -179,7 +228,7 @@ const seatLayouts = {
 };
 
 // ==========================================
-// 🛠️ 4. 지정석 배치도 렌더링 함수
+// 🛠️ 3. 지정석 배치도 렌더링 함수
 // ==========================================
 function renderSeat() {
     seatContainer.innerHTML = "";
@@ -213,8 +262,6 @@ function renderSeat() {
 
             const actualRow = rowIndex + 1;
             const actualCol = seatColIndex + 1;
-
-            // 🎯 [수정] 백엔드 Controller가 무조건 기대하는 규격("SEAT_R4_C11" 등)으로 강제 고정합니다.
             const seatId = `SEAT_R${actualRow}_C${actualCol}`;
 
             const foundSeat = window.dbSeatsData.find(s => s.seatId === seatId || (s.seatRow == String(actualRow) && s.seatCol == String(actualCol)));
@@ -223,7 +270,6 @@ function renderSeat() {
                 targetSeat = { seatClass: "STANDARD", price: defaultPrice, seatStatus: 1 };
             }
 
-            // HTML 데이터셋에 백엔드가 파싱 가능한 포맷을 안전하게 주입
             seatDiv.dataset.seatId = seatId;
             seatDiv.title = seatId;
             seatDiv.dataset.selected = "false";
@@ -241,6 +287,10 @@ function renderSeat() {
             }
 
             seatDiv.addEventListener("click", () => {
+                if (isConcertClosed) {
+                    alert("해당 공연의 좌석 예매가 마감되었습니다.");
+                    return;
+                }
                 if (seatDiv.dataset.status === "locked") {
                     alert("선택할 수 없는 좌석입니다.");
                     return;
@@ -256,11 +306,25 @@ function renderSeat() {
                     }
                     seatDiv.dataset.selected = "true";
                     seatDiv.style.background = "#1d4ed8"; seatDiv.style.border = "1px solid #1e40af";
-                    socket.emit('seat_select', { concertId: concertId, seatId: seatId });
+
+                    // 💡 Spring STOMP 양식에 맞춘 선택 이벤트 전송
+                    if (stompClient && stompClient.connected) {
+                        stompClient.publish({
+                            destination: "/app/seat/select",
+                            body: JSON.stringify({ concertId: concertId, seatId: seatId, userNo: currentUserNo })
+                        });
+                    }
                 } else {
                     seatDiv.dataset.selected = "false";
                     seatDiv.style.background = "#3b82f6"; seatDiv.style.border = "1px solid #2563eb";
-                    socket.emit('seat_cancel', { concertId: concertId, seatId: seatId });
+
+                    // 💡 Spring STOMP 양식에 맞춘 취소 이벤트 전송
+                    if (stompClient && stompClient.connected) {
+                        stompClient.publish({
+                            destination: "/app/seat/cancel",
+                            body: JSON.stringify({ concertId: concertId, seatId: seatId, userNo: currentUserNo })
+                        });
+                    }
                 }
 
                 const activeSelectedSeats = seatContainer.querySelectorAll('[data-selected="true"]');
@@ -313,7 +377,7 @@ function calculateAndDisplayTotalPrice(selectedElements) {
 }
 
 // ===================================================
-// 🎫 5. 티켓 장수 선택형 UI 렌더링 영역 (스탠딩 전용)
+// 🎫 4. 티켓 장수 선택형 UI 렌더링 영역 (스탠딩 전용)
 // ===================================================
 function showQuantitySelectionForm() {
     const rightSidebar = document.querySelector(".right-sidebar");
@@ -419,7 +483,15 @@ function handleQuantityChange(changedSelect) {
     if (standingPriceEl) standingPriceEl.innerText = totalPrice.toLocaleString() + "원";
 }
 
+// ==========================================
+// ✈️ 5. 백엔드 가선점 장부 데이터 전송 서버 통신부
+// ==========================================
 function submitBooking() {
+    if (isConcertClosed) {
+        alert("해당 공연의 좌석 예매가 마감되었습니다.");
+        return;
+    }
+
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
     const isStanding = qtySelects.length > 0;
 
@@ -443,7 +515,6 @@ function submitBooking() {
                 totalQty += qty;
                 calculatedPrice += (qty * price);
 
-                // 💡 [수정] 스탠딩인 경우 백엔드 포문이 정상 작동하도록 가상의 좌석 식별자를 수량만큼 추가해줍니다.
                 for(let i=0; i<qty; i++) {
                     bookingData.selectedSeats.push(`STANDING_${select.dataset.grade}_${i+1}`);
                 }
@@ -472,6 +543,9 @@ function submitBooking() {
         bookingData.totalPrice = calculatedPrice;
     }
 
+    // ==========================================
+    // ✈️ 백엔드 전송 서버 통신부 (Undefined 철통 방어형)
+    // ==========================================
     console.log("✈ 백엔드로 전송할 최종 예매 데이터:", bookingData);
 
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
@@ -486,16 +560,41 @@ function submitBooking() {
         body: JSON.stringify(bookingData)
     })
         .then(res => {
-            if (!res.ok) throw new Error("예매 정보 등록에 실패했습니다.");
-            return res.json();
+            // 서버 에러(500 등) 발생 시 response body의 에러 메시지를 꺼내기 위해 바로 throw하지 않음
+            return res.json().then(data => {
+                if (!res.ok) {
+                    throw new Error(data.message || "서버 예매 임시 등록 실패");
+                }
+                return data;
+            });
         })
-        .then(result => {
-            alert("데이터 전송 성공! 결제부로 진입합니다.");
-            const reservationKey = result.reservationKey;
-            window.location.href = `/booking/payment?reservationKey=${reservationKey}`;
+        .then(data => {
+            console.log("📥 [디버깅] 백엔드 응답 데이터 전체 구조:", JSON.stringify(data));
+
+            // 1. 객체가 비어있거나 실패 메시지가 온 경우 방어
+            if (!data || data.message) {
+                alert("예매 실패: " + (data.message || "서버에서 빈 데이터를 반환했습니다."));
+                return;
+            }
+
+            // 2. 백엔드 Map 객체에서 다양한 형태의 키를 안전하게 추출 시도
+            // 대소문자 변환 이슈나 데이터 구조 뒤틀림 현상을 전부 방어합니다.
+            const finalKey = data.reservationKey || data.ReservationKey || data.bookingId || data.id;
+
+            console.log("🎯 최종 판별된 예약 번호 (finalKey):", finalKey);
+
+            if (finalKey === undefined || finalKey === null || finalKey === "undefined") {
+                console.error("🚨 [치명적] 백엔드가 SUCCESS는 줬으나 예약 키를 담아주지 않았습니다. 응답을 다시 확인하세요.");
+                alert("서버에서 올바른 예약 번호를 받지 못했습니다. F12 개발자 도구 콘솔을 확인하세요.");
+                return;
+            }
+
+            alert("좌석이 가선점되었습니다. 결제 단계로 이동합니다.");
+            // 🚀 완벽하게 확보된 숫자를 주소창에 넘김
+            window.location.href = `/booking/payment?reservationKey=${finalKey}`;
         })
         .catch(err => {
-            alert("예매 처리 중 오류가 발생했습니다.");
-            console.error(err);
+            alert("예매 처리 중 오류가 발생했습니다: " + err.message);
+            console.error("🚨 [전송 실패] 에러 디버깅 로그:", err);
         });
 }

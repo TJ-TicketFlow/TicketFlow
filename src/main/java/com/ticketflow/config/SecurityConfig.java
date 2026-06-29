@@ -27,7 +27,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook","/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel")
+                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook","/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel", "/ws-seat/**")
                 )
 
                 .authorizeHttpRequests(auth -> auth
@@ -41,7 +41,8 @@ public class SecurityConfig {
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/concert/","/concert/**","/concert/{id}/sessions","/search",
-                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult"
+                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult",
+                                "/ws-seat/**"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()
