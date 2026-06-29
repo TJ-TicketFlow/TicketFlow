@@ -2,11 +2,7 @@ package com.ticketflow.service;
 
 import com.ticketflow.dto.BookingRequestDto;
 import com.ticketflow.entity.*;
-import com.ticketflow.repository.MembershipRepository;
-import com.ticketflow.repository.PayRepository;
-import com.ticketflow.repository.ReservationRepository;
-import com.ticketflow.repository.UserCouponRepository;
-import com.ticketflow.repository.UserRepository;
+import com.ticketflow.repository.*;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +34,7 @@ public class BookingService {
     private final ReservationRepository reservationRepository;
     private final UserCouponRepository userCouponRepository;
     private final MembershipRepository membershipRepository;
+    private final SeatRepository seatRepository;
 
     // 💡 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
@@ -263,7 +260,7 @@ public class BookingService {
         payment.setLsCustomerId(lsCustomerId);
         payment.setReceiptUrl(receiptUrl);
         payment.setLsWebhookEventId(lsWebhookEventId);
-        payment.setPayMethod("LemonSqueezy");
+        payment.setPayMethod("신용/체크카드");
 
         if (payment.getUserCoupon() != null) {
             // 이 결제에 쿠폰이 쓰였다면, 상태를 1(사용함)로 바꿔줍니다!
@@ -358,9 +355,18 @@ public class BookingService {
         try {
             ticketInfo.put("price", reservation.getSelectedSeat().getPrice());
             ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
-            ticketInfo.put("seatInfo", reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
-                    reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
-                    reservation.getSelectedSeat().getSeat().getSeatCol() + "번");
+            String allSeatsText = reservation.getSelectedSeatsText();
+            if (allSeatsText == null || allSeatsText.isBlank()) {
+                // 🌟 스탠딩(행이 0)일 때 방어 로직 추가
+                if ("0".equals(reservation.getSelectedSeat().getSeat().getSeatRow())) {
+                    allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " + reservation.getReservationCount() + "장";
+                } else {
+                    allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " +
+                            reservation.getSelectedSeat().getSeat().getSeatRow() + "열 " +
+                            reservation.getSelectedSeat().getSeat().getSeatCol() + "번";
+                }
+            }
+            ticketInfo.put("seatInfo", allSeatsText);
             ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
             ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
             ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
@@ -585,8 +591,23 @@ public class BookingService {
             }
             map.put("venue", venue);
 
-            // 좌석 정보 (예: VIP석 1열 5번)
-            map.put("seat", seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번");
+            // ==============================================================
+            // 🌟 [핵심 수정] 영수증에 적어둔 전체 좌석 텍스트를 꺼냅니다!
+            // ==============================================================
+            String allSeatsText = reservation.getSelectedSeatsText();
+
+            // 방어 로직: 텍스트가 텅 비어있을 경우 (예전 예매건 등)
+            if (allSeatsText == null || allSeatsText.isBlank()) {
+                // 🌟 스탠딩(행이 0)일 때 방어 로직 추가
+                if ("0".equals(seat.getSeatRow())) {
+                    allSeatsText = seat.getSeatClass() + " " + reservation.getReservationCount() + "장";
+                } else {
+                    allSeatsText = seat.getSeatClass() + " " + seat.getSeatRow() + "열 " + seat.getSeatCol() + "번";
+                }
+            }
+
+            map.put("seat", allSeatsText);
+            // ==============================================================
 
             // 관람일시 (List 페이지와 동일한 방식 적용)
             String viewDate = "-";
@@ -746,7 +767,7 @@ public class BookingService {
         System.out.println("✅ 취소수수료: " + cancelFee + "원, 실제 환불될 금액: " + refundAmount + "원");
 
         // 🚨 레몬스퀴지 환불 API 연동이 필요하다면 이 자리에서 호출합니다!
-        callLemonSqueezyRefund(pay.getLsOrderId(), refundAmount);
+        callLemonSqueezyRefund(pay.getLsOrderId(), refundAmount, pay.getPayAmount());
 
         // 2. 결제 상태 취소로 변경
         pay.setPayStatus("CANCELLED");
@@ -759,12 +780,20 @@ public class BookingService {
         // 4. 좌석을 다시 [예매 가능] 상태로 풀어주기
         Reservation reservation = pay.getReservation();
         if (reservation != null && reservation.getSelectedSeat() != null) {
-            var selectedSeat = reservation.getSelectedSeat();
-            var seat = selectedSeat.getSeat();
+            reservation.getSelectedSeat().setSeatState((short) 0); // 껍데기 해제
 
-            // 임시 선택 상태 해제(0) 및 실제 좌석 사용가능(1) 처리
-            selectedSeat.setSeatState((short) 0);
-            seat.setSeatStatus((short) 1);
+            // 🌟 [수정된 부분] 저장해둔 진짜 ID들을 꺼내서 모조리 1(가능)로 돌려놓습니다!
+            String idsStr = reservation.getReservedSeatIds();
+            if (idsStr != null && !idsStr.isEmpty()) {
+                String[] seatIds = idsStr.split(",");
+                for (String sId : seatIds) {
+                    Seat seatToFree = seatRepository.findById(sId).orElse(null);
+                    if (seatToFree != null) {
+                        seatToFree.setSeatStatus((short) 1); // 싹 다 해제!
+                    }
+                }
+                System.out.println("✅ 예매된 모든 좌석(" + idsStr + ") 취소 완료 및 상태 복구!");
+            }
         }
     }
 
@@ -794,7 +823,7 @@ public class BookingService {
     // ==========================================
     // 💡 13. 레몬스퀴지 환불(Refund) API 통신 (최신 API 적용!)
     // ==========================================
-    private void callLemonSqueezyRefund(String lsOrderId, long refundAmount) {
+    private void callLemonSqueezyRefund(String lsOrderId, long refundAmount, long originalAmount) {
         if (lsOrderId == null || lsOrderId.isBlank()) {
             System.out.println("🚨 레몬스퀴지 주문 번호가 없어서 환불 API를 호출할 수 없습니다. (더미 데이터일 확률 높음)");
             return;
@@ -806,15 +835,16 @@ public class BookingService {
         headers.set("Accept", "application/vnd.api+json");
         headers.set("Content-Type", "application/vnd.api+json");
 
-        // 센트 단위로 변환
-        long finalRefundAmount = refundAmount * 100;
-
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> data = new HashMap<>();
         Map<String, Object> attributes = new HashMap<>();
 
-        // 💡 [핵심 수정 1] 레몬스퀴지 최신 규격에 맞게 데이터 포장 변경
-        attributes.put("amount", finalRefundAmount);
+        if (refundAmount < originalAmount) {
+            attributes.put("amount", refundAmount * 100);
+            data.put("attributes", attributes);
+        }
+        // 2. 수수료가 0원인 '전액 환불'일 경우, attributes를 아예 세팅하지 않습니다!
+        // (금액을 안 보내면 레몬스퀴지가 알아서 1원 단위 오차 없이 100% 전액 환불 처리합니다.)
 
         data.put("type", "orders"); // 'refunds'가 아니라 'orders' 타입으로 보냅니다.
         data.put("id", lsOrderId);  // 어떤 주문을 취소할지 주문 번호를 직접 명시합니다.
@@ -852,22 +882,27 @@ public class BookingService {
     // ==========================================
     @Transactional
     public void releaseUnpaidSeat(Long reservationKey) {
-        // 1. 임시 예약 장부를 찾습니다.
         Reservation reservation = reservationRepository.findById(reservationKey).orElse(null);
-
-        // 예약 장부가 없거나, 이미 선택된 좌석이 없다면 무시합니다.
-        if (reservation == null || reservation.getSelectedSeat() == null) {
-            return;
-        }
+        if (reservation == null || reservation.getSelectedSeat() == null) return;
 
         SelectedSeat selectedSeat = reservation.getSelectedSeat();
-        Seat seat = selectedSeat.getSeat();
 
         // 3. 결제가 안 된 좀비 좌석이라면 다시 세상에 풀어줍니다!
         if (selectedSeat.getSeatState() == 1 || selectedSeat.getSeatState() == 2) {
-            selectedSeat.setSeatState((short) 0); // 선택 상태 해제
-            seat.setSeatStatus((short) 1);        // 1: 다시 누구나 예매 가능 상태로 복구
-            System.out.println("✅ " + seat.getSeatId() + " 좌석이 결제창 이탈로 인해 다시 예매 가능 상태로 풀렸습니다.");
+            selectedSeat.setSeatState((short) 0);
+
+            // 🌟 [수정된 부분] 여기도 똑같이 모든 좌석 해제!
+            String idsStr = reservation.getReservedSeatIds();
+            if (idsStr != null && !idsStr.isEmpty()) {
+                String[] seatIds = idsStr.split(",");
+                for (String sId : seatIds) {
+                    Seat seatToFree = seatRepository.findById(sId).orElse(null);
+                    if (seatToFree != null) {
+                        seatToFree.setSeatStatus((short) 1);
+                    }
+                }
+            }
+            System.out.println("✅ 결제창 이탈! 좌석(" + idsStr + ") 다시 예매 가능 상태로 풀림.");
         }
     }
 
@@ -888,10 +923,12 @@ public class BookingService {
 
             // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
             String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
-            String seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
-                    + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
-                    + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
-
+            String seatInfo = payment.getReservation().getSelectedSeatsText();
+            if (seatInfo == null || seatInfo.isBlank()) {
+                seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
+            }
             // HTML 문법을 사용해서 내용을 작성합니다.
             String htmlContent = "<h3>🎉 예매가 완료되었습니다!</h3>"
                     + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
@@ -911,5 +948,31 @@ public class BookingService {
         } catch (Exception e) {
             System.err.println("🚨 이메일 발송 실패: " + e.getMessage());
         }
+    }
+
+    // ==========================================
+    // 💡 15. 결제창 타이머 동기화를 위한 남은 시간 계산기
+    // ==========================================
+    public long getRemainingSeconds(Long reservationKey) {
+        Reservation reservation = reservationRepository.findById(reservationKey)
+                .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
+
+        // 🌟 예약 장부가 DB에 생성된 진짜 시간을 가져옵니다.
+        // (주의: 엔티티에 만들어두신 등록일자 필드명에 맞게 getCreatedAt() 등을 수정해 주세요!)
+        java.time.LocalDateTime createdAt = reservation.getReservationCreatedAt();
+
+        // 혹시라도 생성 시간이 기록 안 되어 있다면 안전하게 기본값 30분(1800초)을 줍니다.
+        if (createdAt == null) {
+            return 1800L;
+        }
+
+        // 만료 시간 = 생성 시간 + 30분
+        java.time.LocalDateTime expiresAt = createdAt.plusMinutes(30);
+
+        // 현재 시간과 만료 시간 사이의 남은 초 계산
+        long remainingSeconds = java.time.Duration.between(java.time.LocalDateTime.now(), expiresAt).getSeconds();
+
+        // 30분이 이미 지났다면 마이너스 대신 0초를 반환합니다.
+        return remainingSeconds > 0 ? remainingSeconds : 0;
     }
 }

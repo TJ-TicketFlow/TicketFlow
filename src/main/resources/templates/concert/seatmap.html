@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
@@ -8,8 +8,10 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/infopopup.css">
     <link rel="stylesheet" href="/css/selectedSeat.css">
-</head>
 
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
 <body>
 
 <div class="main-layout">
@@ -41,11 +43,20 @@
             <span class="no-seat-msg">좌석을 선택해 주세요. (최대 4개)</span>
         </div>
 
-        <button class="booking-btn" id="booking-submit-btn">작성 완료 및 예매하기</button>
+        <div class="price-box" style="margin: 20px 0; padding-top: 15px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-weight: bold; width: 100%;">
+            <span style="color: #64748b; font-size: 14px; white-space: nowrap; flex-shrink: 0;">결제 예정 금액</span>
+            <span id="total-price-display" style="color: #3b82f6; font-size: 20px; white-space: nowrap; flex-shrink: 0; margin-left: 10px;">0원</span>
+        </div>
+
+        <button id="next-booking-btn" onclick="submitBooking()">예매하기</button>
     </div>
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+
+<script src="/js/seatprice.js"></script>
 <script src="/js/seatmap.js"></script>
 
 </body>

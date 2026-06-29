@@ -59,3 +59,21 @@ body {
     margin-top: 0 !important;
     padding-top: 0 !important;
 }
+#next-booking-btn {
+    display: block;
+    width: 100%;
+    padding: 12px 0;
+    background-color: #3b82f6; /* 결제 금액과 맞춘 파란색 */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background 0.2s ease-in-out;
+}
+
+#next-booking-btn:hover {
+    background-color: #1d4ed8; /* 마우스 올렸을 때 더 짙은 파란색 */
+}

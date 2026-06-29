@@ -1,5 +1,6 @@
 package com.ticketflow.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,6 +19,7 @@ public class Seat {
     @Column(name = "seat_id", length = 20)
     private String seatId;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "concert_id", nullable = false)
     private Concert concert;
@@ -36,6 +38,7 @@ public class Seat {
     @Column(name = "seat_col", length = 50, nullable = false)
     private String seatCol;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "seat", fetch = FetchType.LAZY)
     @Builder.Default
     private List<SelectedSeat> selectedSeats = new ArrayList<>();
