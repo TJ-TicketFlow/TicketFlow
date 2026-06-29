@@ -9,4 +9,6 @@ public interface SeatRepository extends JpaRepository<Seat, String> {
     List<Seat> findByConcert_ConcertId(String concertId);
 
     long countByConcert_ConcertId(String concertId);
+
+    long countByConcert_ConcertIdAndSeatStatus(String concertId, Short seatStatus);
 }

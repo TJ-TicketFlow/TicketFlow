@@ -27,7 +27,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel") // "좋아요" 요청만 CSRF 예외 처리
+                        .ignoringRequestMatchers("/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel", "/ws-seat/**") // "좋아요" 요청 + 좌석 API + 웹소켓 핸드셰이크는 CSRF 예외 처리
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -38,7 +38,8 @@ public class SecurityConfig {
                                 "/find-id", "/find-id/**",
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
-                                "/concert/","/concert/**","/concert/{id}/sessions","/search"
+                                "/concert/","/concert/**","/concert/{id}/sessions","/search",
+                                "/ws-seat/**" // 좌석 실시간 알림 웹소켓 핸드셰이크(SockJS) 허용
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()
                         .anyRequest().authenticated()
