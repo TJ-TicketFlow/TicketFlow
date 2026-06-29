@@ -1,11 +1,35 @@
 <!DOCTYPE html>
-
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>결제 완료 - 티켓플로우</title>
+    <link th:href="@{/css/booking/payresult.css}" rel="stylesheet" />
 </head>
 <body>
-    결제완료
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="result-container">
+    <div class="result-content">
+
+        <div class="check-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="12" fill="#4B89FF"/>
+                <path d="M7 12.5L10.5 16L17 8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+
+        <h2 class="result-title">결제가 완료되었습니다!</h2>
+
+        <div class="btn-group">
+            <a th:href="@{/concert/}" class="btn btn-main">메인페이지로 이동</a>
+            <a th:href="@{/mypage/benefits}" class="btn btn-mypage">마이페이지로 이동</a>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
 </body>
 </html>

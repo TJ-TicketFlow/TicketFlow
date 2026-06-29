@@ -36,7 +36,12 @@ public class MembershipPayments {
     @Column(name = "membership_history_date", nullable = false)
     private LocalDateTime membershipHistoryDate;
 
+    @Column(name = "membership_invoice_id", length = 100)
+    private String membershipInvoiceId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "membership_id", nullable = false)
     private Membership membership;
+
+
 }

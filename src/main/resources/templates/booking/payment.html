@@ -5,42 +5,48 @@
     <title>티켓결제</title>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="reservation_key" th:content="${reservationKey}"/>
+    <meta name="remaining_seconds" th:content="${remainingSeconds}">
+    <meta name="is_member" th:content="${isMember}"/>
     <link th:href="@{/css/booking/booking.css}" rel="stylesheet" />
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">티켓결제</div>
+<div class="container">
+    <div class="header">티켓결제</div>
 
-        <div class="content-wrapper">
-            <div class="left-panel">
-                <div class="section-box">
-                    <div class="section-title">구매자 정보 입력</div>
-                    <div class="input-group">
-                        <label>구매자 이름</label>
-                        <input type="text" class="input-field" th:value="${user != null ? user.name : '홍길동'}" readonly name="buyerName">
-                    </div>
-                    <div class="input-group">
-                        <label>생년월일</label>
-                        <input type="text" class="input-field" th:value="${user != null ? user.birthDate : '991206'}" readonly>
-                    </div>
-                    <div class="input-group">
-                        <label>휴대폰번호</label>
-                        <input type="text" class="input-field" th:value="${user != null ? user.phone : '01012345678'}" name="buyerPhone">
-                    </div>
-                    <div class="input-group">
-                        <label>이메일주소</label>
-                        <input type="email" class="input-field" th:value="${user != null ? user.email : 'honggil12@email.com'}" name="buyerEmail">
-                    </div>
+    <div class="content-wrapper">
+        <div class="left-panel">
+            <div class="section-box">
+                <div class="section-title">구매자 정보 입력</div>
+                <div class="input-group">
+                    <label>구매자 이름</label>
+                    <input type="text" class="input-field" th:value="${user != null ? user.name : '이름'}" readonly name="buyerName">
+                </div>
+                <div class="input-group">
+                    <label>생년월일</label>
+                    <input type="text" class="input-field" th:value="${user.birthDate}" readonly>
+                </div>
+                <div class="input-group">
+                    <label>휴대폰번호</label>
+                    <input type="text" class="input-field" th:value="${user != null ? user.phone : '01012345678'}" name="buyerPhone">
+                </div>
+                <div class="input-group">
+                    <label>이메일주소</label>
+                    <input type="email" class="input-field" th:value="${user != null ? user.email : 'honggil12@email.com'}" name="buyerEmail">
+                </div>
+            </div>
+
+            <div class="section-box">
+                <div class="section-title">티켓수령방법 선택</div>
+                <div class="radio-group">
+                    <label><input type="radio" name="deliveryType" value="MOBILE"> 모바일티켓</label>
+                    <label><input type="radio" name="deliveryType" value="POST" checked> 택배수령(3,000원)</label>
                 </div>
 
-                <div class="section-box">
-                    <div class="section-title">티켓수령방법 선택</div>
-                    <div class="radio-group">
-                        <label><input type="radio" name="deliveryType" value="MOBILE"> 모바일티켓</label>
-                        <label><input type="radio" name="deliveryType" value="POST" checked> 택배수령(3,000원)</label>
-                    </div>
+                <hr style="border-top: 1px solid #ddd; margin: 15px 0;">
 
-                    <hr style="border-top: 1px solid #ddd; margin: 15px 0;">
+                <div id="deliveryInfoSection">
 
                     <div class="section-title" style="font-size: 14px;">배송지정보</div>
                     <div class="delivery-row">
@@ -55,72 +61,113 @@
                             <input type="text" class="input-field" name="receiverPhone">
                         </div>
                     </div>
-                </div>
-
-                <div class="section-box">
-                    <div class="section-title">쿠폰 선택</div>
-                    <div class="radio-box" id="couponContainer">
-                        <span style="font-size: 13px; color: #666;">쿠폰 목록을 불러오는 중입니다...</span>
-                    </div>
-                </div>
-
-                <div class="section-box">
-                    <div class="section-title">자동주문방지</div>
-                    <div class="captcha-area">
-                        <div class="captcha-image">319854</div>
-                        <div>
-                            <span style="font-size: 12px; color: #666; cursor: pointer;">↻ 새로고침</span>
-                            <input type="text" class="input-field" style="margin-top: 5px;" placeholder="숫자 입력">
+                    <div class="delivery-row">
+                        <div class="delivery-label">주소</div>
+                        <div class="delivery-content">
+                            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                                <input type="text" class="input-field" style="width: 100px;" name="zipCode" placeholder="우편번호">
+                                <button type="button" class="btn-address" onclick="openAddressSearch()">우편번호 찾기</button>
+                            </div>
+                            <input type="text" class="input-field" style="margin-bottom: 5px;" name="addressBase" placeholder="기본주소">
+                            <input type="text" class="input-field" name="addressDetail" placeholder="상세주소 입력">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="right-panel">
-                <div class="ticket-info-top">
-                    <div class="poster">포스터<br>이미지</div>
-                    <div>
-                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;" id="payNameDisplay" th:text="${ticket != null ? ticket.title : '콘서트 이름'}">콘서트 이름</div>
-                        <div style="font-size: 12px; color: #555;" th:text="${ticket != null ? ticket.venue : '극장 이름'}">극장 이름</div>
+            <div class="section-box">
+                <div class="section-title">쿠폰 선택</div>
+                <div class="radio-box" id="couponContainer">
+                    <span style="font-size: 13px; color: #666;">쿠폰 목록을 불러오는 중입니다...</span>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <div id="captcha-area" style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;">
+                    <p style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">자동주문 방지(대소문자 구분 없음)</p>
+
+                    <img id="captchaImage" src="" alt="캡차 이미지 로딩 중..." style="max-width: 200px; display: block; margin-bottom: 10px;">
+
+                    <input type="hidden" id="captchaKey" value="">
+
+                    <input type="text" id="captchaInput" placeholder="위 이미지를 보고 글자를 입력하세요" autocomplete="off" style="width: 200px; padding: 5px;">
+
+                    <button type="button" id="refreshCaptcha" style="padding: 5px 10px; cursor: pointer;">새로고침</button>
+
+                    <div id="captchaWarning" style="color: #ef4444; font-size: 12px; font-weight: bold; margin-top: 8px; display: none;">
+                        ⚠️ 한/영 키를 눌러 영문으로 입력해 주세요!
                     </div>
-                </div>
-
-                <div class="section-title" style="font-size: 14px;">선택내역</div>
-                <div style="margin-bottom: 20px;">
-                    <div class="summary-row"><span>날짜</span><span th:text="${ticket != null ? ticket.date : 'xxxx.xx.xx'}">xxxx.xx.xx</span></div>
-                    <div class="summary-row"><span>시간</span><span th:text="${ticket != null ? ticket.time : 'xx시 xx분'}">xx시 xx분</span></div>
-                    <div class="summary-row"><span>매수</span><span th:text="${ticket != null ? ticket.count + '매' : '0매'}">0매</span></div>
-                    <div class="summary-row"><span>좌석</span><span th:text="${ticket != null ? ticket.seatInfo : 'x열 x번'}">x열 x번</span></div>
-                </div>
-
-                <hr style="border-top: 1px solid #ddd; margin-bottom: 20px;">
-
-                <div class="section-title" style="font-size: 14px;">결제내역</div>
-                <div style="margin-bottom: 20px;">
-                    <div class="summary-row"><span>티켓금액</span><span id="TicketPrice">20,000</span></div>
-                    <div class="summary-row"><span>예매수수료</span><span id="fee">2,000</span></div>
-                    <div class="summary-row"><span>배송료</span><span id="deliveryFeeDisplay">3,000</span></div>
-                    <div class="summary-row total"><span>총금액(+)</span><span id="totalPriceDisplay">25,000</span></div>
-                </div>
-
-                <div style="margin-bottom: 20px;">
-                    <div class="summary-row"><span>멤버십할인금액</span><span id="membershipDiscount">0</span></div>
-                    <div class="summary-row"><span>할인쿠폰</span><span id="couponDiscount">0</span></div>
-                    <div class="summary-row total" style="color: #ef4444;"><span>총 할인금액(-)</span><span id="totalDiscount">0</span></div>
-                </div>
-
-                <div class="final-price-box">
-                    <span style="font-weight: bold; font-size: 14px;">최종 결제금액</span>
-                    <span class="final-price" id="finalPriceDisplay">25,000</span>
-                </div>
-
-                <div class="btn-group">
-                    <button type="button" class="btn btn-prev" onclick="history.back()">이전단계</button>
-                    <button type="button" id="createPayment" class="btn btn-submit">결제하기</button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="/js/booking/payment.js"></script> </body>
+        <div class="right-panel">
+            <div class="timer-text">
+                남은 결제 시간 <span id="countdownTimer">30:00</span>
+            </div>
+            <div class="ticket-info-top">
+                <img class="poster" th:src="${ticket.posterUrl}" alt="포스터">
+                <div>
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;" id="payNameDisplay" th:text="${ticket.title}">콘서트 이름</div>
+                    <div style="font-size: 12px; color: #555;" th:text="${ticket.venue}">극장 이름</div>
+                </div>
+            </div>
+
+            <div class="section-title" style="font-size: 14px;">선택내역</div>
+            <div style="margin-bottom: 20px;">
+                <div class="summary-row"><span>날짜</span><span th:text="${ticket != null ? ticket.date : 'xxxx.xx.xx'}">xxxx.xx.xx</span></div>
+                <div class="summary-row"><span>시간</span><span th:text="${ticket != null ? ticket.time : 'xx시 xx분'}">xx시 xx분</span></div>
+                <div class="summary-row"><span>매수</span><span th:text="${ticket != null ? ticket.count + '매' : '0매'}">0매</span></div>
+                <div class="summary-row">
+                    <span>좌석</span>
+                    <span th:if="${param.detail != null}" th:text="${param.detail}" style="font-weight: bold; color: #3b82f6;">0장</span>
+
+                    <span th:unless="${param.detail != null}">
+                            <span th:text="${ticket != null ? ticket.seatInfo : '좌석 정보 없음'}" style="line-height: 1.4;">0열 0번</span>
+                        </span>
+                </div>
+            </div>
+
+            <hr style="border-top: 1px solid #ddd; margin-bottom: 20px;">
+
+            <div class="section-title" style="font-size: 14px;">결제내역</div>
+            <div style="margin-bottom: 20px;">
+                <div class="summary-row">
+                    <span>티켓금액</span>
+                    <span id="TicketPrice" th:text="${ticket.price}">0</span>
+                </div>
+                <div class="summary-row"><span>예매수수료</span><span id="fee">2,000</span></div>
+                <div class="summary-row"><span>배송료</span><span id="deliveryFeeDisplay">3,000</span></div>
+                <div class="summary-row total"><span>총금액(+)</span><span id="totalPriceDisplay">0</span></div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <div class="summary-row"><span>멤버십할인금액</span><span id="membershipDiscount">0</span></div>
+                <div class="summary-row"><span>할인쿠폰</span><span id="couponDiscount">0</span></div>
+                <div class="summary-row total" style="color: #ef4444;"><span>총 할인금액(-)</span><span id="totalDiscount">0</span></div>
+            </div>
+
+            <div class="final-price-box">
+                <span style="font-weight: bold; font-size: 14px;">최종 결제금액</span>
+                <span class="final-price" id="finalPriceDisplay">2000</span>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" class="btn btn-prev" onclick="goBackToSeats()">이전단계</button>
+                <button type="button" id="createPayment" class="btn btn-submit">결제하기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <div class="loading-text">
+        안전한 결제를 위해 준비 중입니다...<br>
+        <span style="font-size: 13px; opacity: 0.8;">창을 닫거나 새로고침하지 마세요.</span>
+    </div>
+</div>
+
+<script src="/js/booking/payment.js"></script>
+</body>
 </html>

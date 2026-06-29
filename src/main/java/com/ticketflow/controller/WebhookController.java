@@ -1,8 +1,11 @@
 package com.ticketflow.controller;
 
 import com.ticketflow.service.BookingService;
+import com.ticketflow.dto.WebhookRequestDto;
+import com.ticketflow.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import lombok.ToString;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,8 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+@ToString
+@RestController
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -48,13 +53,39 @@ public class WebhookController {
             String eventName = rootNode.path("meta").path("event_name").asText();
 
             if ("order_created".equals(eventName)) {
-                // 3. 커스텀 데이터(merchant_uid)와 레몬스퀴지 주문번호(id) 꺼내기
+
+                // 1. 커스텀 데이터와 레몬스퀴지 기본 주문번호 꺼내기
                 String merchantUid = rootNode.path("meta").path("custom_data").path("merchant_uid").asText();
                 String lsOrderId = rootNode.path("data").path("id").asText();
 
-                // 4. DB 업데이트: 서비스에게 "결제 완료 처리해 줘!" 라고 지시
-                bookingService.completePayment(merchantUid, lsOrderId);
-            }
+                // ⭐️ 2. 여기서부터 추가! JSON의 'attributes' (상세 정보) 칸을 엽니다.
+                JsonNode attributes = rootNode.path("data").path("attributes");
+
+                String currency = attributes.path("currency").asText(); // "KRW"
+                String lsCustomerId = attributes.path("customer_id").asText(); // 고객 ID
+                String receiptUrl = attributes.path("urls").path("receipt").asText(); // 영수증 URL
+
+                // 이벤트 ID는 meta 안에 들어있습니다.
+                String lsWebhookEventId = rootNode.path("meta").path("webhook_id").asText();
+
+                // 레몬스퀴지가 보내준 진짜 결제 상태(예: "paid", "failed", "pending")를 꺼냅니다.
+                String payStatus = attributes.path("status").asText();
+
+                // 레몬스퀴지가 보내준 에러 메시지가 있는지 확인합니다. (없으면 빈칸)
+                String failReason = attributes.path("error_message").asText("");
+
+                // 만약 에러 메시지는 안 왔는데 상태가 failed 라면, 우리가 직접 사유를 적어줍니다.
+                if (failReason.isEmpty() && "failed".equalsIgnoreCase(payStatus)) {
+                    failReason = "카드 한도 초과 또는 해외 결제 차단으로 인한 실패";
+                }
+
+                // first_order_item 안에 들어있는 순수 price를 꺼냅니다! (3200000)
+                long purePriceCent = attributes.path("first_order_item").path("price").asLong();
+                // 우리가 보낼 때 100을 곱했으니, 비교할 때는 100으로 다시 나눠서 원상복구(32000) 시킵니다!
+                long webhookAmount = purePriceCent / 100;
+
+                // 3. 서비스에게 "이것들도 다 같이 장부에 적어줘!" 라고 넘깁니다.
+                bookingService.completePayment(merchantUid, lsOrderId, currency, lsCustomerId, receiptUrl, lsWebhookEventId, webhookAmount, payStatus, failReason);            }
 
             // 5. 레몬스퀴즈에게 "알림 잘 받았어! 고마워!" 라고 200 OK 보내기
             return ResponseEntity.ok("Success");
@@ -94,10 +125,19 @@ public class WebhookController {
     }
 
 
-    // 멤버십 결제
+    private final MembershipService membershipService;
+
     @PostMapping("/payment/webhook")
-    public ResponseEntity<?> handlePaymentWebhook(){
-        return ResponseEntity.ok(Map.of("message", "webhook"));
+    public ResponseEntity<String> handleWebhook(@RequestBody WebhookRequestDto dto) {
+        try {
+            System.out.println("🔥 웹훅 수신됨, DTO 내용: " + dto);
+
+            membershipService.processPaymentWebhook(dto);
+            return ResponseEntity.ok("success");
+        } catch (Exception e) {
+            System.err.println("❌ 웹훅 처리 중 치명적 에러 발생!");
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 }
-
