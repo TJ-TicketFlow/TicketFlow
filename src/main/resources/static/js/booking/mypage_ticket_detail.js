@@ -1,5 +1,5 @@
 // ==========================================
-// 1. 취소 버튼을 눌렀을 때: 수수료를 먼저 확인하고 의사를 묻는 함수 (수정 버전)
+// 1. 취소 버튼을 눌렀을 때: 수수료를 먼저 확인하고 의사를 묻는 함수
 // ==========================================
 function checkAndCancel(payNo) {
     if (!payNo) {
@@ -43,7 +43,6 @@ function checkAndCancel(payNo) {
         })
         .catch(error => {
             console.error("❌ 취소 수수료 조회 중 에러 발생:", error);
-            // 드디어 깔끔하게 "취소 마감시간이 지나 취소할 수 없습니다." 만 화면에 뜹니다!
             alert(error.message);
         });
 }
@@ -86,6 +85,6 @@ function executeCancel(payNo) {
         })
         .catch(error => {
             console.error("❌ 예매 취소 실행 중 에러 발생:", error);
-            alert(error.message); // 예: "이미 취소되었거나 결제 완료 상태가 아닙니다."
+            alert(error.message);
         });
 }

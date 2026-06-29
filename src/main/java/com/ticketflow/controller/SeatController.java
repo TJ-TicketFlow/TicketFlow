@@ -40,21 +40,6 @@ public class SeatController {
 
     private final SeatRepository seatRepository;
 
-    // ... 중간 @GetMapping, @PostMapping 메서드들은 기존과 동일하므로 생략 ...
-
-    /**
-     * 6. 프론트엔드 좌석 결제 준비 및 selected_seat 데이터 등록 처리
-     * POST /seat/api/booking/prepare
-     */
-    /**
-     * 6. 프론트엔드 좌석 결제 준비 및 selected_seat 데이터 등록 처리
-     * POST /seat/api/booking/prepare
-     */
-    /**
-     * 6. 프론트엔드 좌석 결제 준비 및 selected_seat 데이터 등록 처리
-     * POST /seat/api/booking/prepare
-     */
-
     @PostMapping("/api/booking/prepare")
     public ResponseEntity<?> prepareBooking(
             @RequestBody Map<String, Object> bookingData,
@@ -77,13 +62,13 @@ public class SeatController {
         Long userNo = user.getUserNo();
 
         try {
-            // 2. 서비스 로직을 태워서 DB에 저장하고, 찐 영수증 번호 받아오기!
+            // 2. 서비스 로직을 태워서 DB에 저장하고, 진짜 영수증 번호 받아오기
             Long realReservationKey = seatService.processBookingAndGetReservationKey(bookingData, userNo);
 
             // 3. 발급받은 번호를 프론트엔드에 다시 던져줍니다.
             Map<String, Object> response = new HashMap<>();
             response.put("status", "SUCCESS");
-            response.put("reservationKey", realReservationKey); // 🌟 여기가 핵심!
+            response.put("reservationKey", realReservationKey);
 
             System.out.println("✅ 예매 장부 생성 완료! 예약 번호: " + realReservationKey);
             return ResponseEntity.ok(response);

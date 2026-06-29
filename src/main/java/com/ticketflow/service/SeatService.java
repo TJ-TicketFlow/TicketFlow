@@ -183,7 +183,7 @@ public class SeatService {
         // 백엔드가 취소할 때 기억할 진짜 좌석 ID들을 담을 바구니
         List<String> realSeatIds = new java.util.ArrayList<>();
 
-        // 🌟 [새로 추가] 유저에게 보여줄 깔끔한 좌석 명칭("1열 1번")을 담을 바구니
+        //유저에게 보여줄 깔끔한 좌석 명칭("1열 1번")을 담을 바구니
         List<String> formattedSeatsForUser = new java.util.ArrayList<>();
 
         if ("SEAT".equals(ticketType)) {
@@ -192,11 +192,10 @@ public class SeatService {
 
             for (String frontendSeatId : seatIds) {
 
-                // 🌟 [핵심] 프론트가 보낸 "SEAT_R1_C1"에서 "SEAT" 글자를 "공연ID(예: PF1234)"로 바꿉니다!
+                // 프론트가 보낸 "SEAT_R1_C1"에서 "SEAT" 글자를 "공연ID(예: PF1234)"로 바꾸기
                 // 결과물: "PF1234_R1_C1" (DB에 들어있는 진짜 아이디와 완벽 일치)
                 String dbSeatId = frontendSeatId.replace("SEAT", concertId);
 
-                // 바꾼 진짜 아이디로 DB를 뒤집니다.
                 Seat seat = seatRepository.findById(dbSeatId)
                         .orElseThrow(() -> new RuntimeException("유효하지 않은 좌석 번호입니다: " + dbSeatId));
 
@@ -211,9 +210,9 @@ public class SeatService {
                     seat = seatRepository.save(seat);
                     seatRepository.flush();
 
-                    realSeatIds.add(seat.getSeatId()); // 💡 취소용 진짜 ID(예: PF277688_R1_C1)는 여기에 안전하게 보존!
+                    realSeatIds.add(seat.getSeatId()); // 💡 취소용 진짜 ID(예: PF277688_R1_C1)는 여기에 안전하게 보존
 
-                    // 🌟 [핵심 수정] 엔티티가 가진 순수 숫자 데이터만 꺼내서 "1열 1번" 형태로 깨끗하게 조립합니다.
+                    // 엔티티가 가진 순수 숫자 데이터만 꺼내서 "1열 1번" 형태로 깨끗하게 조립합니다.
                     formattedSeatsForUser.add(seat.getSeatRow() + "열 " + seat.getSeatCol() + "번");
 
                 } catch (Exception e) {
@@ -266,7 +265,7 @@ public class SeatService {
         String seatsDisplayHtml = "선택된 티켓";
 
         if ("SEAT".equals(ticketType)) {
-            // 🌟 [핵심 수정] 위에서 에러 없이 정밀하게 담아둔 "1열 1번, 1열 2번" 문자열을 그대로 합쳐줍니다!
+            //위에서 에러 없이 정밀하게 담아둔 "1열 1번, 1열 2번" 문자열을 그대로 합쳐줍니다
             seatsDisplayHtml = String.join(", ", formattedSeatsForUser);
 
         } else if ("STANDING".equals(ticketType)) {
@@ -289,8 +288,8 @@ public class SeatService {
                 .reservationCount(totalTicketCount)
                 .reservationDate(concert.getConcertStartDate() != null ? concert.getConcertStartDate() : java.time.LocalDate.now())
                 .sessionTime(concert.getConcertTime() != null ? concert.getConcertTime() : "시간 미정")
-                .selectedSeatsText(seatsDisplayHtml) // 🌟 여기에 완전 깨끗한 글자가 들어갑니다!
-                .reservedSeatIds(String.join(",", realSeatIds)) // 💡 진짜 식별자 ID 목록도 컴마로 완벽 저장!
+                .selectedSeatsText(seatsDisplayHtml) //여기에 완전 깨끗한 글자가 들어갑니다
+                .reservedSeatIds(String.join(",", realSeatIds)) // 진짜 식별자 ID 목록도 컴마로저장
                 .build();
 
         Reservation savedReservation = reservationRepository.save(reservation);

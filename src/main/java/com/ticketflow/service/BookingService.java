@@ -118,13 +118,12 @@ public class BookingService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         try {
-            // 💡 [핵심 1] 에러의 원인이었던 Map.class를 String.class로 바꿨습니다!
             ResponseEntity<String> response = restTemplate.exchange(apiURL, HttpMethod.GET, entity, String.class);
             String responseBody = response.getBody();
 
             System.out.println("✅ 네이버 채점 응답 원본: " + responseBody);
 
-            // 💡 [핵심 2] JSON 객체 대신 무식하고 안전하게 텍스트로 잘라냅니다.
+            // JSON 객체 대신 무식하고 안전하게 텍스트로 잘라냅니다.
             // 네이버가 {"result":true, ...} 라고 보내주면 통과입니다.
             if (responseBody == null || !responseBody.contains("\"result\":true")) {
                 throw new IllegalArgumentException("자동주문 방지 글자가 틀렸습니다. 다시 확인해주세요.");
@@ -228,7 +227,6 @@ public class BookingService {
         // ----------------------------------------------------
         if ("failed".equalsIgnoreCase(payStatus)) {
             payment.setPayStatus("FAILED");
-            // 💡 개발자님이 만들어두신 컬럼에 실패 사유를 쏙 적어줍니다!
             payment.setPayFailReason(failReason != null ? failReason : "카드 한도 초과 또는 잔액 부족 등 결제 실패");
 
             // 결제가 실패했으므로 묶여있던 좌석을 다른 사람도 살 수 있게 즉시 풀어줍니다.
@@ -307,7 +305,6 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
 
         Map<String, Object> userInfo = new HashMap<>();
-        // 주의: 엔티티의 Getter 이름이 다르면 (예: getName()) 아래 부분을 본인 코드에 맞게 수정하세요!
         userInfo.put("name", user.getUserName());
         userInfo.put("email", user.getUserEmail());
         userInfo.put("phone", user.getUserPhoneNumber());
@@ -386,7 +383,6 @@ public class BookingService {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
 
-        // 엔티티에 만들어두신 getter 이름에 맞춰주세요! (예: getUserNo())
         return user.getUserNo();
     }
 
@@ -409,7 +405,7 @@ public class BookingService {
 
             System.out.println("✅ 네이버 응답 성공: " + responseBody);
 
-            // 💡 핵심 2: 받아온 문자열 (예: {"key":"요청키값"}) 에서 키값만 잘라냅니다.
+            // 💡 핵심 : 받아온 문자열 (예: {"key":"요청키값"}) 에서 키값만 잘라냅니다.
             // (JSON 파싱 라이브러리인 Jackson을 써도 되지만, 에러 방지를 위해 가장 원초적인 방법으로 자릅니다)
             if (responseBody != null && responseBody.contains("\"key\"")) {
                 int startIndex = responseBody.indexOf("\"key\":\"") + 7;
@@ -423,8 +419,6 @@ public class BookingService {
             return null;
         }
     }
-
-    // BookingService.java 내부에 추가 (기존 코드 유지)
 
     // 💡 1. [핵심] 예쁜 예매번호 생성기 (엔티티 수정 X)
     public String generateReadableOrderNo(Long payNo) {
@@ -798,7 +792,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 12. 취소 수수료 및 환불 금액 미리보기 (새로 추가)
+    // 💡 12. 취소 수수료 및 환불 금액 미리보기
     // ==========================================
     public Map<String, Object> getCancelFeeInfo(Long payNo) {
         Pay pay = payRepository.findById(payNo)
@@ -821,7 +815,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 13. 레몬스퀴지 환불(Refund) API 통신 (최신 API 적용!)
+    // 💡 13. 레몬스퀴지 환불(Refund) API 통신
     // ==========================================
     private void callLemonSqueezyRefund(String lsOrderId, long refundAmount, long originalAmount) {
         if (lsOrderId == null || lsOrderId.isBlank()) {
@@ -958,7 +952,6 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
 
         // 🌟 예약 장부가 DB에 생성된 진짜 시간을 가져옵니다.
-        // (주의: 엔티티에 만들어두신 등록일자 필드명에 맞게 getCreatedAt() 등을 수정해 주세요!)
         java.time.LocalDateTime createdAt = reservation.getReservationCreatedAt();
 
         // 혹시라도 생성 시간이 기록 안 되어 있다면 안전하게 기본값 30분(1800초)을 줍니다.
