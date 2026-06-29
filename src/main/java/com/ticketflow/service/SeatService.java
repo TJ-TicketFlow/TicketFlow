@@ -9,6 +9,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -340,4 +341,50 @@ public class SeatService {
         Reservation savedReservation = reservationRepository.save(reservation);
         return savedReservation.getReservationKey();
     }
+
+    // SeatService.java 내부 최하단에 추가
+
+    /**
+     * ↩️ 사용자가 결제 단계에서 뒤로가기 또는 페이지 이탈 시
+     * 선점되었던 임시 예약 장부(Reservation) 및 선점 좌석(SelectedSeat) 데이터를 안전하게 파기합니다.
+     */
+    /**
+     * ↩️ 임시 선점 데이터를 파기하고, 실시간 웹소켓 공지를 위한 래핑 데이터를 반환합니다.
+     */
+    @Transactional
+    public Map<String, Object> releaseTemporarySeatsWithInfo(Long reservationKey) {
+        System.out.println("🔄 [서비스 로직] 임시 선점 데이터 파기 시작. 가선점 키: " + reservationKey);
+        Map<String, Object> resultInfo = new HashMap<>();
+
+        // 1. 가선점 장부(Reservation) 조회
+        Reservation reservation = reservationRepository.findById(reservationKey).orElse(null);
+
+        if (reservation != null) {
+            // 2. 웹소켓 전송을 위한 데이터 사전 추출
+            String concertId = "";
+            if (reservation.getSelectedSeat() != null && reservation.getSelectedSeat().getConcert() != null) {
+                concertId = reservation.getSelectedSeat().getConcert().getConcertId();
+            }
+
+            if (reservation.getReservedSeatIds() != null && !concertId.isEmpty()) {
+                String[] seatIds = reservation.getReservedSeatIds().split(",");
+                resultInfo.put("concertId", concertId);
+                resultInfo.put("seatIds", seatIds);
+            }
+
+            // 3. 연관 데이터 데이터베이스에서 연쇄 삭제
+            SelectedSeat selectedSeat = reservation.getSelectedSeat();
+            reservationRepository.delete(reservation);
+
+            if (selectedSeat != null) {
+                selectedSeatRepository.delete(selectedSeat);
+            }
+
+            System.out.println("✅ [서비스 로직] 데이터베이스에서 선점 데이터 파기 완료.");
+            return resultInfo;
+        }
+
+        return null;
+    }
+
 }

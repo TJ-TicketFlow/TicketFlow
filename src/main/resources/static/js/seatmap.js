@@ -276,14 +276,29 @@ function renderSeat() {
             seatDiv.dataset.seatClass = targetSeat.seatClass || "STANDARD";
             seatDiv.dataset.price = targetSeat.price || defaultPrice;
 
-            if (targetSeat.seatStatus === 0 || targetSeat.seatStatus === "0") {
+            if (targetSeat.userNo && currentUserNo && Number(targetSeat.userNo) === currentUserNo) {
+                // 내가 선점했던 자리이므로 '선택됨' 상태로 복원해 줍니다.
+                seatDiv.dataset.status = "available";
+                seatDiv.dataset.selected = "true";
+                seatDiv.style.cursor = "pointer";
+                seatDiv.style.background = "#1d4ed8"; // 선택된 진한 파란색
+                seatDiv.style.border = "1px solid #1e40af";
+            }
+// 남이 선점해서 닫힌 자리인 경우 (status가 0이거나 유저 번호가 다를 때)
+            else if (targetSeat.seatStatus === 0 || targetSeat.seatStatus === "0") {
+                seatDiv.dataset.selected = "false";
                 seatDiv.dataset.status = "locked";
-                seatDiv.style.background = "#d1d5db"; seatDiv.style.border = "1px solid #9ca3af";
+                seatDiv.style.background = "#d1d5db"; // 회색 잠금
+                seatDiv.style.border = "1px solid #9ca3af";
                 seatDiv.style.cursor = "not-allowed";
-            } else {
+            }
+// 아무도 안 잡은 순수 빈 자리인 경우
+            else {
+                seatDiv.dataset.selected = "false";
                 seatDiv.dataset.status = "available";
                 seatDiv.style.cursor = "pointer";
-                seatDiv.style.background = "#3b82f6"; seatDiv.style.border = "1px solid #2563eb";
+                seatDiv.style.background = "#3b82f6"; // 기본 파란색
+                seatDiv.style.border = "1px solid #2563eb";
             }
 
             seatDiv.addEventListener("click", () => {
@@ -597,4 +612,24 @@ function submitBooking() {
             alert("예매 처리 중 오류가 발생했습니다: " + err.message);
             console.error("🚨 [전송 실패] 에러 디버깅 로그:", err);
         });
+
+    window.addEventListener('pageshow', function(event) {
+        // 1. BFCache(뒤로가기 시 브라우저가 이전 화면을 그대로 얼려둔 캐시)로 로드되었는지 확인
+        if (event.persisted) {
+            console.log("↩️ [BFCache] 뒤로가기 감지: 페이지를 새로고침합니다.");
+            window.location.reload();
+            return;
+        }
+
+        // 2. 최신 웹 표준 API를 사용하여 뒤로가기/앞으로가기(back_forward)인지 확인
+        const navigationEntries = performance.getEntriesByType("navigation");
+        if (navigationEntries.length > 0) {
+            const navType = navigationEntries[0].type;
+            if (navType === "back_forward") {
+                console.log("↩️ [Performance API] 뒤로가기 이동 감지: 최신 좌석판을 위해 새로고침합니다.");
+                window.location.reload();
+            }
+        }
+    });
+
 }

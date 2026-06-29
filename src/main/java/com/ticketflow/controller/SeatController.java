@@ -12,6 +12,7 @@ import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
@@ -35,7 +36,7 @@ public class SeatController {
     private final UserRepository userRepository;
     private final SeatRepository seatRepository;
     private final SelectedSeatRepository selectedSeatRepository;
-
+    private final SimpMessagingTemplate messagingTemplate;
     /**
      * 1. 좌석 선택 메인 페이지 반환 (Thymeleaf 뷰)
      * GET /seat/{concertId}
@@ -218,6 +219,46 @@ public class SeatController {
             errorResponse.put("status", "FAIL");
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/api/booking/cancel-ajax")
+    @ResponseBody
+    public ResponseEntity<Void> cancelBookingAjax(
+            @RequestParam(value = "reservationKey", required = false) Long reservationKey) {
+
+        // 1. 가선점 키가 누락되었거나 비정상적인 경우 무조건 예외 터뜨리지 말고 안전하게 차단
+        if (reservationKey == null) {
+            System.out.println("⚠️ [백엔드] 비콘 요청에 reservationKey 파라미터가 누락되었거나 유실되었습니다.");
+            return ResponseEntity.badRequest().build();
+        }
+
+        System.out.println("↩️ [백엔드] 임시 선점 좌석 해제 프로세스 시작. 예약 키: " + reservationKey);
+
+        try {
+            Map<String, Object> cancelInfo = seatService.releaseTemporarySeatsWithInfo(reservationKey);
+
+            if (cancelInfo != null && !cancelInfo.isEmpty()) {
+                String concertId = (String) cancelInfo.get("concertId");
+                String[] seatIds = (String[]) cancelInfo.get("seatIds");
+
+                if (concertId != null && !concertId.isEmpty() && seatIds != null) {
+                    for (String seatId : seatIds) {
+                        Map<String, Object> cancelMessage = new HashMap<>();
+                        cancelMessage.put("concertId", concertId);
+                        cancelMessage.put("seatId", seatId.trim());
+                        cancelMessage.put("type", "CANCELLED");
+
+                        messagingTemplate.convertAndSend("/topic/seat/" + concertId, (Object) cancelMessage);
+                    }
+                    System.out.println("🚀 [웹소켓] 이탈 유저의 좌석 실시간 취소 알림 공지 완료.");
+                }
+            }
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            System.err.println("🚨 [백엔드 에러 발생]: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
         }
     }
 }
