@@ -2,6 +2,7 @@ package com.ticketflow.controller;
 
 import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.Concert;
+import com.ticketflow.entity.Pay;
 import com.ticketflow.entity.User;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
@@ -29,6 +30,8 @@ public class ConcertController {
     private final ConcertService concertService;
     private final MembershipService membershipService;
     private final UserService userService;
+    private final com.ticketflow.service.CancelPredictionService cancelPredictionService;
+    private final com.ticketflow.repository.PayRepository payRepository;
 
     private boolean checkLogin(HttpSession session) {
         return Boolean.TRUE.equals(session.getAttribute("logged_in"));
@@ -283,4 +286,23 @@ public class ConcertController {
         return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
     }
 
+    @GetMapping("/{id}/cancel-rate")
+    @ResponseBody
+    public ResponseEntity<Double> getConcertCancelRate(@PathVariable String id) {
+        try {
+            // 1. 해당 콘서트의 결제 완료 내역 가져오기
+            List<Pay> concertPays = payRepository.findValidPaysByConcertId(id);
+
+            // 2. 머신러닝 예측 돌리기
+            double cancelRate = cancelPredictionService.calculatePerformanceCancelRate(concertPays);
+
+            // 3. 소수점 둘째 자리까지만 예쁘게 자르기
+            double roundedRate = Math.round(cancelRate * 100.0) / 100.0;
+
+            return ResponseEntity.ok(roundedRate);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
