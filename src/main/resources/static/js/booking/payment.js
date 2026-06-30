@@ -2,6 +2,29 @@
 // 결제창으로 넘어가는 중인지 확인하는 스위치
 let preserveSeat = false;
 
+const reservationMeta = document.querySelector("meta[name='reservation_key']");
+const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute("content")) : 0;
+
+function sendReleaseRequest() {
+    if (realReservationKey === 0) return; // 예약 번호가 없으면 실행 안 함
+
+    const csrfMeta = document.querySelector("meta[name='_csrf']");
+    const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : '';
+    const csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.getAttribute("content") : 'X-CSRF-TOKEN';
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
+
+    // 브라우저가 닫히는 죽는 순간에도 서버에 끝까지 메시지를 보내는 강력한 옵션(keepalive)
+    fetch('/booking/release-seat', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ reservationKey: realReservationKey }),
+        keepalive: true
+    }).catch(err => console.error("좌석 해제 요청 실패", err));
+}
+
 function goBackToSeats() {
     // 1. 유저가 결제를 포기하고 돌아가는 것이므로,
     // 서버에 "이 좌석 결제 취소됐으니 풀어주세요!" 라고 직접 요청을 보냅니다.
@@ -42,9 +65,6 @@ function openAddressSearch() {
 // 💡 2. 화면이 다 켜진 후 실행될 구역
 // ==========================================
 document.addEventListener("DOMContentLoaded", function() {
-
-    const reservationMeta = document.querySelector("meta[name='reservation_key']");
-    const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute("content")) : 0;
 
     const remainingMeta = document.querySelector("meta[name='remaining_seconds']");
     let timeLeft = remainingMeta ? Number(remainingMeta.getAttribute("content")) : 30 * 60;
@@ -416,24 +436,4 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // 2. 백엔드로 "이 좌석 결제 취소됐으니 풀어주세요!" 라고 던지는 함수
-    function sendReleaseRequest() {
-        if (realReservationKey === 0) return; // 예약 번호가 없으면 실행 안 함
-
-        const csrfMeta = document.querySelector("meta[name='_csrf']");
-        const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
-        const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : '';
-        const csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.getAttribute("content") : 'X-CSRF-TOKEN';
-
-        const headers = { 'Content-Type': 'application/json' };
-        if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
-
-        // 브라우저가 닫히는 죽는 순간에도 서버에 끝까지 메시지를 보내는 강력한 옵션(keepalive)
-        fetch('/booking/release-seat', {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({ reservationKey: realReservationKey }),
-            keepalive: true
-        }).catch(err => console.error("좌석 해제 요청 실패", err));
-    }
 });
