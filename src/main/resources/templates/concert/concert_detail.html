@@ -55,7 +55,13 @@
                 <p><strong>공연기간</strong> <span th:text="${dateRange}"></span></p>
                 <p><strong>공연시간</strong> <span th:text="${concert.concertTime}"></span></p>
                 <p><strong>관람연령</strong> <span th:text="${concert.concertAgeLimit}"></span></p>
-
+                <div style="margin-top: 15px;">
+                    <p style="margin-bottom: 5px;"><strong>티켓 가격</strong></p>
+                    <div th:each="priceItem : ${#strings.arraySplit(concert.concertPriceInfo, '|')}"
+                         style="font-size: 0.95rem; margin-bottom: 3px; color: #555;">
+                        <span th:text="${priceItem}"></span>
+                    </div>
+                </div>
                 <div class="membership-section" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 10px; background: #fff;">
                     <p><strong>멤버십 혜택</strong></p>
                     <div sec:authorize="isAnonymous()"><p>멤버십 혜택이 존재하지 않습니다.</p></div>
