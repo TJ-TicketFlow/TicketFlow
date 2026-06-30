@@ -3,11 +3,15 @@
 let preserveSeat = false;
 
 function goBackToSeats() {
-    // 🚨 매우 중요: 우리가 만든 '이탈 감지 스위치'를 켜줍니다.
-    // 이렇게 해야 화면을 나갈 때 '위에서 만든 좌석 해제 기능(sendReleaseRequest)'이 발동하지 않습니다
+    // 1. 유저가 결제를 포기하고 돌아가는 것이므로,
+    // 서버에 "이 좌석 결제 취소됐으니 풀어주세요!" 라고 직접 요청을 보냅니다.
+    sendReleaseRequest();
+
+    // 2. 이미 위에서 취소 요청을 보냈으니,
+    // 창이 닫힐 때(visibilitychange) 중복으로 또 요청이 가는 것을 막기 위해 스위치를 켭니다.
     preserveSeat = true;
 
-    // 좌석 선택 페이지로 이동
+    // 3. 좌석 선택 페이지로 돌아갑니다.
     history.back();
 }
 
