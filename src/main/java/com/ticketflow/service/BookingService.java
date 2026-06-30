@@ -968,27 +968,19 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 15. 결제창 타이머 동기화를 위한 남은 시간 계산기
+    // 💡 결제창 타이머 동기화를 위한 남은 시간 계산기 (DB 완벽 동기화 버전)
     // ==========================================
     public long getRemainingSeconds(Long reservationKey) {
-        Reservation reservation = reservationRepository.findById(reservationKey)
-                .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
 
-        // 🌟 예약 장부가 DB에 생성된 진짜 시간을 가져옵니다.
-        java.time.LocalDateTime createdAt = reservation.getReservationCreatedAt();
+        // 1. 자바가 시간 계산을 할 필요 없이, DB에 만들어둔 계산기를 바로 호출합니다!
+        Long remainingSeconds = reservationRepository.getRemainingSecondsFromDb(reservationKey);
 
-        // 혹시라도 생성 시간이 기록 안 되어 있다면 안전하게 기본값 30분(1800초)을 줍니다.
-        if (createdAt == null) {
-            return 1800L;
+        // 2. 만약 예약 정보가 없어서 null이 나오면 기본값 0초 처리
+        if (remainingSeconds == null) {
+            return 0L;
         }
 
-        // 만료 시간 = 생성 시간 + 30분
-        java.time.LocalDateTime expiresAt = createdAt.plusMinutes(30);
-
-        // 현재 시간과 만료 시간 사이의 남은 초 계산
-        long remainingSeconds = java.time.Duration.between(java.time.LocalDateTime.now(), expiresAt).getSeconds();
-
-        // 30분이 이미 지났다면 마이너스 대신 0초를 반환합니다.
-        return remainingSeconds > 0 ? remainingSeconds : 0;
+        // 3. 남은 시간이 마이너스(이미 30분 지남)라면 0초로 반환, 아니면 남은 시간 그대로 반환!
+        return remainingSeconds > 0 ? remainingSeconds : 0L;
     }
 }
