@@ -595,6 +595,8 @@ public class BookingService {
             Seat seat = reservation.getSelectedSeat().getSeat();
             Concert concert = seat.getConcert();
 
+
+            map.put("concert_id", concert != null ? concert.getConcertId() : null);
             // 공연명
             map.put("title", concert != null ? concert.getConcertName() : "알 수 없는 공연");
 
