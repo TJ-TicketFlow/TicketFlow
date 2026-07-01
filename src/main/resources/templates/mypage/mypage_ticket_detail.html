@@ -15,7 +15,7 @@
         <div class="section-title">예매 내역</div>
         <div class="detail-card">
             <div class="booking-title-bar" th:text="${ticket['title'] ?: ticket['show_name']}"
-                 th:data-url="@{/concert/} + ${ticket['concert_id']} + @{/detail-page}"
+                 th:data-url="@{/concert/{id}/detail-page(id=${ticket['concert_id']})}"
                  onclick="location.href=this.dataset.url"
                  style="cursor:pointer;">
             </div>
@@ -23,7 +23,7 @@
                 <div class="booking-poster">
                     <img th:if="${ticket['poster_url'] != null and ticket['poster_url'] != ''}"
                          th:src="${ticket['poster_url']}"
-                         th:data-url="@{/concert/} + ${ticket['concert_id']} + @{/detail-page}"
+                         th:data-url="@{/concert/{id}/detail-page(id=${ticket['concert_id']})}"
                          onclick="location.href=this.dataset.url"
                          alt="공연 포스터"
                          style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor:pointer;">
