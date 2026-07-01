@@ -38,7 +38,7 @@
                     </th:block>
 
                     <th:block th:if="${memInfo != null and memInfo.membershipStatus == 'CANCELLED'}">
-                        <button class="btn-join btn-current" disabled style="background-color: #888; color: white;">해지 대기 (이번 달 혜택 유지)</button>
+                        <button class="btn-join btn-current" disabled>해지 대기 (이번 달 혜택 유지)</button>
                         <button type="button" class="btn-join btn-join-premium" style="margin-top:8px;" onclick="window.restartMembership()">다시 멤버십 시작하기</button>
                     </th:block>
                 </div>
