@@ -8,6 +8,7 @@ import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
 import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -286,6 +287,7 @@ public class ConcertController {
         return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
     }
 
+    @Cacheable(value = "cancelRateCache", key = "#id")
     @GetMapping("/{id}/cancel-rate")
     @ResponseBody
     public ResponseEntity<Double> getConcertCancelRate(@PathVariable String id) {

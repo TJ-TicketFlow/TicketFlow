@@ -36,6 +36,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-websocket' //websocket 추가부분
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
     implementation 'com.microsoft.onnxruntime:onnxruntime:1.17.1'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     runtimeOnly 'com.h2database:h2'
