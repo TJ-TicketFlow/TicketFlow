@@ -1,10 +1,10 @@
 -- 1. 외래키 제약조건을 만족하기 위해 부모 테이블(hall)에 1번 공연장 데이터 먼저 삽입
-INSERT INTO hall (hall_id, hall_name, hall_address)
+INSERT IGNORE INTO hall (hall_id, hall_name, hall_address)
 VALUES (1, '홍대 롤링홀', '서울특별시 마포구 서교동 어울마당로 35');
 
 
 -- 2. 자식 테이블(concert)에 KOPIS 공연 ID를 포함하여 데이터 삽입
-INSERT INTO concert (
+INSERT IGNORE INTO concert (
     concert_id, -- 🌟 String 타입 Primary Key 추가
     hall_id,
     concert_name,
@@ -66,7 +66,7 @@ INSERT INTO concert (
 -- 5월 공연: PF290458, PF290313, PF290297, PF290013, PF289531, PF289506, PF289486, PF289438, PF289023, PF288804, PF288639, PF288636, PF288405
 
 -- 2026년 6월 29일 이전 공연 대상 통계 데이터 삽입 (랜덤 비율 적용)
-INSERT INTO stats (concert_id, male_ratio, female_ratio, age_10s_ratio, age_20s_ratio, age_30s_ratio, age_40s_ratio, age_50s_ratio, reservation_rate, predict_sold_out_rate)
+INSERT IGNORE INTO stats (concert_id, male_ratio, female_ratio, age_10s_ratio, age_20s_ratio, age_30s_ratio, age_40s_ratio, age_50s_ratio, reservation_rate, predict_sold_out_rate)
 VALUES
     ('PF291512', 28.5, 71.5, 8.2, 55.4, 25.1, 8.3, 3.0, 82.5, 88.2),
     ('PF291385', 42.1, 57.9, 12.3, 40.5, 30.2, 12.1, 4.9, 70.2, 75.5),

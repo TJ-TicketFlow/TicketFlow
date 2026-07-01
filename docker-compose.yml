@@ -3,20 +3,21 @@ services:
     image: mysql:8.0
     container_name: mysql-db
     restart: always
+    command: --max_allowed_packet=64M
     environment:
       MYSQL_ROOT_PASSWORD: tjee1234
       MYSQL_DATABASE: ticketflow
-      MYSQL_USER: root
-      MYSQL_PASSWORD: tjee1234
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+    # MySQL이 쿼리를 받을 수 있는 상태인지 주기적으로 검사
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -ptjee1234 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   elasticsearch:
     image: elasticsearch:8.19.3
@@ -30,11 +31,6 @@ services:
       - "9200:9200"
     volumes:
       - es-data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
 
   kibana:
     image: kibana:8.19.3
@@ -46,29 +42,24 @@ services:
     ports:
       - "5601:5601"
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      - elasticsearch
 
   spring-boot-app:
     build: .
     container_name: ticketflow-backend
     restart: always
-    # 호스트(내 PC)를 가리키는 설정 추가
-    extra_hosts:
-      - "localhost:host-gateway"
     ports:
       - "8080:8080"
     environment:
-      # 이제 jdbc:mysql://localhost:3307/ 으로 접근하면 호스트의 MySQL로 연결됩니다
-      - SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/ticketflow?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/ticketflow?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=tjee1234
       - ELASTICSEARCH_URIS=http://elasticsearch:9200
     depends_on:
       mysql:
-        condition: service_healthy
+        condition: service_healthy # MySQL이 건강할 때만 실행
       elasticsearch:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   mysql-data:
