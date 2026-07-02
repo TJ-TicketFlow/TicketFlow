@@ -4,6 +4,7 @@ import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.Concert;
 import com.ticketflow.entity.Pay;
 import com.ticketflow.entity.User;
+import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
 import com.ticketflow.service.UserService;
@@ -112,7 +113,7 @@ public class ConcertController {
             model.addAttribute("priceList", Arrays.stream(prices).map(String::trim).collect(Collectors.toList()));
         }
 
-        // [수정된 부분] 로그인 상태에 따른 혜택 정보 처리
+        // [기존 코드에서 수정할 부분]
         if (principal != null) {
             model.addAttribute("isLoggedIn", true);
 
@@ -121,17 +122,20 @@ public class ConcertController {
 
             // 2. 혜택 계산 (기본 할인율 + 쿠폰 개수)
             double baseDiscount = membershipService.getDiscountRate(user);
-            long couponCount = user.getUserCoupons().stream()
-                    .filter(uc -> uc.getUserCouponStatus() == 0)
-                    .count();
+
+            // [수정 포인트] 여기서 user.getUserCoupons() 전체를 가져오지 말고,
+            // 서비스에서 상태 0인 것만 가져오도록 필터링합니다.
+            List<UserCoupon> availableCoupons = user.getUserCoupons().stream()
+                    .filter(uc -> uc.getUserCouponStatus() == 0) // 여기서 상태 0만 필터링!
+                    .collect(Collectors.toList());
 
             // 3. 모델에 혜택 관련 정보 추가
             model.addAttribute("baseDiscount", (int)(baseDiscount * 100));
-            model.addAttribute("couponCount", couponCount);
-            model.addAttribute("hasBenefit", baseDiscount > 0 || couponCount > 0);
+            model.addAttribute("couponCount", availableCoupons.size()); // 필터링된 개수 사용
+            model.addAttribute("hasBenefit", baseDiscount > 0 || !availableCoupons.isEmpty());
 
-            // 4. 쿠폰 상세 팝업용 데이터 (필요 시)
-            model.addAttribute("coupons", user.getUserCoupons());
+            // 4. 쿠폰 상세 팝업용 데이터에도 필터링된 리스트 전달
+            model.addAttribute("coupons", availableCoupons);
         } else {
             model.addAttribute("isLoggedIn", false);
             model.addAttribute("hasBenefit", false);
