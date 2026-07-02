@@ -7,6 +7,7 @@ import com.ticketflow.entity.User;
 import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
+import com.ticketflow.service.StatsService;
 import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -34,6 +35,7 @@ public class ConcertController {
     private final UserService userService;
     private final com.ticketflow.service.CancelPredictionService cancelPredictionService;
     private final com.ticketflow.repository.PayRepository payRepository;
+    private final StatsService statsService;
 
     private boolean checkLogin(HttpSession session) {
         return Boolean.TRUE.equals(session.getAttribute("logged_in"));
@@ -85,6 +87,13 @@ public class ConcertController {
 
     @GetMapping("/{id}/detail-page")
     public String concertDetailPage(@PathVariable String id, Model model, Principal principal) {
+        // 🌟 [핵심] 상세 페이지 진입 시점에 최신 통계 강제 갱신
+        try {
+            statsService.updateStats(id);
+        } catch (Exception e) {
+            System.err.println("상세 페이지 진입 시 통계 갱신 오류: " + e.getMessage());
+        }
+
         Concert concert = concertService.findById(id);
         model.addAttribute("concert", concert);
         model.addAttribute("stats", concertService.getStatsData(id));
@@ -113,28 +122,18 @@ public class ConcertController {
             model.addAttribute("priceList", Arrays.stream(prices).map(String::trim).collect(Collectors.toList()));
         }
 
-        // [기존 코드에서 수정할 부분]
         if (principal != null) {
             model.addAttribute("isLoggedIn", true);
-
-            // 1. 유저 정보 조회
             User user = userService.findByUserId(principal.getName());
-
-            // 2. 혜택 계산 (기본 할인율 + 쿠폰 개수)
             double baseDiscount = membershipService.getDiscountRate(user);
 
-            // [수정 포인트] 여기서 user.getUserCoupons() 전체를 가져오지 말고,
-            // 서비스에서 상태 0인 것만 가져오도록 필터링합니다.
             List<UserCoupon> availableCoupons = user.getUserCoupons().stream()
-                    .filter(uc -> uc.getUserCouponStatus() == 0) // 여기서 상태 0만 필터링!
+                    .filter(uc -> uc.getUserCouponStatus() == 0)
                     .collect(Collectors.toList());
 
-            // 3. 모델에 혜택 관련 정보 추가
             model.addAttribute("baseDiscount", (int)(baseDiscount * 100));
-            model.addAttribute("couponCount", availableCoupons.size()); // 필터링된 개수 사용
+            model.addAttribute("couponCount", availableCoupons.size());
             model.addAttribute("hasBenefit", baseDiscount > 0 || !availableCoupons.isEmpty());
-
-            // 4. 쿠폰 상세 팝업용 데이터에도 필터링된 리스트 전달
             model.addAttribute("coupons", availableCoupons);
         } else {
             model.addAttribute("isLoggedIn", false);

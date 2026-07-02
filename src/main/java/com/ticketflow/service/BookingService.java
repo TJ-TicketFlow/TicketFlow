@@ -37,6 +37,7 @@ public class BookingService {
     private final UserCouponRepository userCouponRepository;
     private final MembershipRepository membershipRepository;
     private final SeatRepository seatRepository;
+    private final StatsService statsService;
 
     // 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
@@ -248,36 +249,30 @@ public class BookingService {
         Pay payment = payRepository.findByMerchantUid(merchantUid)
                 .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
 
-        // ----------------------------------------------------
-        // [1단계 방어막] 레몬스퀴지 자체에서 결제가 실패(failed)해서 넘어온 경우
-        // ----------------------------------------------------
+        // [1단계 방어막] 결제 실패 처리
         if ("failed".equalsIgnoreCase(payStatus)) {
             payment.setPayStatus("FAILED");
-            payment.setPayFailReason(failReason != null ? failReason : "카드 한도 초과 또는 잔액 부족 등 결제 실패");
-
-            // 결제가 실패했으므로 묶여있던 좌석을 다른 사람도 살 수 있게 즉시 풀어줍니다.
+            payment.setPayFailReason(failReason != null ? failReason : "결제 실패");
             if (payment.getReservation() != null) {
                 releaseUnpaidSeat(payment.getReservation().getReservationKey());
             }
             System.out.println("레몬스퀴지 결제 실패 기록 완료: " + payment.getPayFailReason());
-            return; // 실패했으므로 아래 성공 로직을 타지 않고 여기서 함수를 끝냅니다.
-        }
-
-        // ----------------------------------------------------
-        // [2단계 방어막] 금액 위조 검사 (기존 코드 유지)
-        // ----------------------------------------------------
-        long expectedAmount = payment.getPayAmount();
-        if (expectedAmount != webhookAmount) {
-            payment.setPayStatus("FAILED");
-            payment.setPayFailReason("서버 금액(" + expectedAmount + "원)과 실결제 금액(" + webhookAmount + "원)이 일치하지 않음 (위조 위험)");
-
-            if (payment.getReservation() != null) {
-                releaseUnpaidSeat(payment.getReservation().getReservationKey());
-            }
-            System.err.println("금액 불일치 사고 발생! 실패 사유 기록 완료.");
             return;
         }
 
+        // [2단계 방어막] 금액 위조 검사
+        long expectedAmount = payment.getPayAmount();
+        if (expectedAmount != webhookAmount) {
+            payment.setPayStatus("FAILED");
+            payment.setPayFailReason("금액 불일치");
+            if (payment.getReservation() != null) {
+                releaseUnpaidSeat(payment.getReservation().getReservationKey());
+            }
+            System.err.println("금액 불일치 사고 발생!");
+            return;
+        }
+
+        // 3. 결제 상태 업데이트
         payment.setPayStatus("PAID");
         payment.setLsOrderId(lsOrderId);
         payment.setCurrency(currency);
@@ -287,35 +282,30 @@ public class BookingService {
         payment.setPayMethod("신용/체크카드");
 
         if (payment.getUserCoupon() != null) {
-            // 이 결제에 쿠폰이 쓰였다면, 상태를 1(사용함)로 바꿔줍니다!
             payment.getUserCoupon().setUserCouponStatus(1);
             System.out.println("쿠폰 사용 완료 처리됨!");
         }
 
+        // 4. 좌석 상태 확정
         try {
-            // 1. 장부에 연결해둔 예약 정보를 꺼냅니다.
             Reservation reservation = payment.getReservation();
-
-            // 2. 예약에 연결된 임시 선택 좌석(Selected_Seat)을 꺼냅니다.
             var selectedSeat = reservation.getSelectedSeat();
-
-            // 3. 임시 선택 좌석에 연결된 진짜 물리 좌석(Seat)을 꺼냅니다.
             var seat = selectedSeat.getSeat();
 
-            // --------------------------------------------------
-            // 여기서 상태 값을 바꿔줍니다! (@Transactional 덕분에 자동 저장됨)
-            // --------------------------------------------------
-
-            // ① Selected_Seat 테이블 상태 변경: 1(결제중) -> 2(선택완료)
             selectedSeat.setSeatState((short) 2);
-
-            // ② Seat 테이블 상태 변경: 1(사용가능) -> 0(사용불가=팔림)
             seat.setSeatStatus((short) 0);
-
-            System.out.println("" + seat.getSeatId() + "번 좌석 완벽하게 예매 확정(DB 업데이트) 완료!");
-
+            System.out.println(seat.getSeatId() + "번 좌석 완벽하게 예매 확정 완료!");
         } catch (Exception e) {
-            System.err.println("좌석 확정 로직을 처리할 수 없습니다: " + e.getMessage());
+            System.err.println("좌석 확정 로직 처리 중 오류: " + e.getMessage());
+        }
+
+        // 5. 🌟 통계 데이터 실시간 갱신
+        try {
+            String concertId = payment.getReservation().getConcert().getConcertId();
+            statsService.updateStats(concertId);
+            System.out.println("통계 데이터 업데이트 완료: " + concertId);
+        } catch (Exception e) {
+            System.err.println("통계 업데이트 실패 (운영에 영향 없음): " + e.getMessage());
         }
 
         System.out.println("결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);

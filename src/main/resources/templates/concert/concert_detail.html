@@ -133,6 +133,17 @@
 
 <div id="data-store" th:data-concert-id="${concert.concertId}" th:data-start-date="${concert.concertStartDate}" th:data-end-date="${concert.concertEndDate}" style="display:none;"></div>
 <div th:replace="~{fragments/footer :: footer}"></div>
+<script th:if="${stats != null}" th:inline="javascript">
+    const statsData = {
+        male: [[${stats.maleRatio}]],
+        female: [[${stats.femaleRatio}]],
+        age10: [[${stats.age10sRatio}]],
+        age20: [[${stats.age20sRatio}]],
+        age30: [[${stats.age30sRatio}]],
+        age40: [[${stats.age40sRatio}]],
+        age50: [[${stats.age50sRatio}]]
+    };
+</script>
 <script th:src="@{/js/concert/detail.js}"></script>
 
 <div id="couponPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#ffffff; padding:30px; border-radius:24px; z-index:1001; width:360px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); border: 1px solid #eee;">
