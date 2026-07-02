@@ -135,13 +135,13 @@
 <div th:replace="~{fragments/footer :: footer}"></div>
 <script th:if="${stats != null}" th:inline="javascript">
     const statsData = {
-        male: [[${stats.maleRatio}]],
-        female: [[${stats.femaleRatio}]],
-        age10: [[${stats.age10sRatio}]],
-        age20: [[${stats.age20sRatio}]],
-        age30: [[${stats.age30sRatio}]],
-        age40: [[${stats.age40sRatio}]],
-        age50: [[${stats.age50sRatio}]]
+        male: [[${stats.genderData[0]}]],
+        female: [[${stats.genderData[1]}]],
+        age10: [[${stats.ageData[0]}]],
+        age20: [[${stats.ageData[1]}]],
+        age30: [[${stats.ageData[2]}]],
+        age40: [[${stats.ageData[3]}]],
+        age50: [[${stats.ageData[4]}]]
     };
 </script>
 <script th:src="@{/js/concert/detail.js}"></script>
