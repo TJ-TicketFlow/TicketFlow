@@ -1,6 +1,7 @@
 package com.ticketflow.service;
 
 import com.ticketflow.dto.BookingRequestDto;
+import com.ticketflow.dto.PayRequestDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import jakarta.mail.internet.MimeMessage;
@@ -978,7 +979,7 @@ public class BookingService {
             helper.setTo(payment.getBuyerEmail());
 
             // 2. 이메일 제목
-            helper.setSubject("[TicketFlow] 예매가 성공적으로 완료되었습니다!");
+            helper.setSubject("[TicketFlow] 예매가 성공적으로 완료되었습니다! (예매번호: TF-0000" + payment.getPayNo() + ")");
 
             // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
             String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
@@ -1005,6 +1006,51 @@ public class BookingService {
 
         } catch (Exception e) {
             System.err.println("이메일 발송 실패: " + e.getMessage());
+        }
+    }
+
+    public void sendBookingCancleEmail(long id) {
+        try {
+            Pay payment = payRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 주문 번호를 찾을 수 없습니다: " + id));
+
+            // 편지 봉투(MimeMessage)를 하나 만듭니다.
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            // 1. 누구에게 보낼 것인가? (결제할 때 입력한 구매자 이메일)
+            helper.setTo(payment.getBuyerEmail());
+
+            // 2. 이메일 제목
+            helper.setSubject("[TicketFlow] 예매 취소 완료 안내 (예매번호: TF-0000" + payment.getPayNo() + ")");
+            // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
+            String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
+            String seatInfo = payment.getReservation().getSelectedSeatsText();
+            if (seatInfo == null || seatInfo.isBlank()) {
+                seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
+            }
+            // HTML 문법을 사용해서 내용을 작성합니다.
+            String htmlContent = "<h3>😢 예매가 정상적으로 취소되었습니다.</h3>"
+                    + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
+                    + "<p><b>예매번호:</b> TF-0000" + payment.getPayNo() + "</p>"
+                    + "<p><b>공연명:</b> " + showName + "</p>"
+                    + "<p><b>취소된 좌석:</b> " + seatInfo + "</p>"
+                    // 💡 취소 메일이므로, 추후에 환불 수수료를 뺀 '최종 환불 금액'을 넘겨주면 더 좋습니다!
+                    + "<p><b>결제 취소 금액:</b> " + payment.getPayAmount() + "원</p>"
+                    + "<br><p>결제하신 수단으로 환불 처리가 진행될 예정입니다.<br>"
+                    + "<a href='http://localhost:8080/mypage/benefits' style='color: #ef4444; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
+            // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
+            helper.setText(htmlContent, true);
+
+            // 4. 전송!
+            javaMailSender.send(mimeMessage);
+            System.out.println("예매 완료 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
+
+        } catch (Exception e) {
+            System.err.println("이메일 발송 실패: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

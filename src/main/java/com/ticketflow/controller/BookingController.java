@@ -153,6 +153,7 @@ public class BookingController {
         try {
             // 이전에 만들었던 취소(상태변경+좌석복구) 로직 실행
             bookingService.cancelTicket(id);
+            bookingService.sendBookingCancleEmail(id);
             return ResponseEntity.ok("성공적으로 취소되었습니다.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
