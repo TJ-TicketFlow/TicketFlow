@@ -12,6 +12,12 @@ spring:
       maximum-pool-size: 10
   elasticsearch:
     uris: http://elasticsearch:9200
+    connection-timeout: 5s
+    socket-timeout: 30s
+    # 아래 설정이 핵심입니다: 호환성 모드를 활성화하세요
+    compatibility-mode: true
+    rest-client:
+      read-timeout: 30s
   jpa:
     hibernate:
       ddl-auto: update

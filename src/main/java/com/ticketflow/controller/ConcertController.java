@@ -3,6 +3,7 @@ package com.ticketflow.controller;
 import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.Concert;
 import com.ticketflow.entity.User;
+import com.ticketflow.repository.ConcertRepository;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
 import com.ticketflow.service.UserService;
@@ -29,6 +30,7 @@ public class ConcertController {
     private final ConcertService concertService;
     private final MembershipService membershipService;
     private final UserService userService;
+    private final ConcertRepository concertRepository;
 
     private boolean checkLogin(HttpSession session) {
         return Boolean.TRUE.equals(session.getAttribute("logged_in"));
@@ -207,24 +209,28 @@ public class ConcertController {
 
     @GetMapping("/search")
     public String searchConcerts(@RequestParam(required = false) String keyword, Model model) {
-        if (keyword == null || keyword.isEmpty()) {
-            return "redirect:/concert/";
-        }
+        if (keyword == null || keyword.isEmpty()) return "redirect:/concert/";
 
         List<Concert> concertList = concertService.search(keyword);
 
-        // [수정] 현재 날짜를 모델에 추가
+        // 이 로그를 꼭 확인하세요!
+        System.out.println("★ 검색된 공연 리스트 사이즈: " + (concertList != null ? concertList.size() : "null"));
+
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("concertList", concertList);
         model.addAttribute("keyword", keyword);
-
         return "concert/search_results";
     }
 
     @GetMapping("/suggest")
     @ResponseBody
     public ResponseEntity<?> suggestConcerts(@RequestParam String q) {
-        return ResponseEntity.ok().body(Map.of("suggestions", Collections.emptyList()));
+        if (q == null || q.trim().isEmpty()) {
+            return ResponseEntity.ok(Map.of("suggestions", Collections.emptyList()));
+        }
+        // 서비스에서 만든 엘라스틱서치 자동완성 기능 호출
+        List<String> suggestions = concertService.autocomplete(q);
+        return ResponseEntity.ok(Map.of("suggestions", suggestions));
     }
 
     @GetMapping("/{id}")
@@ -281,6 +287,16 @@ public class ConcertController {
         // 예: concertService에 findAvailableDatesByConcertId(id) 메서드 추가 필요
         List<String> dates = concertService.findAvailableDates(id);
         return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
+    }
+
+    @GetMapping("/sync-elasticsearch")
+    @ResponseBody
+    public String syncElastic() {
+        List<Concert> allConcerts = concertRepository.findAll();
+        for (Concert concert : allConcerts) {
+            concertService.saveConcert(concert);
+        }
+        return "성공! 총 " + allConcerts.size() + "개의 데이터를 엘라스틱서치에 넣었습니다.";
     }
 
 }

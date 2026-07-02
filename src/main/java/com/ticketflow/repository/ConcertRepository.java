@@ -20,8 +20,6 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
     @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertGenre LIKE %:genre%")
     List<Concert> findByConcertGenre(@Param("genre") String genre);
 
-    @Query("SELECT c FROM Concert c JOIN FETCH c.hall WHERE c.concertName LIKE %:keyword%")
-    List<Concert> findByConcertNameContaining(@Param("keyword") String keyword);
 
     /**
      * 예측 매진율 기반 순위 조회
@@ -29,9 +27,14 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
      * Concert와 Stats를 JOIN하여 매진율 데이터를 가져옵니다.
      */
     // ConcertRepository.java
-    @Query(value = "SELECT c, RANK() OVER (ORDER BY s.predictSoldOutRate DESC) as ranking " +
+    /**
+     * 중복을 방지하기 위해 DISTINCT를 사용하고,
+     * Stats 데이터가 1:N이라면 가장 최신 데이터 하나만 조인하도록 수정해야 합니다.
+     */
+    @Query(value = "SELECT DISTINCT c, RANK() OVER (ORDER BY s.predictSoldOutRate DESC) as ranking " +
             "FROM Concert c " +
-            "JOIN c.stats s") // 엔티티 관계(OneToMany 등)가 설정되어 있다면 바로 조인 가능
+            "JOIN c.stats s " +
+            "WHERE s.id = (SELECT MAX(s2.id) FROM Stats s2 WHERE s2.concert.concertId = c.concertId)")
     List<Object[]> findConcertsByRanking();
 
     // ConcertRepository.java

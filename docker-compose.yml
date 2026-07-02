@@ -26,11 +26,17 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m  # 1g에서 512m로 낮춤 (컨테이너 메모리 부족 방지)
     ports:
       - "9200:9200"
     volumes:
       - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   kibana:
     image: kibana:8.19.3
@@ -59,7 +65,7 @@ services:
       mysql:
         condition: service_healthy # MySQL이 건강할 때만 실행
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   mysql-data:
