@@ -196,3 +196,38 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* ==========================================
+   📱 모바일 화면 (768px 이하) 전용 반응형 레이아웃
+   ========================================== */
+@media (max-width: 768px) {
+    /* 1. 기본 글자 크기를 살짝 키워서 모바일에서 잘 보이게 합니다 */
+    html {
+        font-size: 18px;
+    }
+
+    /* 2. 전체를 감싸는 박스의 안쪽 여백을 모바일에 맞게 줄여줍니다 */
+    .container {
+        padding: 10px;
+        border: none; /* 모바일에서는 테두리 없는 게 더 깔끔합니다 */
+    }
+
+    /* 3. [핵심] 가로(row)로 배치되던 좌우 패널을 세로(column)로 꺾어버립니다! */
+    .content-wrapper {
+        flex-direction: column;
+        gap: 20px; /* 위아래 패널 사이의 간격 */
+    }
+
+    /* 4. 나뉘어 있던 좌우 패널이 모바일 화면을 100% 꽉 채우도록 넓힙니다 */
+    .left-panel, .right-panel {
+        width: 100%;
+        padding: 0; /* 안쪽 여백 최소화 */
+        border-right: none; /* 세로로 배치되므로 왼쪽 패널의 오른쪽 빗장(선)을 제거합니다 */
+    }
+
+    /* 5. 캡차 이미지와 입력창이 가로로 삐져나가지 않게 세로로 정렬합니다 */
+    .captcha-area {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
