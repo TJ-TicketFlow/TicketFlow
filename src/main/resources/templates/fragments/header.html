@@ -20,9 +20,10 @@
             <svg width="17" height="17" fill="none" stroke="#9CA3AF" stroke-width="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input type="text" name="keyword" th:value="${keyword}"
-                   placeholder="원하는 공연을 검색해보세요!"
-                   autocomplete="off">
+            <input type="text" name="keyword" id="searchInput" th:value="${keyword}"
+                   placeholder="원하는 공연을 검색해보세요!" autocomplete="off">
+            <ul id="suggestionList" class="suggestion-list" style="display:none;"></ul>
+
             <button type="submit" style="background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;flex-shrink:0;">
                 <svg width="17" height="17" fill="none" stroke="#9CA3AF" stroke-width="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -92,5 +93,6 @@
         </div>
     </div>
 </nav>
+<script th:src="@{/js/search.js}"></script>
 </body>
 </html>
