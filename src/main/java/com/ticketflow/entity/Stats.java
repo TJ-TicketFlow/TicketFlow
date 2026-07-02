@@ -59,6 +59,10 @@ public class Stats {
     @Builder.Default
     private Float predictSoldOutRate = 0.0f;
 
+    @Column(name = "total_reservations")
+    @Builder.Default
+    private Long totalReservations = 0L;
+
     @UpdateTimestamp
     @Column(name = "stats_updated_at")
     private LocalDateTime statsUpdatedAt;
