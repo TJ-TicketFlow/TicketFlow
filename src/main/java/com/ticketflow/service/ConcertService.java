@@ -5,11 +5,9 @@ import com.ticketflow.dto.ConcertSearchDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.elasticsearch.core.suggest.Completion;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -31,7 +29,7 @@ public class ConcertService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final ObjectMapper objectMapper;
-    private final co.elastic.clients.elasticsearch.ElasticsearchClient elasticsearchClient; // 추가!
+    private final co.elastic.clients.elasticsearch.ElasticsearchClient elasticsearchClient;
     private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
 
     public List<Concert> getAllConcerts() {
@@ -89,18 +87,12 @@ public class ConcertService {
         return data;
     }
 
-    // ConcertService.java
     public List<Map<String, Object>> getRankedConcerts() {
         List<Object[]> results = concertRepository.findConcertsByRanking();
-
-        // 공연 ID 기준으로 중복을 걸러내는 로직
         Map<String, Map<String, Object>> distinctMap = new LinkedHashMap<>();
-
         for (Object[] obj : results) {
             Concert concert = (Concert) obj[0];
             int ranking = ((Number) obj[1]).intValue();
-
-            // 이미 추가된 공연이면 건너뜀
             if (!distinctMap.containsKey(concert.getConcertId())) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("concert", concert);
@@ -146,38 +138,21 @@ public class ConcertService {
 
     public List<Concert> search(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) return Collections.emptyList();
-
         try {
             String url = "http://elasticsearch:9200/concerts/_search";
-            // match 쿼리를 사용하여 검색
-            // match 쿼리 대신 query_string 사용 (훨씬 유연하게 검색됨)
-            String queryJson = String.format(
-                    "{\"query\": {\"query_string\": {\"default_field\": \"concertName\", \"query\": \"*%s*\"}}}",
-                    keyword
-            );
-
+            String queryJson = String.format("{\"query\": {\"query_string\": {\"default_field\": \"concertName\", \"query\": \"*%s*\"}}}", keyword);
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-
             org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(queryJson, headers);
-
-            // POST 방식으로 검색 요청
             org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
-
             Map<String, Object> body = response.getBody();
             Map<String, Object> hitsContainer = (Map<String, Object>) body.get("hits");
             List<Map<String, Object>> hits = (List<Map<String, Object>>) hitsContainer.get("hits");
-
-            // 검색된 공연 ID 추출
             List<String> concertIds = hits.stream()
                     .map(hit -> (String) ((Map<String, Object>) hit.get("_source")).get("concertId"))
                     .collect(Collectors.toList());
-
-            System.out.println("★ 엘라스틱서치가 찾은 ID 리스트: " + concertIds); // 이 로그 추가!
-
             return concertIds.isEmpty() ? Collections.emptyList() : concertRepository.findAllById(concertIds);
         } catch (Exception e) {
-            System.err.println("검색 오류 발생: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -217,12 +192,10 @@ public class ConcertService {
                 .limit(2)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
-
         if (preferredGenres.isEmpty()) {
             return concertRepository.findPopularAndUpcoming(PageRequest.of(0, 3)).stream()
                     .map(ConcertResponseDto::new).collect(Collectors.toList());
         }
-
         LocalDate today = LocalDate.now();
         return concertRepository.findAll().stream()
                 .filter(c -> !c.getConcertEndDate().isBefore(today))
@@ -254,30 +227,14 @@ public class ConcertService {
     public void saveConcert(Concert concert) {
         try {
             String url = "http://elasticsearch:9200/concerts/_doc/" + concert.getConcertId();
-
-            String jsonString = String.format(
-                    "{\"concertId\":\"%s\", \"concertName\":\"%s\"}",
-                    concert.getConcertId(), concert.getConcertName()
-            );
-
+            String jsonString = String.format("{\"concertId\":\"%s\", \"concertName\":\"%s\", \"suggest\":{\"input\":[\"%s\"]}}",
+                    concert.getConcertId(), concert.getConcertName(), concert.getConcertName());
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonString, headers);
-
-            // 결과 확인을 위해 response를 받음
-            org.springframework.http.ResponseEntity<String> response = restTemplate.exchange(url, org.springframework.http.HttpMethod.PUT, entity, String.class);
-
-            System.out.println("★ 저장 응답: " + response.getStatusCode() + " / ID: " + concert.getConcertId());
+            restTemplate.exchange(url, org.springframework.http.HttpMethod.PUT, new org.springframework.http.HttpEntity<>(jsonString, headers), String.class);
         } catch (Exception e) {
-            System.err.println("★ 저장 실패: " + concert.getConcertId() + " -> " + e.getMessage());
+            System.err.println("★ 저장 실패: " + e.getMessage());
         }
-    }
-
-    // DTO를 JSON 문자열로 변환하는 간단한 헬퍼 메서드 추가
-    private String convertToJson(ConcertSearchDto dto) {
-        return "{\"concertId\":\"" + dto.getConcertId() +
-                "\", \"concertName\":\"" + dto.getConcertName() +
-                "\", \"suggest\":{\"input\":[\"" + dto.getConcertName() + "\"]}}";
     }
 
     public List<String> autocomplete(String query) {
@@ -286,15 +243,9 @@ public class ConcertService {
                     .index("concerts")
                     .suggest(sg -> sg
                             .suggesters("concert-suggest", fs -> fs
-                                    .completion(c -> c
-                                            .field("suggest")
-                                            .skipDuplicates(true)
-                                            .size(10)
-                                            .fuzzy(f -> f.fuzziness("AUTO")) // '31'이 포함된 것도 찾게 함
-                                    )
+                                    .completion(c -> c.field("suggest").skipDuplicates(true).size(10).fuzzy(f -> f.fuzziness("AUTO")))
                             )
                     ), ConcertSearchDto.class);
-
             return response.suggest().get("concert-suggest").get(0).completion().options().stream()
                     .map(option -> option.text())
                     .collect(Collectors.toList());
@@ -303,35 +254,72 @@ public class ConcertService {
         }
     }
 
-    // 수정 전: @EventListener(ContextRefreshedEvent.class)
-    // 수정 후: 별도의 비동기 실행 또는 부팅 후 짧은 지연시간을 둡니다.
-
+    // [핵심] 엘라스틱서치 초기화 자동화 (재시도 로직 포함)
     @EventListener(ContextRefreshedEvent.class)
-    public void syncAllConcertsToElasticsearch() {
+    public void initializeElasticsearch() {
         new Thread(() -> {
-            try {
-                // 1. 엘라스틱서치가 준비될 시간을 충분히 줍니다.
-                Thread.sleep(10000);
+            boolean elasticReady = false;
+            int retries = 0;
 
-                // 2. 현재 인덱스에 데이터가 있는지 확인 (count API 호출)
-                String countUrl = "http://elasticsearch:9200/concerts/_count";
-                org.springframework.http.ResponseEntity<Map> countResponse = restTemplate.getForEntity(countUrl, Map.class);
-                Integer count = (Integer) countResponse.getBody().get("count");
+            // 1. 엘라스틱서치가 응답할 때까지 최대 10회 대기
+            while (!elasticReady && retries < 10) {
+                try {
+                    Thread.sleep(10000);
+                    org.springframework.http.ResponseEntity<String> ping =
+                            restTemplate.getForEntity("http://elasticsearch:9200/", String.class);
 
-                // 3. 데이터가 0건일 때만 전체 동기화 실행
-                if (count == null || count == 0) {
-                    System.out.println("★ 엘라스틱서치 데이터가 비어있습니다. 동기화를 시작합니다...");
-                    List<Concert> allConcerts = concertRepository.findAll();
-                    for (Concert concert : allConcerts) {
-                        saveConcert(concert);
+                    if (ping.getStatusCode().is2xxSuccessful()) {
+                        elasticReady = true;
+                        System.out.println("★ 엘라스틱서치 연결 성공!");
                     }
-                    System.out.println("★ 자동 동기화 완료! " + allConcerts.size() + "건 입력됨.");
-                } else {
-                    System.out.println("★ 엘라스틱서치에 이미 " + count + "건의 데이터가 있습니다. 자동 동기화를 건너뜁니다.");
+                } catch (Exception e) {
+                    retries++;
+                    System.out.println("★ 엘라스틱서치 대기 중... (" + retries + "/10회): 연결 불가");
                 }
-            } catch (Exception e) {
-                System.err.println("★ 자동 동기화 실패: " + e.getMessage());
+            }
+
+            // 2. 서버가 켜진 후 인덱스 체크 및 생성
+            if (elasticReady) {
+                try {
+                    String indexUrl = "http://elasticsearch:9200/concerts";
+                    try {
+                        restTemplate.exchange(indexUrl, org.springframework.http.HttpMethod.HEAD, null, String.class);
+                    } catch (Exception e) {
+                        createIndex(indexUrl);
+                    }
+                } catch (Exception e) {
+                    System.err.println("★ 초기화 실패: " + e.getMessage());
+                }
             }
         }).start();
+    }
+
+    private void createIndex(String url) {
+        try {
+            System.out.println("★ 인덱스가 없습니다. 생성합니다.");
+            String mappingJson = "{\"mappings\": {\"properties\": {\"concertId\": { \"type\": \"keyword\" },\"concertName\": { \"type\": \"text\" },\"suggest\": { \"type\": \"completion\" }}}}";
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            restTemplate.put(url, new org.springframework.http.HttpEntity<>(mappingJson, headers));
+
+            syncAllConcertsToElasticsearch();
+        } catch (Exception e) {
+            System.err.println("★ 인덱스 생성 실패: " + e.getMessage());
+        }
+    }
+
+    public void syncAllConcertsToElasticsearch() {
+        try {
+            String countUrl = "http://elasticsearch:9200/concerts/_count";
+            org.springframework.http.ResponseEntity<Map> countResponse = restTemplate.getForEntity(countUrl, Map.class);
+            Integer count = (Integer) countResponse.getBody().get("count");
+            if (count == null || count == 0) {
+                List<Concert> allConcerts = concertRepository.findAll();
+                for (Concert concert : allConcerts) saveConcert(concert);
+                System.out.println("★ 데이터 동기화 완료! " + allConcerts.size() + "건 입력됨.");
+            }
+        } catch (Exception e) {
+            System.err.println("★ 동기화 실패: " + e.getMessage());
+        }
     }
 }

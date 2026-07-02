@@ -37,6 +37,12 @@ spring:
     init:
       mode: always
 
+  cache:
+    type: caffeine
+    caffeine:
+      spec: expireAfterWrite=10m
+
+
   # ── Gmail SMTP 설정 ──────────────────────────────────
   mail:
     host: smtp.gmail.com
