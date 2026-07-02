@@ -96,7 +96,7 @@ public class BookingService {
     // 3. 결제 창 띄우기
     // ==========================================
     @Transactional
-    public String createTemporaryPayment(BookingRequestDto requestDto) {
+    public String createTemporaryPayment(BookingRequestDto requestDto, String userId) {
 
         // ----------------------------------------------------
         // [새로 추가된 핵심 방어막] 레몬스퀴지로 넘어가기 전 최종 이중결제 체크!
@@ -147,6 +147,27 @@ public class BookingService {
         if (incomingCouponId != null) {
             selectedCoupon = userCouponRepository.findById(incomingCouponId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 쿠폰을 찾을 수 없습니다."));
+
+            if (!selectedCoupon.getUser().getUserId().equals(userId)) {
+                throw new IllegalArgumentException("본인 소유의 쿠폰만 사용할 수 있습니다. (비정상적인 접근)");
+            }
+
+            // (엔티티의 사용여부 컬럼값 비교 - 예: status가 1이면 사용됨)
+            if (selectedCoupon.getUserCouponStatus() == 1) {
+                throw new IllegalArgumentException("이미 사용 완료된 쿠폰입니다.");
+            }
+
+            // (만료 및 Null 방어)
+            LocalDateTime expireAt = selectedCoupon.getUserCouponExpireAt();
+
+            // 1단계 방어: 만료일이 아예 없는(Null) 쿠폰은 검사할 필요 없이 통과!
+            if (expireAt != null) {
+
+                // 2단계 방어: 만료일이 지정되어 있다면, 현재 시간과 비교!
+                if (expireAt.isBefore(LocalDateTime.now())) {
+                    throw new IllegalArgumentException("유효기간이 만료된 쿠폰입니다.");
+                }
+            }
         }
 
         Pay newPayment = Pay.builder()

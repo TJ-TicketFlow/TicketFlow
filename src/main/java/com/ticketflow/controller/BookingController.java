@@ -91,6 +91,8 @@ public class BookingController {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
 
+        String realUserId = principal.getName();
+
         // 🚨 2. [핵심 방어막] 이미 결제된 티켓을 자바스크립트로 강제로 결제하려는 해커 차단!
         if (bookingService.isAlreadyPaid(requestDto.getReservationKey())) {
             System.out.println("🚨 API 통신을 통한 이중 결제 시도 차단됨!");
@@ -102,7 +104,7 @@ public class BookingController {
         // ==============================================================
         try {
             // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
-            String checkoutUrl = bookingService.createTemporaryPayment(requestDto);
+            String checkoutUrl = bookingService.createTemporaryPayment(requestDto, realUserId);
             return ResponseEntity.ok(checkoutUrl);
 
         } catch (IllegalArgumentException e) {

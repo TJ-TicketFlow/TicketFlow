@@ -134,6 +134,46 @@
             </div>
         </div>
 
+        <div id="cancelConfirmModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>예매 취소 확인</h3>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-main-text">정말 예매를 취소하시겠습니까?</p>
+                    <div class="fee-info-box">
+                        <div class="fee-row">
+                            <span>예상 취소 수수료</span>
+                            <span id="modal-fee" class="highlight-red">0원</span>
+                        </div>
+                        <div class="fee-row total">
+                            <span>최종 환불 금액</span>
+                            <span id="modal-refund" class="highlight-blue">0원</span>
+                        </div>
+                    </div>
+                    <p class="warning-text">취소 후에는 좌석이 즉시 해제되며 되돌릴 수 없습니다.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-close-modal" onclick="closeCancelModal()">닫기</button>
+                    <button class="btn-confirm-modal" id="btn-execute-cancel">네, 취소합니다</button>
+                </div>
+            </div>
+        </div>
+        <div id="cancelSuccessModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>취소 완료</h3>
+                </div>
+                <div class="modal-body" style="padding: 30px 20px;">
+                    <div style="font-size: 40px; color: #3b82f6; margin-bottom: 10px;">✅</div>
+                    <p class="modal-main-text" style="font-size: 16px; margin-bottom: 10px;">성공적으로 예매 취소가 완료되었습니다.</p>
+                    <p class="warning-text">결제하신 금액은 환불 규정에 따라 처리됩니다.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-confirm-modal" style="background: #3b82f6; border-radius: 0 0 12px 12px;" onclick="closeSuccessAndReload()">확인</button>
+                </div>
+            </div>
+        </div>
     </th:block>
 </th:block>
 
