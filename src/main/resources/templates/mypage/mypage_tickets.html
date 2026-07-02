@@ -94,10 +94,11 @@
 
     </th:block>
 </th:block>
-<script th:inline="javascript">
-    const serverStartDate = /*[[${startDate}]]*/ '2026-01-01';
-    const serverEndDate = /*[[${endDate}]]*/ '2026-12-31';
-</script>
+    <script th:inline="javascript">
+        // LocalDate 객체 통째로 넘기지 않고, "yyyy-MM-dd" 형태의 안전한 텍스트로 번역해서 넘겨줍니다!
+        const serverStartDate = /*[[${#temporals.format(startDate, 'yyyy-MM-dd')}]]*/ '2026-01-01';
+        const serverEndDate = /*[[${#temporals.format(endDate, 'yyyy-MM-dd')}]]*/ '2026-12-31';
+    </script>
 <script src="/js/booking/mypage_tickets.js"></script>
 </body>
 </html>

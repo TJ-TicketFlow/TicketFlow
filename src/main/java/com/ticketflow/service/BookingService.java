@@ -1,6 +1,7 @@
 package com.ticketflow.service;
 
 import com.ticketflow.dto.BookingRequestDto;
+import com.ticketflow.dto.PayRequestDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import jakarta.mail.internet.MimeMessage;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -36,9 +38,12 @@ public class BookingService {
     private final MembershipRepository membershipRepository;
     private final SeatRepository seatRepository;
 
-    // 💡 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
+    // 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
     private final JavaMailSender javaMailSender;
+
+    // [추가] 좌석 해제 시 실시간(웹소켓) 반영을 위해 추가
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${lemonsqueezy.api-key2}")
     private String apiKey;
@@ -56,7 +61,7 @@ public class BookingService {
     private String clientSecret;
 
     // ==========================================
-    // 💡 1. 멤버십 상태 확인 (기존 기능)
+    // 1. 멤버십 상태 확인 (기존 기능)
     // ==========================================
     public boolean checkActiveMembership(String userId) {
         Optional<Membership> latestMembership = membershipRepository
@@ -70,7 +75,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 2. 내 사용 가능한 쿠폰 목록 가져오기
+    // 2. 내 사용 가능한 쿠폰 목록 가져오기
     // ==========================================
     public List<Map<String, Object>> getMyAvailableCoupons(String userId) {
         List<UserCoupon> allCoupons = userCouponRepository.findByUser_UserId(userId);
@@ -89,20 +94,20 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 3. 결제 창 띄우기
+    // 3. 결제 창 띄우기
     // ==========================================
     @Transactional
-    public String createTemporaryPayment(BookingRequestDto requestDto) {
+    public String createTemporaryPayment(BookingRequestDto requestDto, String userId) {
 
         // ----------------------------------------------------
-        // 🚨 [새로 추가된 핵심 방어막] 레몬스퀴지로 넘어가기 전 최종 이중결제 체크!
+        // [새로 추가된 핵심 방어막] 레몬스퀴지로 넘어가기 전 최종 이중결제 체크!
         // ----------------------------------------------------
         if (isAlreadyPaid(requestDto.getReservationKey())) {
-            System.err.println("🚨 API 이중 결제 시도 거부: 예약번호 " + requestDto.getReservationKey());
+            System.err.println("API 이중 결제 시도 거부: 예약번호 " + requestDto.getReservationKey());
             throw new IllegalStateException("이미 결제가 완료된 예매건입니다.");
         }
         // ----------------------------------------------------
-        // 🛡️ [매크로 방어 1단계] 네이버 캡차 채점 로직
+        // [매크로 방어 1단계] 네이버 캡차 채점 로직
         // ----------------------------------------------------
 
         RestTemplate restTemplate = new RestTemplate();
@@ -121,7 +126,7 @@ public class BookingService {
             ResponseEntity<String> response = restTemplate.exchange(apiURL, HttpMethod.GET, entity, String.class);
             String responseBody = response.getBody();
 
-            System.out.println("✅ 네이버 채점 응답 원본: " + responseBody);
+            System.out.println("네이버 채점 응답 원본: " + responseBody);
 
             // JSON 객체 대신 무식하고 안전하게 텍스트로 잘라냅니다.
             // 네이버가 {"result":true, ...} 라고 보내주면 통과입니다.
@@ -129,10 +134,10 @@ public class BookingService {
                 throw new IllegalArgumentException("자동주문 방지 글자가 틀렸습니다. 다시 확인해주세요.");
             }
         } catch (Exception e) {
-            // 🚨 네이버 통신 오류 등
+            // 네이버 통신 오류 등
             throw new IllegalArgumentException("캡차 검증에 실패했습니다: " + e.getMessage());
         }
-        System.out.println("✅ 네이버 캡차 검증 완벽하게 통과!");
+        System.out.println("네이버 캡차 검증 완벽하게 통과!");
 
         Reservation reservation = reservationRepository.findById(requestDto.getReservationKey())
                 .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
@@ -143,6 +148,27 @@ public class BookingService {
         if (incomingCouponId != null) {
             selectedCoupon = userCouponRepository.findById(incomingCouponId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 쿠폰을 찾을 수 없습니다."));
+
+            if (!selectedCoupon.getUser().getUserId().equals(userId)) {
+                throw new IllegalArgumentException("본인 소유의 쿠폰만 사용할 수 있습니다. (비정상적인 접근)");
+            }
+
+            // (엔티티의 사용여부 컬럼값 비교 - 예: status가 1이면 사용됨)
+            if (selectedCoupon.getUserCouponStatus() == 1) {
+                throw new IllegalArgumentException("이미 사용 완료된 쿠폰입니다.");
+            }
+
+            // (만료 및 Null 방어)
+            LocalDateTime expireAt = selectedCoupon.getUserCouponExpireAt();
+
+            // 1단계 방어: 만료일이 아예 없는(Null) 쿠폰은 검사할 필요 없이 통과!
+            if (expireAt != null) {
+
+                // 2단계 방어: 만료일이 지정되어 있다면, 현재 시간과 비교!
+                if (expireAt.isBefore(LocalDateTime.now())) {
+                    throw new IllegalArgumentException("유효기간이 만료된 쿠폰입니다.");
+                }
+            }
         }
 
         Pay newPayment = Pay.builder()
@@ -223,7 +249,7 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
 
         // ----------------------------------------------------
-        // 🚨 [1단계 방어막] 레몬스퀴지 자체에서 결제가 실패(failed)해서 넘어온 경우
+        // [1단계 방어막] 레몬스퀴지 자체에서 결제가 실패(failed)해서 넘어온 경우
         // ----------------------------------------------------
         if ("failed".equalsIgnoreCase(payStatus)) {
             payment.setPayStatus("FAILED");
@@ -233,22 +259,22 @@ public class BookingService {
             if (payment.getReservation() != null) {
                 releaseUnpaidSeat(payment.getReservation().getReservationKey());
             }
-            System.out.println("❌ 레몬스퀴지 결제 실패 기록 완료: " + payment.getPayFailReason());
+            System.out.println("레몬스퀴지 결제 실패 기록 완료: " + payment.getPayFailReason());
             return; // 실패했으므로 아래 성공 로직을 타지 않고 여기서 함수를 끝냅니다.
         }
 
         // ----------------------------------------------------
-        // 🚨 [2단계 방어막] 금액 위조 검사 (기존 코드 유지)
+        // [2단계 방어막] 금액 위조 검사 (기존 코드 유지)
         // ----------------------------------------------------
         long expectedAmount = payment.getPayAmount();
         if (expectedAmount != webhookAmount) {
             payment.setPayStatus("FAILED");
-            payment.setPayFailReason("🚨 서버 금액(" + expectedAmount + "원)과 실결제 금액(" + webhookAmount + "원)이 일치하지 않음 (위조 위험)");
+            payment.setPayFailReason("서버 금액(" + expectedAmount + "원)과 실결제 금액(" + webhookAmount + "원)이 일치하지 않음 (위조 위험)");
 
             if (payment.getReservation() != null) {
                 releaseUnpaidSeat(payment.getReservation().getReservationKey());
             }
-            System.err.println("🚨 금액 불일치 사고 발생! 실패 사유 기록 완료.");
+            System.err.println("금액 불일치 사고 발생! 실패 사유 기록 완료.");
             return;
         }
 
@@ -263,7 +289,7 @@ public class BookingService {
         if (payment.getUserCoupon() != null) {
             // 이 결제에 쿠폰이 쓰였다면, 상태를 1(사용함)로 바꿔줍니다!
             payment.getUserCoupon().setUserCouponStatus(1);
-            System.out.println("✅ 쿠폰 사용 완료 처리됨!");
+            System.out.println("쿠폰 사용 완료 처리됨!");
         }
 
         try {
@@ -277,7 +303,7 @@ public class BookingService {
             var seat = selectedSeat.getSeat();
 
             // --------------------------------------------------
-            // 💡 여기서 상태 값을 바꿔줍니다! (@Transactional 덕분에 자동 저장됨)
+            // 여기서 상태 값을 바꿔줍니다! (@Transactional 덕분에 자동 저장됨)
             // --------------------------------------------------
 
             // ① Selected_Seat 테이블 상태 변경: 1(결제중) -> 2(선택완료)
@@ -286,19 +312,19 @@ public class BookingService {
             // ② Seat 테이블 상태 변경: 1(사용가능) -> 0(사용불가=팔림)
             seat.setSeatStatus((short) 0);
 
-            System.out.println("✅ " + seat.getSeatId() + "번 좌석 완벽하게 예매 확정(DB 업데이트) 완료!");
+            System.out.println("" + seat.getSeatId() + "번 좌석 완벽하게 예매 확정(DB 업데이트) 완료!");
 
         } catch (Exception e) {
-            System.err.println("🚨 좌석 확정 로직을 처리할 수 없습니다: " + e.getMessage());
+            System.err.println("좌석 확정 로직을 처리할 수 없습니다: " + e.getMessage());
         }
 
-        System.out.println("✅ 결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
+        System.out.println("결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
 
         sendBookingCompleteEmail(payment);
     }
 
     // ==========================================
-    // 💡 6. [새로 추가] 결제 화면용: 구매자 정보 포장하기
+    // 6. [새로 추가] 결제 화면용: 구매자 정보 포장하기
     // ==========================================
     public Map<String, Object> getUserInfoMap(Long userNo) {
         User user = userRepository.findById(userNo)
@@ -315,9 +341,9 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 [수정] 결제 화면용: 티켓 정보 포장하기 (+ 보안 검증 추가)
+    // [수정] 결제 화면용: 티켓 정보 포장하기 (+ 보안 검증 추가)
     // ==========================================
-    // 💡 기존 파라미터(Long reservationKey) 옆에 로그인한 유저의 번호(Long currentUserNo)를 추가로 받습니다.
+    // 기존 파라미터(Long reservationKey) 옆에 로그인한 유저의 번호(Long currentUserNo)를 추가로 받습니다.
     public Map<String, Object> getTicketInfoMap(Long reservationKey, Long currentUserNo) {
         Map<String, Object> ticketInfo = new HashMap<>();
 
@@ -326,20 +352,20 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약 정보입니다."));
 
         // ----------------------------------------------------
-        // 🚨 [핵심 보안 방어막] 로그인한 사람과 예약한 사람이 같은지 검사!
+        // [핵심 보안 방어막] 로그인한 사람과 예약한 사람이 같은지 검사!
         // ----------------------------------------------------
         Long ownerNo = reservation.getSelectedSeat().getUser().getUserNo();
 
         if (!ownerNo.equals(currentUserNo)) {
             // 주인이 다르면 가차 없이 에러를 던져버립니다.
-            System.err.println("🚨 비정상적인 접근 감지: 로그인유저(" + currentUserNo + ")가 남의 예약건(" + ownerNo + ")에 접근 시도함.");
+            System.err.println("비정상적인 접근 감지: 로그인유저(" + currentUserNo + ")가 남의 예약건(" + ownerNo + ")에 접근 시도함.");
             throw new IllegalStateException("본인의 예매 내역만 결제할 수 있습니다.");
         }
         // ----------------------------------------------------
-        // 🚨 [새로 추가된 핵심 방어막] 이미 돈을 지불한 예약건인지 검사!
+        // [새로 추가된 핵심 방어막] 이미 돈을 지불한 예약건인지 검사!
         // ----------------------------------------------------
         if (isAlreadyPaid(reservationKey)) {
-            System.err.println("🚨 이중 결제 시도 차단: 예약번호(" + reservationKey + ")는 이미 결제가 완료된 상태입니다.");
+            System.err.println("이중 결제 시도 차단: 예약번호(" + reservationKey + ")는 이미 결제가 완료된 상태입니다.");
             // 이미 결제가 끝났다면 에러를 던져서 결제창 화면이 열리지 못하게 막아버립니다.
             throw new IllegalStateException("이미 결제가 완료된 예매건입니다. 마이페이지에서 확인해주세요.");
         }
@@ -354,7 +380,7 @@ public class BookingService {
             ticketInfo.put("posterUrl", reservation.getSelectedSeat().getSeat().getConcert().getConcertPosterUrl());
             String allSeatsText = reservation.getSelectedSeatsText();
             if (allSeatsText == null || allSeatsText.isBlank()) {
-                // 🌟 스탠딩(행이 0)일 때 방어 로직 추가
+                // 스탠딩(행이 0)일 때 방어 로직 추가
                 if ("0".equals(reservation.getSelectedSeat().getSeat().getSeatRow())) {
                     allSeatsText = reservation.getSelectedSeat().getSeat().getSeatClass() + " " + reservation.getReservationCount() + "장";
                 } else {
@@ -368,7 +394,7 @@ public class BookingService {
             ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
             ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
         } catch (Exception e) {
-            System.err.println("🚨 조인 오류 발생 (일부 데이터 임시 처리)");
+            System.err.println("조인 오류 발생 (일부 데이터 임시 처리)");
             ticketInfo.put("price", 0);
             ticketInfo.put("title", "데이터 연결 오류");
         }
@@ -377,7 +403,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 8. [새로 추가] 문자 아이디로 회원 고유 번호(user_no) 찾기
+    // 8. [새로 추가] 문자 아이디로 회원 고유 번호(user_no) 찾기
     // ==========================================
     public Long getUserNoById(String userId) {
         User user = userRepository.findByUserId(userId)
@@ -387,7 +413,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 [네이버 캡차 1] 캡차 열쇠 발급받기
+    // [네이버 캡차 1] 캡차 열쇠 발급받기
     // ==========================================
     public String getNaverCaptchaKey() {
         RestTemplate restTemplate = new RestTemplate();
@@ -403,9 +429,9 @@ public class BookingService {
             ResponseEntity<String> response = restTemplate.exchange(apiURL, HttpMethod.GET, entity, String.class);
             String responseBody = response.getBody();
 
-            System.out.println("✅ 네이버 응답 성공: " + responseBody);
+            System.out.println("네이버 응답 성공: " + responseBody);
 
-            // 💡 핵심 : 받아온 문자열 (예: {"key":"요청키값"}) 에서 키값만 잘라냅니다.
+            // 핵심 : 받아온 문자열 (예: {"key":"요청키값"}) 에서 키값만 잘라냅니다.
             // (JSON 파싱 라이브러리인 Jackson을 써도 되지만, 에러 방지를 위해 가장 원초적인 방법으로 자릅니다)
             if (responseBody != null && responseBody.contains("\"key\"")) {
                 int startIndex = responseBody.indexOf("\"key\":\"") + 7;
@@ -415,19 +441,19 @@ public class BookingService {
             return null;
 
         } catch (Exception e) {
-            System.err.println("🚨 네이버 캡차 키 발급 실패: " + e.getMessage());
+            System.err.println("네이버 캡차 키 발급 실패: " + e.getMessage());
             return null;
         }
     }
 
-    // 💡 1. [핵심] 예쁜 예매번호 생성기 (엔티티 수정 X)
+    // 1. [핵심] 예쁜 예매번호 생성기 (엔티티 수정 X)
     public String generateReadableOrderNo(Long payNo) {
         // TF-000087 형태로 만들어줍니다.
         return String.format("TF-%06d", payNo);
     }
 
-    // 💡 2. 내 예매 내역 가져오기 (백엔드 필터링 + 수동 페이징 완벽 적용 버전)
-    // 🌟 파라미터에 String filterStatus 가 추가되었습니다!
+    // 2. 내 예매 내역 가져오기 (백엔드 필터링 + 수동 페이징 완벽 적용 버전)
+    // 파라미터에 String filterStatus 가 추가되었습니다!
     public Page<Map<String, Object>> getMyTicketHistory(String userId, LocalDate startDate, LocalDate endDate, String filterStatus, Pageable pageable) {
 
         LocalDateTime startDateTime = startDate.atStartOfDay();
@@ -478,7 +504,7 @@ public class BookingService {
             map.put("count", count);
 
             // ==========================================
-            // 🌟 예매상태 결정 로직 (기존과 동일하게 작동)
+            // 예매상태 결정 로직 (기존과 동일하게 작동)
             // ==========================================
             String statusStr = "진행중";
             String currentStatus = pay.getPayStatus();
@@ -516,7 +542,7 @@ public class BookingService {
             map.put("status", statusStr);
 
             // ==========================================
-            // 🌟 [핵심] 프론트에서 넘어온 탭(filterStatus)과 일치하는 것만 바구니에 담기!
+            // [핵심] 프론트에서 넘어온 탭(filterStatus)과 일치하는 것만 바구니에 담기!
             // ==========================================
             boolean isMatch = false;
             if (filterStatus == null || "전체".equals(filterStatus)) {
@@ -533,7 +559,7 @@ public class BookingService {
         }
 
         // ==========================================
-        // 🌟 3. 필터링된 데이터를 자바에서 직접 페이지 단위로 자르기 (수동 페이징)
+        // 3. 필터링된 데이터를 자바에서 직접 페이지 단위로 자르기 (수동 페이징)
         // ==========================================
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), filteredList.size());
@@ -550,7 +576,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 9. 예매 상세 내역 단건 조회 (상세 페이지용)
+    // 9. 예매 상세 내역 단건 조회 (상세 페이지용)
     // ==========================================
     public Map<String, Object> getTicketDetail(Long payNo, Long currentUserNo) {
         // 1. 넘어온 결제 번호(payNo)로 DB에서 데이터를 찾습니다.
@@ -558,13 +584,13 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 예매 내역을 찾을 수 없습니다."));
 
         // ----------------------------------------------------
-        // 🚨 [핵심 보안 방어막] 이 영수증의 주인이 로그인한 사람이 맞는지 대조
+        // [핵심 보안 방어막] 이 영수증의 주인이 로그인한 사람이 맞는지 대조
         // ----------------------------------------------------
         if (pay.getReservation() != null && pay.getReservation().getSelectedSeat() != null) {
             Long ownerNo = pay.getReservation().getSelectedSeat().getUser().getUserNo();
 
             if (!ownerNo.equals(currentUserNo)) {
-                System.err.println("🚨 경고: 유저(" + currentUserNo + ")가 남의 영수증(" + payNo + ", 주인:" + ownerNo + ") 조회를 시도함.");
+                System.err.println("경고: 유저(" + currentUserNo + ")가 남의 영수증(" + payNo + ", 주인:" + ownerNo + ") 조회를 시도함.");
                 throw new IllegalStateException("본인의 예매 내역만 조회할 수 있습니다.");
             }
         }
@@ -591,6 +617,8 @@ public class BookingService {
             Seat seat = reservation.getSelectedSeat().getSeat();
             Concert concert = seat.getConcert();
 
+
+            map.put("concert_id", concert != null ? concert.getConcertId() : null);
             // 공연명
             map.put("title", concert != null ? concert.getConcertName() : "알 수 없는 공연");
 
@@ -609,13 +637,13 @@ public class BookingService {
             map.put("venue", venue);
 
             // ==============================================================
-            // 🌟 [핵심 수정] 영수증에 적어둔 전체 좌석 텍스트를 꺼냅니다!
+            // 영수증에 적어둔 전체 좌석 텍스트를 꺼냅니다!
             // ==============================================================
             String allSeatsText = reservation.getSelectedSeatsText();
 
-            // 방어 로직: 텍스트가 텅 비어있을 경우 (예전 예매건 등)
+            // 텍스트가 텅 비어있을 경우 (예전 예매건 등)
             if (allSeatsText == null || allSeatsText.isBlank()) {
-                // 🌟 스탠딩(행이 0)일 때 방어 로직 추가
+                // 스탠딩(행이 0)일 때 방어 로직 추가
                 if ("0".equals(seat.getSeatRow())) {
                     allSeatsText = seat.getSeatClass() + " " + reservation.getReservationCount() + "장";
                 } else {
@@ -638,7 +666,7 @@ public class BookingService {
             map.put("date", viewDate);
             map.put("count", reservation.getReservationCount());
 
-            // 💡 취소 마감시간 (관람일 하루 전 17:00로 계산)
+            // 취소 마감시간 (관람일 하루 전 17:00로 계산)
             if (reservation.getReservationDate() != null) {
                 map.put("cancel_deadline", reservation.getReservationDate().minusDays(1).toString() + " 17:00");
             } else {
@@ -705,7 +733,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 10. 예매 취소 수수료 계산기
+    // 10. 예매 취소 수수료 계산기
     // ==========================================
     public int calculateCancelFee(Pay pay, LocalDateTime cancelTime) {
 
@@ -716,12 +744,12 @@ public class BookingService {
         // 취소 마감시간: 관람일 하루 전 17시
         LocalDateTime deadline = concertDate.atTime(17, 0).minusDays(1);
 
-        // 🚨 방어 로직: 취소 마감시간이 지났으면 에러 발생!
+        // 취소 마감시간이 지났으면 에러 발생!
         if (cancelTime.isAfter(deadline)) {
             throw new IllegalArgumentException("취소 마감시간이 지나 취소할 수 없습니다.");
         }
 
-        // 💡 규칙 1: 예매 당일 밤 12시 이전 취소 시 무조건 수수료 0원
+        // 규칙 1: 예매 당일 밤 12시 이전 취소 시 무조건 수수료 0원
         if (bookedTime.toLocalDate().isEqual(cancelTime.toLocalDate())) {
             return 0;
         }
@@ -736,7 +764,7 @@ public class BookingService {
         int ticketPrice = totalPayAmount / count; // 티켓 1장당 가격
         int fee = 0;
 
-        // 💡 핵심 규칙: 관람일 10일 이내라면, '예매 후 7일 이내' 규칙보다 우선 적용됩니다.
+        // 핵심 규칙: 관람일 10일 이내라면, '예매 후 7일 이내' 규칙보다 우선 적용됩니다.
         if (daysToConcert <= 9) {
 
             if (daysToConcert >= 7) { // 9일 전 ~ 7일 전
@@ -750,10 +778,10 @@ public class BookingService {
         } else {
             // 관람일이 10일 이상 남았을 때
             if (daysSinceBooking <= 7) {
-                // 💡 규칙 2: 예매 후 7일 이내 (수수료 없음)
+                // 규칙 2: 예매 후 7일 이내 (수수료 없음)
                 fee = 0;
             } else {
-                // 💡 규칙 3: 예매 후 8일 이상 지남 (장당 4,000원, 단 10% 이내)
+                // 규칙 3: 예매 후 8일 이상 지남 (장당 4,000원, 단 10% 이내)
                 int maxFeePerTicket = (int) (ticketPrice * 0.1);
                 int feePerTicket = Math.min(4000, maxFeePerTicket); // 4000원과 10% 중 더 작은 금액 선택
                 fee = feePerTicket * count; // 티켓 장수만큼 곱해줌
@@ -764,7 +792,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 11. 예매 취소 및 좌석 원상복구 로직
+    // 11. 예매 취소 및 좌석 원상복구 로직
     // ==========================================
     @Transactional
     public void cancelTicket(Long payNo) {
@@ -781,9 +809,9 @@ public class BookingService {
         int cancelFee = calculateCancelFee(pay, now);
         long refundAmount = pay.getPayAmount() - cancelFee;
 
-        System.out.println("✅ 취소수수료: " + cancelFee + "원, 실제 환불될 금액: " + refundAmount + "원");
+        System.out.println("취소수수료: " + cancelFee + "원, 실제 환불될 금액: " + refundAmount + "원");
 
-        // 🚨 레몬스퀴지 환불 API 연동이 필요하다면 이 자리에서 호출합니다!
+        // 레몬스퀴지 환불 API 연동이 필요하다면 이 자리에서 호출합니다!
         callLemonSqueezyRefund(pay.getLsOrderId(), refundAmount, pay.getPayAmount());
 
         // 2. 결제 상태 취소로 변경
@@ -799,7 +827,7 @@ public class BookingService {
         if (reservation != null && reservation.getSelectedSeat() != null) {
             reservation.getSelectedSeat().setSeatState((short) 0); // 껍데기 해제
 
-            // 🌟 [수정된 부분] 저장해둔 진짜 ID들을 꺼내서 모조리 1(가능)로 돌려놓습니다!
+            // [수정된 부분] 저장해둔 진짜 ID들을 꺼내서 모조리 1(가능)로 돌려놓습니다!
             String idsStr = reservation.getReservedSeatIds();
             if (idsStr != null && !idsStr.isEmpty()) {
                 String[] seatIds = idsStr.split(",");
@@ -809,13 +837,13 @@ public class BookingService {
                         seatToFree.setSeatStatus((short) 1); // 싹 다 해제!
                     }
                 }
-                System.out.println("✅ 예매된 모든 좌석(" + idsStr + ") 취소 완료 및 상태 복구!");
+                System.out.println("예매된 모든 좌석(" + idsStr + ") 취소 완료 및 상태 복구!");
             }
         }
     }
 
     // ==========================================
-    // 💡 12. 취소 수수료 및 환불 금액 미리보기
+    // 12. 취소 수수료 및 환불 금액 미리보기
     // ==========================================
     public Map<String, Object> getCancelFeeInfo(Long payNo) {
         Pay pay = payRepository.findById(payNo)
@@ -838,11 +866,11 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 13. 레몬스퀴지 환불(Refund) API 통신
+    // 13. 레몬스퀴지 환불(Refund) API 통신
     // ==========================================
     private void callLemonSqueezyRefund(String lsOrderId, long refundAmount, long originalAmount) {
         if (lsOrderId == null || lsOrderId.isBlank()) {
-            System.out.println("🚨 레몬스퀴지 주문 번호가 없어서 환불 API를 호출할 수 없습니다. (더미 데이터일 확률 높음)");
+            System.out.println("레몬스퀴지 주문 번호가 없어서 환불 API를 호출할 수 없습니다. (더미 데이터일 확률 높음)");
             return;
         }
 
@@ -872,22 +900,22 @@ public class BookingService {
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
         try {
-            // 💡 [핵심 수정 2] 환불 요청 주소를 최신 규격으로 변경
+            // [핵심 수정 2] 환불 요청 주소를 최신 규격으로 변경
             // 예: https://api.lemonsqueezy.com/v1/orders/12345/refund
             String apiUrl = "https://api.lemonsqueezy.com/v1/orders/" + lsOrderId + "/refund";
 
             ResponseEntity<Map> response = restTemplate.exchange(apiUrl, HttpMethod.POST, requestEntity, Map.class);
-            System.out.println("✅ 레몬스퀴지 결제 취소(환불) 완벽하게 성공! 환불 요청 금액: " + refundAmount);
+            System.out.println("레몬스퀴지 결제 취소(환불) 완벽하게 성공! 환불 요청 금액: " + refundAmount);
 
         } catch (Exception e) {
-            System.err.println("🚨 레몬스퀴지 환불 API 호출 실패: " + e.getMessage());
+            System.err.println("레몬스퀴지 환불 API 호출 실패: " + e.getMessage());
             // 결제사 통신에 실패하면 우리 DB 취소도 멈추도록 에러를 던집니다.
             throw new IllegalStateException("결제사(레몬스퀴지) 환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
     }
 
     // ==========================================
-    // 💡 [새로 추가] 이중 결제 확인용 헬퍼 메서드
+    // [새로 추가] 이중 결제 확인용 헬퍼 메서드
     // ==========================================
     public boolean isAlreadyPaid(Long reservationKey) {
         // PayRepository에 추가했던 메서드를 사용하여 PAID(결제완료)된 내역이 있는지 검사합니다.
@@ -895,7 +923,7 @@ public class BookingService {
     }
 
     // ==========================================
-    // 💡 14. 결제 이탈 시 좌석 락(Lock) 해제하기
+    // 14. 결제 이탈 시 좌석 락(Lock) 해제하기
     // ==========================================
     @Transactional
     public void releaseUnpaidSeat(Long reservationKey) {
@@ -908,7 +936,10 @@ public class BookingService {
         if (selectedSeat.getSeatState() == 1 || selectedSeat.getSeatState() == 2) {
             selectedSeat.setSeatState((short) 0);
 
-            // 🌟 [수정된 부분] 여기도 똑같이 모든 좌석 해제!
+            // 웹소켓 브로드캐스트를 위해 공연 ID 미리 확보
+            String concertId = (selectedSeat.getConcert() != null) ? selectedSeat.getConcert().getConcertId() : null;
+
+            // [수정된 부분] 여기도 똑같이 모든 좌석 해제!
             String idsStr = reservation.getReservedSeatIds();
             if (idsStr != null && !idsStr.isEmpty()) {
                 String[] seatIds = idsStr.split(",");
@@ -916,15 +947,27 @@ public class BookingService {
                     Seat seatToFree = seatRepository.findById(sId).orElse(null);
                     if (seatToFree != null) {
                         seatToFree.setSeatStatus((short) 1);
+
+                        // [추가] 다른 사용자에게도 실시간으로 좌석이 풀렸음을 알림
+                        if (concertId != null) {
+                            messagingTemplate.convertAndSend(
+                                    "/topic/seat/" + concertId,
+                                    new com.ticketflow.dto.SeatEventMessage("CANCELLED", seatToFree.getSeatId(), null)
+                            );
+                        }
                     }
                 }
             }
-            System.out.println("✅ 결제창 이탈! 좌석(" + idsStr + ") 다시 예매 가능 상태로 풀림.");
+            System.out.println("결제창 이탈! 좌석(" + idsStr + ") 다시 예매 가능 상태로 풀림.");
         }
+        // ⚠️ 참고: 이 메서드는 결제 실패 웹훅(completePayment)에서도 재사용되는데,
+        // 그 경로에서는 Pay 엔티티가 이미 이 Reservation을 FK로 참조하고 있으므로
+        // 여기서 Reservation/SelectedSeat를 삭제하면 안 됩니다(FK 무결성 오류 위험).
+        // 그래서 상태값만 되돌리고 레코드 자체는 남겨둡니다(기존 동작 유지).
     }
 
     // ==========================================
-    // 💡 예매 완료 이메일 발송 메서드
+    // 예매 완료 이메일 발송 메서드
     // ==========================================
     public void sendBookingCompleteEmail(Pay payment) {
         try {
@@ -936,7 +979,7 @@ public class BookingService {
             helper.setTo(payment.getBuyerEmail());
 
             // 2. 이메일 제목
-            helper.setSubject("[TicketFlow] 예매가 성공적으로 완료되었습니다!");
+            helper.setSubject("[TicketFlow] 예매가 성공적으로 완료되었습니다! (예매번호: TF-0000" + payment.getPayNo() + ")");
 
             // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
             String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
@@ -953,42 +996,78 @@ public class BookingService {
                     + "<p><b>공연명:</b> " + showName + "</p>"
                     + "<p><b>좌석:</b> " + seatInfo + "</p>"
                     + "<p><b>결제금액:</b> " + payment.getPayAmount() + "원</p>"
-                    + "<br><p>마이페이지에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
-
+                    + "<br><p><a href='http://localhost:8080/mypage/benefits' style='color: #3b82f6; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
             // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
             helper.setText(htmlContent, true);
 
             // 4. 전송!
             javaMailSender.send(mimeMessage);
-            System.out.println("✅ 예매 완료 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
+            System.out.println("예매 완료 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
 
         } catch (Exception e) {
-            System.err.println("🚨 이메일 발송 실패: " + e.getMessage());
+            System.err.println("이메일 발송 실패: " + e.getMessage());
+        }
+    }
+
+    public void sendBookingCancleEmail(long id) {
+        try {
+            Pay payment = payRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 주문 번호를 찾을 수 없습니다: " + id));
+
+            // 편지 봉투(MimeMessage)를 하나 만듭니다.
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            // 1. 누구에게 보낼 것인가? (결제할 때 입력한 구매자 이메일)
+            helper.setTo(payment.getBuyerEmail());
+
+            // 2. 이메일 제목
+            helper.setSubject("[TicketFlow] 예매 취소 완료 안내 (예매번호: TF-0000" + payment.getPayNo() + ")");
+            // 3. 이메일 내용 (HTML 형식으로 예쁘게 꾸밀 수 있습니다)
+            String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
+            String seatInfo = payment.getReservation().getSelectedSeatsText();
+            if (seatInfo == null || seatInfo.isBlank()) {
+                seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
+            }
+            // HTML 문법을 사용해서 내용을 작성합니다.
+            String htmlContent = "<h3>😢 예매가 정상적으로 취소되었습니다.</h3>"
+                    + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
+                    + "<p><b>예매번호:</b> TF-0000" + payment.getPayNo() + "</p>"
+                    + "<p><b>공연명:</b> " + showName + "</p>"
+                    + "<p><b>취소된 좌석:</b> " + seatInfo + "</p>"
+                    // 💡 취소 메일이므로, 추후에 환불 수수료를 뺀 '최종 환불 금액'을 넘겨주면 더 좋습니다!
+                    + "<p><b>결제 취소 금액:</b> " + payment.getPayAmount() + "원</p>"
+                    + "<br><p>결제하신 수단으로 환불 처리가 진행될 예정입니다.<br>"
+                    + "<a href='http://localhost:8080/mypage/benefits' style='color: #ef4444; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
+            // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
+            helper.setText(htmlContent, true);
+
+            // 4. 전송!
+            javaMailSender.send(mimeMessage);
+            System.out.println("예매 완료 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
+
+        } catch (Exception e) {
+            System.err.println("이메일 발송 실패: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     // ==========================================
-    // 💡 15. 결제창 타이머 동기화를 위한 남은 시간 계산기
+    // 결제창 타이머 동기화를 위한 남은 시간 계산기 (DB 완벽 동기화 버전)
     // ==========================================
     public long getRemainingSeconds(Long reservationKey) {
-        Reservation reservation = reservationRepository.findById(reservationKey)
-                .orElseThrow(() -> new IllegalArgumentException("예약 정보를 찾을 수 없습니다."));
 
-        // 🌟 예약 장부가 DB에 생성된 진짜 시간을 가져옵니다.
-        java.time.LocalDateTime createdAt = reservation.getReservationCreatedAt();
+        // 1. 자바가 시간 계산을 할 필요 없이, DB에 만들어둔 계산기를 바로 호출합니다!
+        Long remainingSeconds = reservationRepository.getRemainingSecondsFromDb(reservationKey);
 
-        // 혹시라도 생성 시간이 기록 안 되어 있다면 안전하게 기본값 30분(1800초)을 줍니다.
-        if (createdAt == null) {
-            return 1800L;
+        // 2. 만약 예약 정보가 없어서 null이 나오면 기본값 0초 처리
+        if (remainingSeconds == null) {
+            return 0L;
         }
 
-        // 만료 시간 = 생성 시간 + 30분
-        java.time.LocalDateTime expiresAt = createdAt.plusMinutes(30);
-
-        // 현재 시간과 만료 시간 사이의 남은 초 계산
-        long remainingSeconds = java.time.Duration.between(java.time.LocalDateTime.now(), expiresAt).getSeconds();
-
-        // 30분이 이미 지났다면 마이너스 대신 0초를 반환합니다.
-        return remainingSeconds > 0 ? remainingSeconds : 0;
+        // 3. 남은 시간이 마이너스(이미 30분 지남)라면 0초로 반환, 아니면 남은 시간 그대로 반환!
+        return remainingSeconds > 0 ? remainingSeconds : 0L;
     }
 }

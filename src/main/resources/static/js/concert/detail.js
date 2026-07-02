@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
+    //⭐
+    loadAiCancelRate(concertId);
     // 3. 통계 데이터 로드 및 폴링
     fetch(`/concert/${concertId}/stats-json`)
         .then(res => {
@@ -156,7 +157,41 @@ function loadSessions(date, concertId) {
             });
         });
 }
+// ⭐ [새로 추가된 부분] AI 예측 취소율을 서버에서 가져와서 화면에 그리는 함수
+function loadAiCancelRate(concertId) {
+    const rateElement = document.getElementById("ai-cancel-rate");
+    // HTML에 취소율 박스가 없다면 이 함수는 실행하지 않고 조용히 넘어갑니다.
+    if (!rateElement) return;
 
+    fetch(`/concert/${concertId}/cancel-rate`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("서버 응답 오류");
+            }
+            return response.text();
+        })
+        .then(rate => {
+            const parsedRate = parseFloat(rate);
+
+            // 취소율 수치에 따라 숫자의 색상을 변경합니다.
+            if (parsedRate >= 30.0) {
+                rateElement.style.color = "#e74c3c"; // 위험 (빨강)
+            } else if (parsedRate >= 15.0) {
+                rateElement.style.color = "#f39c12"; // 주의 (주황)
+            } else {
+                rateElement.style.color = "#2ecc71"; // 안전 (초록)
+            }
+
+            // 가져온 숫자 뒤에 %를 붙여서 화면에 보여줍니다.
+            rateElement.innerText = rate + "%";
+        })
+        .catch(error => {
+            console.warn("취소율 데이터를 불러오는 중 오류 발생:", error);
+            rateElement.innerText = "확인 불가";
+            rateElement.style.fontSize = "1rem";
+            rateElement.style.color = "#999";
+        });
+}
 /**
  * 기타 유틸리티 함수
  */

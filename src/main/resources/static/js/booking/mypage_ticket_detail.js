@@ -1,8 +1,9 @@
+let targetCancelPayNo = null;
 // ==========================================
 // 1. 취소 버튼을 눌렀을 때: 수수료를 먼저 확인하고 의사를 묻는 함수
 // ==========================================
 function checkAndCancel(payNo) {
-    if (!payNo) {
+    if (!payNo || payNo === 'null' || payNo === 'undefined') {
         alert("잘못된 접근입니다. 결제 번호를 찾을 수 없습니다.");
         return;
     }
@@ -33,19 +34,47 @@ function checkAndCancel(payNo) {
                 return;
             }
 
-            const confirmMsg = `정말 예매를 취소하시겠습니까?\n\n` +
-                `📉 예상 취소 수수료: ${data.fee.toLocaleString()}원\n` +
-                `💸 최종 환불 금액: ${data.refundAmount.toLocaleString()}원`;
+            document.getElementById('modal-fee').textContent = data.fee.toLocaleString() + '원';
+            document.getElementById('modal-refund').textContent = data.refundAmount.toLocaleString() + '원';
 
-            if (confirm(confirmMsg)) {
-                executeCancel(payNo);
-            }
+            // 나중에 '네, 취소합니다' 버튼을 눌렀을 때 쓸 수 있도록 번호를 기억해둡니다.
+            targetCancelPayNo = payNo;
+
+            // 짜잔! 모달 창을 화면에 보여줍니다.
+            document.getElementById('cancelConfirmModal').style.display = 'flex';
         })
         .catch(error => {
             console.error("❌ 취소 수수료 조회 중 에러 발생:", error);
             alert(error.message);
         });
 }
+
+// ==========================================
+// 모달 제어용 헬퍼 함수들
+// ==========================================
+
+// 닫기 버튼을 누르면 모달을 숨기고 기억해둔 번호를 지웁니다.
+function closeCancelModal() {
+    document.getElementById('cancelConfirmModal').style.display = 'none';
+    targetCancelPayNo = null;
+}
+
+// 화면이 다 그려지고 나면, '네, 취소합니다' 버튼에 클릭 이벤트를 달아줍니다.
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmBtn = document.getElementById('btn-execute-cancel');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            if (targetCancelPayNo) {
+
+                const payNoToCancel = targetCancelPayNo;
+
+                closeCancelModal();
+
+                executeCancel(payNoToCancel);
+            }
+        });
+    }
+});
 
 // ==========================================
 // 2. 사용자가 최종 동의했을 때: 진짜로 취소를 실행하는 함수
@@ -78,13 +107,22 @@ function executeCancel(payNo) {
         })
         .then(message => {
             // 성공!
-            alert("성공적으로 예매 취소가 완료되었습니다. 좌석이 다시 풀렸습니다.");
+            document.getElementById('cancelSuccessModal').style.display = 'flex';
 
-            // 새로고침을 해서 HTML 화면이 '결제 취소' 상태로 바뀌도록 합니다.
-            window.location.reload();
         })
         .catch(error => {
             console.error("❌ 예매 취소 실행 중 에러 발생:", error);
             alert(error.message);
         });
+}
+
+// ==========================================
+// 성공 모달의 '확인' 버튼을 눌렀을 때 실행되는 함수
+// ==========================================
+function closeSuccessAndReload() {
+    // 1. 모달 창을 다시 숨깁니다.
+    document.getElementById('cancelSuccessModal').style.display = 'none';
+
+    // 2. 유저가 메시지를 다 읽고 [확인]을 눌렀을 때 비로소 화면을 새로고침 합니다!
+    window.location.reload();
 }

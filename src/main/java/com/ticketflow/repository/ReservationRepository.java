@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
@@ -25,4 +26,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                           @Param("sessionTime") String sessionTime,
                           @Param("reservationDate") LocalDate reservationDate,
                           @Param("seatClass") String seatClass);
+
+    @Query(value = "SELECT TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(reservation_created_at, INTERVAL 30 MINUTE)) " +
+            "FROM reservation WHERE reservation_key = :reservationKey", nativeQuery = true)
+    Long getRemainingSecondsFromDb(@Param("reservationKey") Long reservationKey);
+
+    @Query("SELECT r FROM Reservation r " +
+            "WHERE r.reservationCreatedAt <= :thresholdTime " +
+            "AND NOT EXISTS (SELECT p FROM Pay p WHERE p.reservation = r AND p.payStatus = 'PAID') " +
+            "AND r.selectedSeat.seatState IN (1, 2)")
+    List<Reservation> findExpiredAndUnpaidReservations(@Param("thresholdTime") LocalDateTime thresholdTime);
 }

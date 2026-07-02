@@ -30,4 +30,28 @@ public interface PayRepository extends JpaRepository<Pay, Long> {
     List<Pay> findExpiredPendingPayments(@Param("thresholdTime") LocalDateTime thresholdTime);
 
     boolean existsByReservation_ReservationKeyAndPayStatus(Long reservationKey, String payStatus);
+
+    @Query("SELECT p FROM Pay p " +
+            "JOIN FETCH p.reservation r " +
+            "JOIN FETCH r.selectedSeat ss " +
+            "JOIN FETCH ss.concert c " +
+            "JOIN FETCH ss.user u " +
+            "WHERE c.concertId = :concertId " +
+            "AND p.payStatus = 'PAID'")
+    List<Pay> findValidPaysByConcertId(@Param("concertId") String concertId);
+
+    // 특정 유저의 '전체' 결제 시도 건수 (결제 완료 + 취소 모두 포함)
+    @Query("SELECT COUNT(p) FROM Pay p " +
+            "JOIN p.reservation r " +
+            "JOIN r.selectedSeat ss " +
+            "WHERE ss.user.userNo = :userNo")
+    long countTotalPaysByUserNo(@Param("userNo") Long userNo);
+
+    // 특정 유저의 '취소(환불)' 건수만 세기
+    @Query("SELECT COUNT(p) FROM Pay p " +
+            "JOIN p.reservation r " +
+            "JOIN r.selectedSeat ss " +
+            "WHERE ss.user.userNo = :userNo " +
+            "AND p.payStatus = 'CANCELLED'")
+    long countCancelledPaysByUserNo(@Param("userNo") Long userNo);
 }

@@ -1,5 +1,5 @@
 # 1단계: 빌드 환경 (Gradle 8.5 + JDK 21)
-FROM gradle:8.5-jdk21 AS build
+FROM gradle:8.14-jdk21 AS build
 WORKDIR /home/gradle/src
 COPY . .
 # 테스트 제외 빌드
