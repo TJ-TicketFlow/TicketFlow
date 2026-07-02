@@ -260,25 +260,18 @@ public class ConcertService {
         new Thread(() -> {
             boolean elasticReady = false;
             int retries = 0;
-
-            // 1. 엘라스틱서치가 응답할 때까지 최대 10회 대기
             while (!elasticReady && retries < 10) {
                 try {
                     Thread.sleep(10000);
                     org.springframework.http.ResponseEntity<String> ping =
                             restTemplate.getForEntity("http://elasticsearch:9200/", String.class);
-
-                    if (ping.getStatusCode().is2xxSuccessful()) {
-                        elasticReady = true;
-                        System.out.println("★ 엘라스틱서치 연결 성공!");
-                    }
+                    if (ping.getStatusCode().is2xxSuccessful()) elasticReady = true;
                 } catch (Exception e) {
                     retries++;
-                    System.out.println("★ 엘라스틱서치 대기 중... (" + retries + "/10회): 연결 불가");
+                    System.out.println("★ 엘라스틱서치 대기 중... (" + retries + "/10회)");
                 }
             }
 
-            // 2. 서버가 켜진 후 인덱스 체크 및 생성
             if (elasticReady) {
                 try {
                     String indexUrl = "http://elasticsearch:9200/concerts";
@@ -296,12 +289,10 @@ public class ConcertService {
 
     private void createIndex(String url) {
         try {
-            System.out.println("★ 인덱스가 없습니다. 생성합니다.");
             String mappingJson = "{\"mappings\": {\"properties\": {\"concertId\": { \"type\": \"keyword\" },\"concertName\": { \"type\": \"text\" },\"suggest\": { \"type\": \"completion\" }}}}";
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
             restTemplate.put(url, new org.springframework.http.HttpEntity<>(mappingJson, headers));
-
             syncAllConcertsToElasticsearch();
         } catch (Exception e) {
             System.err.println("★ 인덱스 생성 실패: " + e.getMessage());
@@ -313,10 +304,26 @@ public class ConcertService {
             String countUrl = "http://elasticsearch:9200/concerts/_count";
             org.springframework.http.ResponseEntity<Map> countResponse = restTemplate.getForEntity(countUrl, Map.class);
             Integer count = (Integer) countResponse.getBody().get("count");
+
             if (count == null || count == 0) {
                 List<Concert> allConcerts = concertRepository.findAll();
-                for (Concert concert : allConcerts) saveConcert(concert);
-                System.out.println("★ 데이터 동기화 완료! " + allConcerts.size() + "건 입력됨.");
+                if (allConcerts.isEmpty()) return;
+
+                StringBuilder bulkBody = new StringBuilder();
+                for (Concert concert : allConcerts) {
+                    bulkBody.append("{\"index\":{\"_id\":\"").append(concert.getConcertId()).append("\"}}\n");
+                    bulkBody.append("{\"concertId\":\"").append(concert.getConcertId())
+                            .append("\", \"concertName\":\"").append(concert.getConcertName())
+                            .append("\", \"suggest\":{\"input\":[\"").append(concert.getConcertName()).append("\"]}}\n");
+                }
+
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+                restTemplate.postForEntity("http://elasticsearch:9200/concerts/_bulk",
+                        new org.springframework.http.HttpEntity<>(bulkBody.toString(), headers), String.class);
+
+                System.out.println("★ 대량 데이터 동기화 완료! " + allConcerts.size() + "건 입력됨.");
             }
         } catch (Exception e) {
             System.err.println("★ 동기화 실패: " + e.getMessage());
