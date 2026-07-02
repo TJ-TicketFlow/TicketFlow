@@ -995,8 +995,7 @@ public class BookingService {
                     + "<p><b>공연명:</b> " + showName + "</p>"
                     + "<p><b>좌석:</b> " + seatInfo + "</p>"
                     + "<p><b>결제금액:</b> " + payment.getPayAmount() + "원</p>"
-                    + "<br><p>마이페이지에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
-
+                    + "<br><p><a href='http://localhost:8080/mypage/benefits' style='color: #3b82f6; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
             // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
             helper.setText(htmlContent, true);
 
