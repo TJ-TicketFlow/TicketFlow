@@ -6,7 +6,7 @@ const reservationMeta = document.querySelector("meta[name='reservation_key']");
 const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute("content")) : 0;
 
 function sendReleaseRequest() {
-    if (realReservationKey === 0) return; // 예약 번호가 없으면 실행 안 함
+    if (realReservationKey === 0) return Promise.resolve(); // 예약 번호가 없으면 실행 안 함
 
     const csrfMeta = document.querySelector("meta[name='_csrf']");
     const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
@@ -17,7 +17,7 @@ function sendReleaseRequest() {
     if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
 
     // 브라우저가 닫히는 죽는 순간에도 서버에 끝까지 메시지를 보내는 강력한 옵션(keepalive)
-    fetch('/booking/release-seat', {
+    return fetch('/booking/release-seat', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({ reservationKey: realReservationKey }),
@@ -25,21 +25,26 @@ function sendReleaseRequest() {
     }).catch(err => console.error("좌석 해제 요청 실패", err));
 }
 
+// [수정] 서버가 좌석을 실제로 풀어줄 때까지 기다렸다가 뒤로갑니다.
+// 응답이 오기 전에 history.back()이 먼저 실행되면, 좌석선택 페이지가
+// 새로고침되면서 아직 안 풀린(잠긴) 좌석 상태를 그대로 받아와 버리는 문제가 있었습니다.
+// 혹시 응답이 늦어져도 최대 1.5초만 기다리고 강제로 진행합니다(무한 대기 방지).
 function goBackToSeats() {
-    // 1. 유저가 결제를 포기하고 돌아가는 것이므로,
-    // 서버에 "이 좌석 결제 취소됐으니 풀어주세요!" 라고 직접 요청을 보냅니다.
-    sendReleaseRequest();
+    const releasePromise = sendReleaseRequest();
+    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1500));
 
-    // 2. 이미 위에서 취소 요청을 보냈으니,
-    // 창이 닫힐 때(visibilitychange) 중복으로 또 요청이 가는 것을 막기 위해 스위치를 켭니다.
-    preserveSeat = true;
+    Promise.race([releasePromise, timeoutPromise]).finally(() => {
+        // 이미 위에서 취소 요청을 보냈으니,
+        // 창이 닫힐 때(visibilitychange) 중복으로 또 요청이 가는 것을 막기 위해 스위치를 켭니다.
+        preserveSeat = true;
 
-    // 3. 좌석 선택 페이지로 돌아갑니다.
-    history.back();
+        // 좌석 선택 페이지로 돌아갑니다.
+        history.back();
+    });
 }
 
 // ==========================================
-// 💡 1. 카카오 우편번호 검색 팝업 기능
+// 1. 카카오 우편번호 검색 팝업 기능
 // ==========================================
 function openAddressSearch() {
     new daum.Postcode({
@@ -62,7 +67,7 @@ function openAddressSearch() {
 }
 
 // ==========================================
-// 💡 2. 화면이 다 켜진 후 실행될 구역
+// 2. 화면이 다 켜진 후 실행될 구역
 // ==========================================
 document.addEventListener("DOMContentLoaded", function() {
 
@@ -71,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const timerDisplay = document.getElementById('countdownTimer');
 
-    // 🌟 1. 시간을 예쁘게 포장해서 화면에 그리는 작업을 '함수'로 따로 빼냅니다.
+    // 1. 시간을 예쁘게 포장해서 화면에 그리는 작업을 '함수'로 따로 빼냅니다.
     function renderTimer() {
         // 혹시 시간이 마이너스면 0으로 고정
         if (timeLeft <= 0) timeLeft = 0;
@@ -86,10 +91,10 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // 🌟 2. [핵심] setInterval이 1초 멍 때리기 전에, 화면이 켜지자마자 즉시 1번 그려버립니다!
+    // 2. setInterval이 1초 멍 때리기 전에, 화면이 켜지자마자 즉시 1번 그려버립니다!
     renderTimer();
 
-    // 🌟 3. 그 직후부터 1초마다 남은 시간을 줄이며 똑딱거리게 만듭니다.
+    // 3. 그 직후부터 1초마다 남은 시간을 줄이며 똑딱거리게 만듭니다.
     const timerInterval = setInterval(function() {
         timeLeft--; // 1초를 먼저 빼고
 
@@ -137,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ==========================================
-    // 💡 기능 함수들 (쿠폰 불러오기, 계산기, 숨김마법사)
+    // 기능 함수들 (쿠폰 불러오기, 계산기, 숨김마법사)
     // ==========================================
 
     // 쿠폰 목록 가져오기
@@ -149,14 +154,14 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(coupons => {
                 couponContainer.innerHTML = ''; // "불러오는 중..." 지우기
 
-                // 💡 [핵심] 만약 서버에서 가져온 쿠폰이 하나도 없다면?
+                // 만약 서버에서 가져온 쿠폰이 하나도 없다면?
                 if (!coupons || coupons.length === 0) {
                     couponContainer.innerHTML = '<span style="font-size:13px; color:#666; margin-left: 5px;">보유하신 쿠폰이 없습니다.</span>';
                     calculateFinalPrice(); // 쿠폰 0원 기준으로 가격 계산 한 번 돌려주기
                     return; // 여기서 함수를 끝냅니다!
                 }
 
-                // 💡 쿠폰이 존재할 경우에만 아래 로직이 실행됩니다.
+                // 쿠폰이 존재할 경우에만 아래 로직이 실행됩니다.
                 let htmlString = `
                     <div class="radio-box">
                         <label><input type="radio" name="couponRate" value="0" checked> 쿠폰 적용 안 함</label>
@@ -238,7 +243,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
     // ==========================================
-    // 💡 감시자(Event Listener) 설정 및 최초 실행
+    // 감시자(Event Listener) 설정 및 최초 실행
     // ==========================================
     deliveryRadios.forEach(radio => {
         radio.addEventListener('change', calculateFinalPrice);
@@ -250,7 +255,7 @@ document.addEventListener("DOMContentLoaded", function() {
     loadCoupons();
 
     // ==========================================
-    // 💡 1. 네이버 캡차 불러오기 함수 (새로 추가)
+    // 1. 네이버 캡차 불러오기 함수 (새로 추가)
     // ==========================================
     function loadCaptcha() {
         fetch('/booking/captcha-key')
@@ -296,7 +301,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ==========================================
-    // 💡 결제하기 버튼 클릭 이벤트
+    // 결제하기 버튼 클릭 이벤트
     // ==========================================
     const payButton = document.getElementById('createPayment');
 
@@ -334,7 +339,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
             const checkedDelivery = document.querySelector('input[name="deliveryType"]:checked');
 
-            // 💡 [핵심] 여기에 정리 로직 추가!
+            // 여기에 정리 로직 추가!
             let finalReceiverName = receiverName;
             let finalReceiverPhone = receiverPhone;
             let finalZipCode = zipCode;
@@ -392,7 +397,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 body: JSON.stringify(requestData)
             })
                 .then(async response => {
-                    // 🌟 [핵심 수정] 서버가 400(캡차 틀림) 에러를 보내면 글자를 끄집어냅니다!
+                    // [핵심 수정] 서버가 400(캡차 틀림) 에러를 보내면 글자를 끄집어냅니다!
                     if (!response.ok) {
                         const errorText = await response.text();
                         throw new Error(errorText || '서버 통신 실패');
@@ -404,7 +409,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     window.location.href = checkoutUrl;
                 })
                 .catch(error => {
-                    console.error('❌ 결제 준비 중 오류 발생:', error);
+                    console.error('결제 준비 중 오류 발생:', error);
 
                     // 로딩 끄고 버튼 원래대로 복구
                     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -412,10 +417,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     payButton.disabled = false;
                     payButton.textContent = '결제하기';
 
-                    // 🌟 백엔드에서 받아온 에러 메시지를 화면에 그대로 띄워줍니다! (예: "자동주문 방지 글자가 틀렸습니다.")
+                    // 백엔드에서 받아온 에러 메시지를 화면에 그대로 띄워줍니다! (예: "자동주문 방지 글자가 틀렸습니다.")
                     alert(error.message);
 
-                    // 🌟 캡차가 틀렸다는 내용이면, 유저가 바로 다시 칠 수 있게 이미지를 새로고침해 줍니다!
+                    // 캡차가 틀렸다는 내용이면, 유저가 바로 다시 칠 수 있게 이미지를 새로고침해 줍니다!
                     if (error.message.includes('캡차') || error.message.includes('자동주문') || error.message.includes('틀렸습니다')) {
                         document.getElementById('captchaInput').value = ''; // 입력창 비워주기
                         loadCaptcha(); // 이미지 새로 갱신
@@ -425,7 +430,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ==========================================
-    // 💡 [새로 추가된 구역] 창 닫기 감지 및 좀비 좌석 해제
+    // [새로 추가된 구역] 창 닫기 감지 및 좀비 좌석 해제
     // ==========================================
 
     // 1. 사용자가 탭을 닫거나, 뒤로가기를 누르거나, 새로고침을 할 때 발동

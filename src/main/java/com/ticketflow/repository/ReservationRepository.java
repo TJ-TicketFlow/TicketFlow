@@ -1,7 +1,9 @@
 package com.ticketflow.repository;
 
 import com.ticketflow.entity.Reservation;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,6 +33,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "FROM reservation WHERE reservation_key = :reservationKey", nativeQuery = true)
     Long getRemainingSecondsFromDb(@Param("reservationKey") Long reservationKey);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Reservation r " +
             "WHERE r.reservationCreatedAt <= :thresholdTime " +
             "AND NOT EXISTS (SELECT p FROM Pay p WHERE p.reservation = r AND p.payStatus = 'PAID') " +

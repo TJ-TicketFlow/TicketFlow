@@ -64,6 +64,10 @@ public class Concert {
 
     @Column(name = "concert_seat_scale")
     private Integer concertSeatScale;
+    // 추가할 Getter
+    public Integer getTotalSeats() {
+        return this.concertSeatScale;
+    }
 
     @Column(name = "concert_booking_count", nullable = false)
     @Builder.Default

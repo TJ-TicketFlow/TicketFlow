@@ -51,4 +51,8 @@ public class Reservation {
     // 🌟 [추가] 취소할 때 백엔드가 읽어들일 진짜 DB 아이디 리스트!
     @Column(name = "reserved_seat_ids", length = 500)
     private String reservedSeatIds;
+
+    public Concert getConcert() {
+        return this.selectedSeat.getConcert();
+    }
 }

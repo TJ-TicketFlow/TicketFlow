@@ -218,6 +218,26 @@ public class SeatService {
     public Long processBookingAndGetReservationKey(Map<String, Object> bookingData, Long userNo) {
         String concertId = bookingData.get("concertId").toString();
         String ticketType = bookingData.get("ticketType").toString();
+        String dateStr = bookingData.get("date").toString();
+        String sessionIdStr = bookingData.get("sessionId").toString();
+
+        String schedulePrefix = concertId + "_" + dateStr + "_" + sessionIdStr;
+
+        Object dateObj = bookingData.get("date");
+        java.time.LocalDate concertDate = java.time.LocalDate.now(); // 기본값: 오늘
+
+        if (dateObj != null && !dateObj.toString().isBlank()) {
+            try {
+                // "2026-07-15" 글자를 진짜 날짜로 변환!
+                concertDate = java.time.LocalDate.parse(dateObj.toString());
+            } catch (Exception e) {
+                System.err.println("날짜 번역 실패: " + e.getMessage());
+            }
+        }
+        Object timeObj = bookingData.get("sessionId");
+        String sessionTime = (timeObj != null && !timeObj.toString().isBlank())
+                ? timeObj.toString()
+                : "시간 미정";
 
         // 프론트엔드로부터 전송받은 총 금액 안전 변환
         Long totalPrice = Double.valueOf(bookingData.get("totalPrice").toString()).longValue();
@@ -238,8 +258,8 @@ public class SeatService {
             totalTicketCount = seatIds.size();
 
             for (String frontendSeatId : seatIds) {
-                // 프론트 임시 ID인 "SEAT_R1_C1" 단어를 DB 실제 매핑 PK 양식인 "공연ID_R1_C1"로 변환
-                String dbSeatId = frontendSeatId.replace("SEAT", concertId);
+                // 프론트의 "SEAT_R1_C1"을 "공연ID_날짜_회차_R1_C1"로 바꿉니다!
+                String dbSeatId = frontendSeatId.replace("SEAT", schedulePrefix);
 
                 Seat seat = seatRepository.findById(dbSeatId)
                         .orElseThrow(() -> new RuntimeException("유효하지 않은 좌석 번호입니다: " + dbSeatId));
@@ -275,14 +295,17 @@ public class SeatService {
         // 8-B. 스탠딩(STANDING) 수량 지정 선택 형태의 예매 가선점 처리 로직
         else if ("STANDING".equals(ticketType)) {
             Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
+            String timeStamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyMMddHHmmssSSS"));
+            int absoluteTicketIndex = 0;
+
             for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
                 String grade = entry.getKey();
                 int qty = entry.getValue();
                 totalTicketCount += qty;
 
                 for (int i = 0; i < qty; i++) {
-                    String shortGrade = grade.length() > 3 ? grade.substring(0, 3) : grade;
-                    String tempSeatId = concertId + "_S_" + shortGrade + "_" + i;
+                    String safeGradeName = grade.replaceAll("[^a-zA-Z0-9가-힣]", "");
+                    String tempSeatId = schedulePrefix + "_S_" + safeGradeName + "_" + timeStamp + "_" + absoluteTicketIndex;
 
                     Seat seat = new Seat();
                     seat.setSeatId(tempSeatId);
@@ -296,6 +319,8 @@ public class SeatService {
                     realSeatIds.add(seat.getSeatId());
 
                     if (representativeSeat == null) representativeSeat = seat;
+
+                    absoluteTicketIndex++;
                 }
             }
         }
@@ -332,8 +357,8 @@ public class SeatService {
         Reservation reservation = Reservation.builder()
                 .selectedSeat(savedSelectedSeat)
                 .reservationCount(totalTicketCount)
-                .reservationDate(concert.getConcertStartDate() != null ? concert.getConcertStartDate() : java.time.LocalDate.now())
-                .sessionTime(concert.getConcertTime() != null ? concert.getConcertTime() : "시간 미정")
+                .reservationDate(concertDate)
+                .sessionTime(sessionTime)
                 .selectedSeatsText(seatsDisplayHtml)
                 .reservedSeatIds(String.join(",", realSeatIds))
                 .build();
@@ -385,6 +410,58 @@ public class SeatService {
         }
 
         return null;
+    }
+
+    /**
+     * 추가할 로직: 날짜/회차별 좌석 조회
+     * 실제 서비스에서는 DB에 date/sessionId 컬럼이 있어야 필터링이 가능합니다.
+     */
+    public List<Seat> getSeatsBySchedule(String concertId, String date, String sessionId) {
+
+        // 💡 [핵심] 여기서도 똑같이 '스케줄 고유 열쇠'를 조립합니다.
+        String schedulePrefix = concertId + "_" + date + "_" + sessionId;
+
+        // 1-1. 해당 공연의 좌석 중, 이름표가 이 스케줄 열쇠로 시작하는 녀석들만 골라냅니다.
+        List<Seat> seats = seatRepository.findByConcert_ConcertId(concertId)
+                .stream()
+                .filter(s -> s.getSeatId().startsWith(schedulePrefix))
+                .toList();
+
+        // 1-2. 만약 조회된 좌석 개수가 0개라면? 이 날짜/회차에는 아직 의자를 안 깔았다는 뜻입니다! 즉석에서 생성합니다.
+        if (seats.isEmpty()) {
+            if ("STANDING".equals(getSeatLayoutType(concertId))) {
+                return List.of();   // 좌석 생성 안 함
+            }
+            System.out.println("[SeatService] " + schedulePrefix + " 일정의 좌석이 없어 동적 생성을 시작합니다.");
+
+            Concert concert = concertRepository.findById(concertId)
+                    .orElseThrow(() -> new RuntimeException("존재하지 않는 공연입니다: " + concertId));
+
+            for (int row = 1; row <= 13; row++) {
+                for (int col = 1; col <= 18; col++) {
+                    Seat seat = new Seat();
+
+                    // 💡 [핵심] PK인 seatId에 '스케줄 열쇠'를 붙여서 저장합니다! (예: PF123_2026-07-15_1_R1_C1)
+                    seat.setSeatId(schedulePrefix + "_R" + row + "_C" + col);
+                    seat.setConcert(concert);
+                    seat.setSeatClass("STANDARD");
+                    seat.setSeatStatus((short) 1);
+                    seat.setSeatRow(String.valueOf(row));
+                    seat.setSeatCol(String.valueOf(col));
+
+                    seatRepository.save(seat);
+                }
+            }
+
+            // 인서트가 끝났으니 다시 조회해서 리스트를 채웁니다.
+            seats = seatRepository.findByConcert_ConcertId(concertId)
+                    .stream()
+                    .filter(s -> s.getSeatId().startsWith(schedulePrefix))
+                    .toList();
+            System.out.println("[SeatService] " + schedulePrefix + " 일정의 좌석 실시간 동적 생성 완료.");
+        }
+
+        return seats;
     }
 
 }

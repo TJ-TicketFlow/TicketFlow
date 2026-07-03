@@ -95,10 +95,21 @@
                     </div>
                     <form id="bookingForm" th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
+
                         <input type="hidden" name="sessionId" id="selectedSessionId">
                         <input type="hidden" name="date" id="selectedDate">
+
                         <button type="submit" class="btn-primary" id="submitBtn">예매하기</button>
                     </form>
+                    <div id="ai-cancel-box" style="margin-top: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 10px; background: #f8f9fa; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <p style="margin: 0; font-size: 0.95rem; color: #333;"><strong>🤖 AI 예상 예매 취소율</strong></p>
+                        <p style="margin: 8px 0 0 0; font-size: 1.8rem; font-weight: bold;">
+                            <span id="ai-cancel-rate">계산 중... 🔄</span>
+                        </p>
+                        <p style="margin: 8px 0 0 0; font-size: 0.75rem; color: #888;">
+                            * 실시간 예매 데이터를 바탕으로 분석한 결과입니다.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -124,6 +135,17 @@
 
 <div id="data-store" th:data-concert-id="${concert.concertId}" th:data-start-date="${concert.concertStartDate}" th:data-end-date="${concert.concertEndDate}" style="display:none;"></div>
 <div th:replace="~{fragments/footer :: footer}"></div>
+<script th:if="${stats != null}" th:inline="javascript">
+    const statsData = {
+        male: [[${stats.genderData[0]}]],
+        female: [[${stats.genderData[1]}]],
+        age10: [[${stats.ageData[0]}]],
+        age20: [[${stats.ageData[1]}]],
+        age30: [[${stats.ageData[2]}]],
+        age40: [[${stats.ageData[3]}]],
+        age50: [[${stats.ageData[4]}]]
+    };
+</script>
 <script th:src="@{/js/concert/detail.js}"></script>
 
 <div id="couponPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#ffffff; padding:30px; border-radius:24px; z-index:1001; width:360px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); border: 1px solid #eee;">

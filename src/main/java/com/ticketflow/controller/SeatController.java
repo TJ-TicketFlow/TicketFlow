@@ -37,17 +37,19 @@ public class SeatController {
     private final SeatRepository seatRepository;
     private final SelectedSeatRepository selectedSeatRepository;
     private final SimpMessagingTemplate messagingTemplate;
+
     /**
      * 1. 좌석 선택 메인 페이지 반환 (Thymeleaf 뷰)
      * GET /seat/{concertId}
      */
     @GetMapping("/{concertId}")
     public String showSeatMap(@PathVariable String concertId,
+                              @RequestParam(required = false) String date,      // 상세 페이지에서 전달받은 날짜
+                              @RequestParam(required = false) String sessionId, // 상세 페이지에서 전달받은 회차
                               HttpServletRequest request,
                               Model model,
                               Principal principal) {
 
-        // Spring Security CSRF 토큰 세팅 (자바스크립트 fetch 통신용)
         org.springframework.security.web.csrf.CsrfToken csrfToken =
                 (org.springframework.security.web.csrf.CsrfToken) request.getAttribute(org.springframework.security.web.csrf.CsrfToken.class.getName());
 
@@ -56,8 +58,9 @@ public class SeatController {
         }
 
         model.addAttribute("concertId", concertId);
+        model.addAttribute("date", date);           // 모델에 추가하여 HTML에서 사용 가능하도록 함
+        model.addAttribute("sessionId", sessionId); // 모델에 추가하여 HTML에서 사용 가능하도록 함
 
-        // 실시간 좌석 선점(WebSocket 연동)에 필요한 현재 로그인 사용자의 userNo를 화면에 내려줌
         Long userNo = null;
         if (principal != null) {
             userNo = userRepository.findByUserId(principal.getName())
@@ -66,20 +69,16 @@ public class SeatController {
         }
         model.addAttribute("userNo", userNo);
 
-        // 🎯 결제 페이지 호출 규격 통일 템플릿 경로 반환
         return "concert/seatmap";
     }
 
     /**
-     * 2. 공연 기본 정보 및 레이아웃 타입 조회 API (Ajax 요청용)
-     * GET /seat/api/concert/{concertId}
+     * 2. 공연 기본 정보 및 레이아웃 타입 조회 API
      */
     @ResponseBody
     @GetMapping("/api/concert/{concertId}")
     public ResponseEntity<?> getConcertInfo(@PathVariable String concertId) {
         try {
-            System.out.println("====== [백엔드] 공연 상세 정보 및 레이아웃 조회 요청: " + concertId);
-
             Concert concert = concertService.findById(concertId);
             String layoutType = seatService.getSeatLayoutType(concertId);
 
@@ -97,7 +96,6 @@ public class SeatController {
             responseData.put("concertPriceInfo", concert.getConcertPriceInfo());
 
             return ResponseEntity.ok(responseData);
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", e.getMessage()));
@@ -105,20 +103,22 @@ public class SeatController {
     }
 
     /**
-     * 3. 특정 공연의 전체 좌석 배치 목록 조회 API
-     * GET /seat/api/seats/{concertId} 또는 GET /seat/api/{concertId} (호환성 유지)
+     * 3. 특정 공연의 회차별 좌석 배치 목록 조회 API (수정됨)
      */
     @ResponseBody
     @GetMapping({"/api/seats/{concertId}", "/api/{concertId}"})
-    public ResponseEntity<List<Seat>> getSeatList(@PathVariable String concertId) {
-        System.out.println("====== 💺 [백엔드] 좌석 리스트 조회 요청 (공연 ID): " + concertId);
-        List<Seat> seats = seatService.getSeats(concertId);
+    public ResponseEntity<List<Seat>> getSeatList(@PathVariable String concertId,
+                                                  @RequestParam(required = false) String date,
+                                                  @RequestParam(required = false) String sessionId) {
+        System.out.println("====== 💺 [백엔드] 좌석 조회 요청: " + concertId + ", 날짜: " + date + ", 회차: " + sessionId);
+
+        // 서비스에서 날짜와 회차 조건으로 좌석을 필터링하여 가져오도록 구현해야 합니다.
+        List<Seat> seats = seatService.getSeatsBySchedule(concertId, date, sessionId);
         return ResponseEntity.ok(seats);
     }
 
     /**
      * 4. 공연별 좌석 배치 레이아웃 구조 코드 단독 조회
-     * GET /seat/layout/{concertId}
      */
     @ResponseBody
     @GetMapping("/layout/{concertId}")
@@ -127,8 +127,7 @@ public class SeatController {
     }
 
     /**
-     * 5. 실시간 웹소켓 기반 좌석 선택 (선점 처리)
-     * POST /seat/select
+     * 5. 실시간 웹소켓 기반 좌석 선택
      */
     @ResponseBody
     @PostMapping("/select")
@@ -141,8 +140,7 @@ public class SeatController {
     }
 
     /**
-     * 6. 실시간 웹소켓 기반 좌석 취소 (선점 해제)
-     * POST /seat/cancel
+     * 6. 실시간 웹소켓 기반 좌석 취소
      */
     @ResponseBody
     @PostMapping("/cancel")
@@ -154,8 +152,7 @@ public class SeatController {
     }
 
     /**
-     * 7. 좌석 상태값 직접 변경 제어 (어드민 / 시스템용)
-     * PUT /seat/status
+     * 7. 좌석 상태값 직접 변경 제어
      */
     @ResponseBody
     @PutMapping("/status")
@@ -169,7 +166,6 @@ public class SeatController {
 
     /**
      * 8. 특정 공연 등급별 단일 좌석 가격 조회
-     * GET /seat/price/{concertId}/{seatClass}
      */
     @ResponseBody
     @GetMapping("/price/{concertId}/{seatClass}")
@@ -179,18 +175,11 @@ public class SeatController {
     }
 
     /**
-     * 9. 🌟 프론트엔드 좌석 결제 준비 단계 (예매 임시 장부 등록 처리)
-     * POST /seat/api/booking/prepare
+     * 9. 프론트엔드 좌석 결제 준비 단계
      */
     @PostMapping("/api/booking/prepare")
-    public ResponseEntity<?> prepareBooking(
-            @RequestBody Map<String, Object> bookingData,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        System.out.println("====== ✈️ [백엔드] 프론트엔드 예매 데이터 수신 ======");
-        System.out.println("데이터 확인: " + bookingData);
-
-        // 1. 보안 검증 및 로그인 여부 확인
+    public ResponseEntity<?> prepareBooking(@RequestBody Map<String, Object> bookingData,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             Map<String, Object> response = new HashMap<>();
             response.put("status", "FAIL");
@@ -202,19 +191,12 @@ public class SeatController {
         Long userNo = user.getUserNo();
 
         try {
-            // 2. 비즈니스 서비스 로직 작동 (DB 저장 및 고유 고유 가선점 ID 영수증 발급)
             Long realReservationKey = seatService.processBookingAndGetReservationKey(bookingData, userNo);
-
-            // 3. 앞단 자바스크립트와 변수 연동 규격 동기화 (bookingId 명칭으로 매핑)
             Map<String, Object> response = new HashMap<>();
             response.put("status", "SUCCESS");
-            response.put("bookingId", realReservationKey); // 🌟 주소창에 들어가는 bookingId 명칭과 일치하도록 세팅
-
-            System.out.println("✅ 예매 임시 장부 저장 완료! 예약 번호: " + realReservationKey);
+            response.put("bookingId", realReservationKey);
             return ResponseEntity.ok(response);
-
         } catch (Exception e) {
-            System.err.println("🚨 예매 장부 생성 실패: " + e.getMessage());
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "FAIL");
             errorResponse.put("message", e.getMessage());
@@ -224,41 +206,39 @@ public class SeatController {
 
     @PostMapping("/api/booking/cancel-ajax")
     @ResponseBody
-    public ResponseEntity<Void> cancelBookingAjax(
-            @RequestParam(value = "reservationKey", required = false) Long reservationKey) {
-
-        // 1. 가선점 키가 누락되었거나 비정상적인 경우 무조건 예외 터뜨리지 말고 안전하게 차단
-        if (reservationKey == null) {
-            System.out.println("⚠️ [백엔드] 비콘 요청에 reservationKey 파라미터가 누락되었거나 유실되었습니다.");
-            return ResponseEntity.badRequest().build();
-        }
-
-        System.out.println("↩️ [백엔드] 임시 선점 좌석 해제 프로세스 시작. 예약 키: " + reservationKey);
+    public ResponseEntity<Void> cancelBookingAjax(@RequestParam(value = "reservationKey", required = false) Long reservationKey) {
+        if (reservationKey == null) return ResponseEntity.badRequest().build();
 
         try {
             Map<String, Object> cancelInfo = seatService.releaseTemporarySeatsWithInfo(reservationKey);
-
             if (cancelInfo != null && !cancelInfo.isEmpty()) {
                 String concertId = (String) cancelInfo.get("concertId");
                 String[] seatIds = (String[]) cancelInfo.get("seatIds");
-
-                if (concertId != null && !concertId.isEmpty() && seatIds != null) {
+                if (concertId != null && seatIds != null) {
                     for (String seatId : seatIds) {
                         Map<String, Object> cancelMessage = new HashMap<>();
                         cancelMessage.put("concertId", concertId);
                         cancelMessage.put("seatId", seatId.trim());
                         cancelMessage.put("type", "CANCELLED");
-
                         messagingTemplate.convertAndSend("/topic/seat/" + concertId, (Object) cancelMessage);
                     }
-                    System.out.println("🚀 [웹소켓] 이탈 유저의 좌석 실시간 취소 알림 공지 완료.");
                 }
             }
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            System.err.println("🚨 [백엔드 에러 발생]: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
+    }
+    /**
+     * 추가: /seat-selection 경로를 위한 매핑
+     */
+    @GetMapping("/seat-selection")
+    public String legacySeatSelectionPage(@RequestParam String concertId,
+                                          @RequestParam String date,
+                                          @RequestParam String sessionId,
+                                          Model model) {
+        // 기존 showSeatMap 로직을 여기에 동일하게 구현하거나
+        // 혹은 아래와 같이 리다이렉트를 태울 수 있습니다.
+        return "redirect:/seat/" + concertId + "?date=" + date + "&sessionId=" + sessionId;
     }
 }

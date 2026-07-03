@@ -2,15 +2,21 @@ package com.ticketflow.controller;
 
 import com.ticketflow.dto.ConcertResponseDto;
 import com.ticketflow.entity.Concert;
+import com.ticketflow.entity.Pay;
 import com.ticketflow.entity.User;
 import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.repository.ConcertRepository;
+import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
+import com.ticketflow.service.StatsService;
 import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +36,9 @@ public class ConcertController {
     private final MembershipService membershipService;
     private final UserService userService;
     private final ConcertRepository concertRepository;
+    private final com.ticketflow.service.CancelPredictionService cancelPredictionService;
+    private final com.ticketflow.repository.PayRepository payRepository;
+    private final StatsService statsService;
 
     private boolean checkLogin(HttpSession session) {
         return Boolean.TRUE.equals(session.getAttribute("logged_in"));
@@ -81,6 +90,13 @@ public class ConcertController {
 
     @GetMapping("/{id}/detail-page")
     public String concertDetailPage(@PathVariable String id, Model model, Principal principal) {
+        // 🌟 [핵심] 상세 페이지 진입 시점에 최신 통계 강제 갱신
+        try {
+            statsService.updateStats(id);
+        } catch (Exception e) {
+            System.err.println("상세 페이지 진입 시 통계 갱신 오류: " + e.getMessage());
+        }
+
         Concert concert = concertService.findById(id);
         model.addAttribute("concert", concert);
         model.addAttribute("stats", concertService.getStatsData(id));
@@ -109,7 +125,7 @@ public class ConcertController {
             model.addAttribute("priceList", Arrays.stream(prices).map(String::trim).collect(Collectors.toList()));
         }
 
-        // [기존 코드에서 수정할 부분]
+        // [수정된 부분] 로그인 상태에 따른 혜택 정보 처리
         if (principal != null) {
             model.addAttribute("isLoggedIn", true);
 
@@ -119,10 +135,8 @@ public class ConcertController {
             // 2. 혜택 계산 (기본 할인율 + 쿠폰 개수)
             double baseDiscount = membershipService.getDiscountRate(user);
 
-            // [수정 포인트] 여기서 user.getUserCoupons() 전체를 가져오지 말고,
-            // 서비스에서 상태 0인 것만 가져오도록 필터링합니다.
             List<UserCoupon> availableCoupons = user.getUserCoupons().stream()
-                    .filter(uc -> uc.getUserCouponStatus() == 0) // 여기서 상태 0만 필터링!
+                    .filter(uc -> uc.getUserCouponStatus() == 0)
                     .collect(Collectors.toList());
 
             // 3. 모델에 혜택 관련 정보 추가
@@ -221,6 +235,7 @@ public class ConcertController {
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("concertList", concertList);
         model.addAttribute("keyword", keyword);
+
         return "concert/search_results";
     }
 
@@ -301,4 +316,24 @@ public class ConcertController {
         return "성공! 총 " + allConcerts.size() + "개의 데이터를 엘라스틱서치에 넣었습니다.";
     }
 
+    @Cacheable(value = "cancelRateCache", key = "#id")
+    @GetMapping("/{id}/cancel-rate")
+    @ResponseBody
+    public ResponseEntity<Double> getConcertCancelRate(@PathVariable String id) {
+        try {
+            // 1. 해당 콘서트의 결제 완료 내역 가져오기
+            List<Pay> concertPays = payRepository.findValidPaysByConcertId(id);
+
+            // 2. 머신러닝 예측 돌리기
+            double cancelRate = cancelPredictionService.calculatePerformanceCancelRate(concertPays);
+
+            // 3. 소수점 둘째 자리까지만 예쁘게 자르기
+            double roundedRate = Math.round(cancelRate * 100.0) / 100.0;
+
+            return ResponseEntity.ok(roundedRate);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

@@ -172,3 +172,26 @@
     border: none;
     display: block;
 }
+
+.payment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.payment-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.payment-notice {
+    background: #F3F4F6;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-top: 12px;
+    text-align: center;
+    color: #6B7280;
+    font-size: 13px;
+}
