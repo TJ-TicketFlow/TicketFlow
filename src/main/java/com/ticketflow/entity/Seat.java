@@ -16,7 +16,7 @@ import java.util.List;
 public class Seat {
 
     @Id
-    @Column(name = "seat_id", length = 20)
+    @Column(name = "seat_id", length = 100)
     private String seatId;
 
     @JsonIgnore

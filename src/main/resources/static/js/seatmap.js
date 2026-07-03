@@ -270,16 +270,6 @@ function calculateAndDisplayTotalPrice(elements) {
     if (display) display.innerText = total.toLocaleString() + "원";
 }
 
-function showQuantitySelectionForm() {
-    seatContainer.innerHTML = `<h2>티켓 수량 선택</h2><div id="qty-rows"></div><div id="standing-total-price">총액: 0원</div><button id="submit-btn">예매하기</button>`;
-    Object.keys(window.concertPriceMap).forEach(grade => {
-        const row = document.createElement("div");
-        row.innerHTML = `<span>${grade}</span><select class="ticket-qty-select" data-grade="${grade}" data-price="${window.concertPriceMap[grade]}"><option value="0">0장</option><option value="1">1장</option><option value="2">2장</option><option value="3">3장</option><option value="4">4장</option></select>`;
-        seatContainer.querySelector("#qty-rows").appendChild(row);
-    });
-    seatContainer.querySelector("#submit-btn").onclick = submitBooking;
-}
-
 function submitBooking() {
     if (isConcertClosed) return;
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
@@ -310,4 +300,127 @@ function submitBooking() {
             const finalKey = data.reservationKey || data.bookingId;
             if (finalKey) window.location.href = `/booking/payment?reservationKey=${finalKey}`;
         });
+}
+
+// ===================================================
+// 🎫 4. 티켓 장수 선택형 UI 렌더링 영역 (스탠딩 전용 - 예쁜 파란/하양 CSS 복원!)
+// ===================================================
+function showQuantitySelectionForm() {
+    // 1. 지정석 전용 우측 사이드바 숨기기 및 레이아웃 정렬
+    const rightSidebar = document.querySelector(".right-sidebar");
+    if (rightSidebar) rightSidebar.style.display = "none";
+
+    const seatPage = document.querySelector(".seat-page");
+    if (seatPage) { seatPage.style.width = "100%"; seatPage.style.flex = "1"; }
+
+    seatContainer.innerHTML = "";
+
+    // 2. 🌟 잃어버렸던 예쁜 하얀색 둥근 박스 껍데기 복원!
+    const formWrapper = document.createElement("div");
+    formWrapper.style.padding = "40px 30px";
+    formWrapper.style.background = "#ffffff";
+    formWrapper.style.borderRadius = "12px";
+    formWrapper.style.width = "100%";
+    formWrapper.style.maxWidth = "650px";
+    formWrapper.style.margin = "40px auto";
+    formWrapper.style.boxShadow = "0 10px 25px -5px rgba(0, 0, 0, 0.1)";
+    formWrapper.style.boxSizing = "border-box";
+
+    formWrapper.innerHTML = `
+        <h2 style="margin-bottom: 8px; text-align: center; color: #1e293b; font-size: 24px; font-weight: bold;">티켓 수량 선택</h2>
+        <p style="margin-bottom: 35px; text-align: center; color: #64748b; font-size: 14px;">원하시는 티켓의 등급과 수량을 선택해 주세요. (인당 최대 4장)</p>
+        <div id="qty-rows"></div>
+    `;
+
+    const qtyRowsContainer = formWrapper.querySelector("#qty-rows");
+    const grades = Object.keys(window.concertPriceMap);
+
+    // 3. 등급별 수량 선택 박스 예쁘게 채워넣기
+    if (grades.length > 0) {
+        grades.forEach(gradeName => {
+            const price = window.concertPriceMap[gradeName];
+            createQuantityRow(qtyRowsContainer, gradeName, price, gradeName);
+        });
+    } else if (window.isSinglePrice && window.defaultSinglePrice > 0) {
+        createQuantityRow(qtyRowsContainer, "전석 일반석", window.defaultSinglePrice, "GENERAL");
+    } else {
+        qtyRowsContainer.innerHTML = `<p style="text-align:center; color:#ef4444; font-weight:bold; margin-top:20px;">공연 가격 정보를 읽어오지 못했습니다.</p>`;
+    }
+
+    // 4. 🌟 파란색 총 결제 금액 박스 복원!
+    const totalBox = document.createElement("div");
+    totalBox.style.marginTop = "30px"; totalBox.style.paddingTop = "20px"; totalBox.style.borderTop = "2px dashed #e2e8f0";
+    totalBox.style.display = "flex"; totalBox.style.justifyContent = "space-between"; totalBox.style.alignItems = "center";
+    totalBox.innerHTML = `
+        <span style="font-weight: bold; color: #475569; font-size: 16px;">총 결제 금액</span>
+        <span id="standing-total-price" style="font-weight: bold; color: #3b82f6; font-size: 26px;">0원</span>
+    `;
+    formWrapper.appendChild(totalBox);
+
+    // 5. 🌟 꽉 차는 파란색 예매하기 버튼 복원!
+    const submitBtn = document.createElement("button");
+    submitBtn.innerText = "예매하기";
+    submitBtn.id = "submit-btn";
+    submitBtn.style.width = "100%"; submitBtn.style.marginTop = "24px"; submitBtn.style.padding = "15px";
+    submitBtn.style.background = "#3b82f6"; submitBtn.style.color = "#fff"; submitBtn.style.border = "none";
+    submitBtn.style.borderRadius = "6px"; submitBtn.style.fontSize = "16px"; submitBtn.style.fontWeight = "bold";
+    submitBtn.style.cursor = "pointer";
+
+    // 클릭 시, 이미 완벽하게 고쳐둔 submitBooking 함수 실행!
+    submitBtn.addEventListener("click", () => { submitBooking(); });
+    formWrapper.appendChild(submitBtn);
+
+    seatContainer.appendChild(formWrapper);
+}
+
+// 개별 행(Row) 디자인을 담당하는 함수 복원!
+function createQuantityRow(container, label, price, gradeCode) {
+    const row = document.createElement("div");
+    row.style.display = "flex"; row.style.justifyContent = "space-between"; row.style.alignItems = "center";
+    row.style.marginBottom = "20px"; row.style.paddingBottom = "16px"; row.style.borderBottom = "1px solid #f1f5f9"; row.style.gap = "16px";
+
+    row.innerHTML = `
+        <div style="flex: 1; min-width: 0; text-align: left;">
+            <div style="font-weight: bold; color: #334155; font-size: 16px;">${label}</div>
+            <div style="font-size: 14px; color: #64748b; margin-top: 4px;">${price.toLocaleString()}원</div>
+        </div>
+        <div style="flex-shrink: 0;">
+            <select class="ticket-qty-select" data-grade="${gradeCode}" data-price="${price}" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 15px; font-weight: 500; cursor: pointer; outline: none;">
+                <option value="0">0장</option> 
+                <option value="1">1장</option>
+                <option value="2">2장</option> 
+                <option value="3">3장</option> 
+                <option value="4">4장</option>
+            </select>
+        </div>
+    `;
+
+    const selectEl = row.querySelector(".ticket-qty-select");
+    selectEl.addEventListener("change", (e) => { handleQuantityChange(e.target); });
+    container.appendChild(row);
+}
+
+// 4장 초과 방지 및 총액 계산 로직 복원!
+function handleQuantityChange(changedSelect) {
+    const selects = seatContainer.querySelectorAll(".ticket-qty-select");
+    let totalSelectedTickets = 0;
+    let totalPrice = 0;
+
+    selects.forEach(select => { totalSelectedTickets += parseInt(select.value, 10); });
+
+    if (totalSelectedTickets > 4) {
+        alert("티켓은 모든 등급을 합산하여 최대 4장까지만 선택 가능합니다.");
+        if (changedSelect) changedSelect.value = "0";
+        handleQuantityChange(null);
+        return;
+    }
+
+    selects.forEach(select => {
+        const qty = parseInt(select.value, 10);
+        const price = parseInt(select.dataset.price, 10);
+        totalPrice += (qty * price);
+    });
+
+    const standingPriceEl = document.getElementById("standing-total-price");
+    if (standingPriceEl) standingPriceEl.innerText = totalPrice.toLocaleString() + "원";
 }
