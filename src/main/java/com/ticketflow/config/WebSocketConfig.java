@@ -2,9 +2,17 @@ package com.ticketflow.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+import org.springframework.web.socket.handler.WebSocketHandlerDecorator;
+
+import java.io.IOException;
+
+
 
 /**
  * 좌석 실시간 알림(좌석 선점/취소, 매진 공지)을 위한 STOMP 기반 WebSocket 설정.
@@ -36,4 +44,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOriginPatterns("*")
                 .withSockJS(); // 구형 브라우저/네트워크 환경 대비 SockJS 폴백 지원
     }
+
+    // 예시: 좌석 상태 변경을 방장/전체 유저에게 알리는 백엔드 메서드 내부
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.addDecoratorFactory(handler -> new WebSocketHandlerDecorator(handler) {
+            @Override
+            public void handleMessage(org.springframework.web.socket.WebSocketSession session,
+                                      org.springframework.web.socket.WebSocketMessage<?> message) throws Exception {
+                // 각 유저의 웹소켓 세션별로 락(Lock)을 잡아 동시 발송 충돌을 차단합니다.
+                synchronized (session) {
+                    super.handleMessage(session, message);
+                }
+            }
+        });
+
+        // 다중 유저 트래픽 버퍼 및 전송 제한 시간 확장 (안정성 강화)
+        registration.setSendTimeLimit(20 * 1000)
+                .setSendBufferSizeLimit(512 * 1024);
+    }
+
+
 }

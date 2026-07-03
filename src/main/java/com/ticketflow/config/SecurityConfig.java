@@ -27,7 +27,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook","/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel", "/ws-seat/**")
+                        .ignoringRequestMatchers("/api/**", "/api/payment/webhook","/concert/*/like","/seat/api/**", "/seat/select", "/seat/cancel", "/ws-seat/**","/seat/api/booking/cancel-ajax", "/seat/api/booking/cancel-ajax") //CSRF 검증 제외 코드 추가
                 )
 
                 .authorizeHttpRequests(auth -> auth
@@ -41,7 +41,7 @@ public class SecurityConfig {
                                 "/find-password", "/find-password/**",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/concert/","/concert/**","/concert/{id}/sessions","/search",
-                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult",
+                                "/api/booking/webhooks", "/api/payment/webhook", "/booking/payresult","/seat/api/booking/cancel-ajax", "/seat/api/booking/prepare",
                                 "/ws-seat/**"
                         ).permitAll()
                         .requestMatchers("/mypage/**").authenticated()

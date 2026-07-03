@@ -6,10 +6,13 @@
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <meta name="reservation_key" th:content="${reservationKey}"/>
+    <meta name="concert_id" th:content="${concertId != null ? concertId : (reservation != null && reservation.selectedSeat != null && reservation.selectedSeat.concert != null ? reservation.selectedSeat.concert.concertId : '')}">
+    
     <meta name="remaining_seconds" th:content="${remainingSeconds}">
+
     <meta name="is_member" th:content="${isMember}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link th:href="@{/css/booking/booking.css}" rel="stylesheet" />
+    <link th:href="@{/css/booking/booking.css}" rel="stylesheet"/>
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 </head>
 <body>
@@ -154,7 +157,7 @@
                 </div>
 
                 <div class="btn-group">
-                    <button type="button" class="btn btn-prev" onclick="goBackToSeats()">이전단계</button>
+                    <button type="button" class="btn btn-prev" onclick="goBackToSeat()">이전단계</button>
                     <button type="button" id="createPayment" class="btn btn-submit">결제하기</button>
                 </div>
             </div>
@@ -170,5 +173,7 @@
     </div>
 
     <script src="/js/booking/payment.js"></script>
+    <script src="/js/cancel.js"></script>
+   
 </body>
 </html>

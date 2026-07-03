@@ -40,38 +40,57 @@ public class ConcertController {
     private final com.ticketflow.repository.PayRepository payRepository;
     private final StatsService statsService;
 
-    private boolean checkLogin(HttpSession session) {
-        return Boolean.TRUE.equals(session.getAttribute("logged_in"));
-    }
-
-    // =========================================================================
-    // [1] 화면 이동 (View) 영역
-    // =========================================================================
+    // 💡 1. 방금 만든 ONNX 예측 서비스 추가 주입!
+    private final com.ticketflow.service.ConcertPredictService concertPredictService;
 
     @GetMapping("/")
     public String mainPage(@RequestParam(required = false) String genre, Model model, Principal principal) {
         // [중요] 로그인 여부를 모델에 전달 (이게 없으면 JS에서 isLoggedIn이 null/false로 인식됨)
         model.addAttribute("isLoggedIn", (principal != null));
-        LocalDate today = LocalDate.now(); // 추가
-        model.addAttribute("today", today); // 추가
+        LocalDate today = LocalDate.now();
+        model.addAttribute("today", today);
+
+        List<Concert> upcomingEntities;
+        List<Concert> pastEntities;
 
         if (genre != null && !genre.isEmpty()) {
             String koreanGenre = mapGenreCodeToName(genre);
             List<Concert> genreConcerts = concertService.getConcertsByGenre(koreanGenre);
 
-            List<Concert> upcoming = genreConcerts.stream()
+            upcomingEntities = genreConcerts.stream()
                     .filter(c -> c.getConcertEndDate().isAfter(today) || c.getConcertEndDate().isEqual(today))
                     .collect(Collectors.toList());
-            List<Concert> past = genreConcerts.stream()
+            pastEntities = genreConcerts.stream()
                     .filter(c -> c.getConcertEndDate().isBefore(today))
                     .collect(Collectors.toList());
-
-            model.addAttribute("upcomingConcerts", upcoming);
-            model.addAttribute("pastConcerts", past);
         } else {
-            model.addAttribute("upcomingConcerts", concertService.getUpcomingConcerts());
-            model.addAttribute("pastConcerts", concertService.getPastConcerts());
+            upcomingEntities = concertService.getUpcomingConcerts();
+            pastEntities = concertService.getPastConcerts();
         }
+
+        List<ConcertResponseDto> upcomingConcerts = upcomingEntities.stream()
+                .map(ConcertResponseDto::new)
+                .toList();
+        List<ConcertResponseDto> pastConcerts = pastEntities.stream()
+                .map(ConcertResponseDto::new)
+                .toList();
+
+        // 💡 2. [수정 구역] 가짜 mockRate 대신 실제 AI 모델의 예측값을 매칭시킵니다.
+        for (int i = 0; i < upcomingEntities.size(); i++) {
+            Concert entity = upcomingEntities.get(i);
+            ConcertResponseDto dto = upcomingConcerts.get(i);
+
+            // 실제 데이터베이스 내부의 공연 데이터를 기반으로 AI 스코어 계산
+            double realAiRate = concertPredictService.predictSoldOutRate(entity.getConcertId());
+            dto.setPredictSoldOutRate(realAiRate);
+        }
+
+        for (ConcertResponseDto dto : pastConcerts) {
+            dto.setPredictSoldOutRate(0.0);
+        }
+
+        model.addAttribute("upcomingConcerts", upcomingConcerts);
+        model.addAttribute("pastConcerts", pastConcerts);
         model.addAttribute("genre", genre);
         return "concert/mainpage";
     }
@@ -125,26 +144,18 @@ public class ConcertController {
             model.addAttribute("priceList", Arrays.stream(prices).map(String::trim).collect(Collectors.toList()));
         }
 
-        // [수정된 부분] 로그인 상태에 따른 혜택 정보 처리
         if (principal != null) {
             model.addAttribute("isLoggedIn", true);
-
-            // 1. 유저 정보 조회
             User user = userService.findByUserId(principal.getName());
-
-            // 2. 혜택 계산 (기본 할인율 + 쿠폰 개수)
             double baseDiscount = membershipService.getDiscountRate(user);
 
             List<UserCoupon> availableCoupons = user.getUserCoupons().stream()
                     .filter(uc -> uc.getUserCouponStatus() == 0)
                     .collect(Collectors.toList());
 
-            // 3. 모델에 혜택 관련 정보 추가
             model.addAttribute("baseDiscount", (int)(baseDiscount * 100));
             model.addAttribute("couponCount", availableCoupons.size()); // 필터링된 개수 사용
             model.addAttribute("hasBenefit", baseDiscount > 0 || !availableCoupons.isEmpty());
-
-            // 4. 쿠폰 상세 팝업용 데이터에도 필터링된 리스트 전달
             model.addAttribute("coupons", availableCoupons);
         } else {
             model.addAttribute("isLoggedIn", false);
@@ -225,7 +236,9 @@ public class ConcertController {
 
     @GetMapping("/search")
     public String searchConcerts(@RequestParam(required = false) String keyword, Model model) {
-        if (keyword == null || keyword.isEmpty()) return "redirect:/concert/";
+        if (keyword == null || keyword.isEmpty()) {
+            return "redirect:/concert/";
+        }
 
         List<Concert> concertList = concertService.search(keyword);
 
@@ -264,8 +277,13 @@ public class ConcertController {
 
     @GetMapping("/liked")
     @ResponseBody
-    public ResponseEntity<?> getMyWishlist(HttpSession session) {
-        if (!checkLogin(session)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
+    public ResponseEntity<?> getMyWishlist(Principal principal) { // 💡 HttpSession 대신 Principal을 받습니다.
+        // 💡 주입받은 principal이 null이면 로그인되지 않은 상태입니다.
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
+        }
+
+        // 로그인된 경우의 로직 (현재는 빈 리스트 반환)
         return ResponseEntity.ok().body(Map.of("likedConcerts", Collections.emptyList()));
     }
 

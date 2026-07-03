@@ -1,10 +1,15 @@
 package com.ticketflow.repository;
 
+import com.ticketflow.entity.Concert;
 import com.ticketflow.entity.Stats;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
 
+@Repository
 public interface StatsRepository extends JpaRepository<Stats, Long> {
-    // 특정 공연의 통계 데이터를 조회하기 위한 메서드
-    Optional<Stats> findByConcert_ConcertId(String concertId);
+
+    // 💡 공연 객체를 기준으로 가장 최근에 생성된(statsId가 가장 큰) 통계 1건만 조회합니다.
+    Optional<Stats> findTopByConcertOrderByStatsIdDesc(Concert concert);
 }
