@@ -226,12 +226,31 @@ public class ConcertService {
     @Transactional
     public void saveConcert(Concert concert) {
         try {
+            String name = concert.getConcertName();
+            String[] words = name.split("\\s+");
+            StringBuilder inputList = new StringBuilder();
+
+            for (int i = 0; i < words.length; i++) {
+                StringBuilder suffix = new StringBuilder();
+                for (int j = i; j < words.length; j++) {
+                    suffix.append(words[j]).append((j == words.length - 1) ? "" : " ");
+                }
+                inputList.append("\"").append(suffix.toString().trim()).append("\"");
+                if (i < words.length - 1) inputList.append(",");
+            }
+
             String url = "http://elasticsearch:9200/concerts/_doc/" + concert.getConcertId();
-            String jsonString = String.format("{\"concertId\":\"%s\", \"concertName\":\"%s\", \"suggest\":{\"input\":[\"%s\"]}}",
-                    concert.getConcertId(), concert.getConcertName(), concert.getConcertName());
+
+            // ★ 핵심 수정: concertName 대신 위에서 만든 inputList 변수를 삽입
+            String jsonString = String.format(
+                    "{\"concertId\":\"%s\", \"concertName\":\"%s\", \"suggest\":{\"input\":[%s]}}",
+                    concert.getConcertId(), concert.getConcertName(), inputList.toString()
+            );
+
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
             restTemplate.exchange(url, org.springframework.http.HttpMethod.PUT, new org.springframework.http.HttpEntity<>(jsonString, headers), String.class);
+
         } catch (Exception e) {
             System.err.println("★ 저장 실패: " + e.getMessage());
         }
