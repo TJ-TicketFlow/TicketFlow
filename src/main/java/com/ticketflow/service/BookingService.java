@@ -381,7 +381,7 @@ public class BookingService {
             }
             ticketInfo.put("seatInfo", allSeatsText);
             ticketInfo.put("title", reservation.getSelectedSeat().getSeat().getConcert().getConcertName());
-            ticketInfo.put("time", reservation.getSelectedSeat().getSeat().getConcert().getConcertTime());
+            ticketInfo.put("time", reservation.getSessionTime());
             ticketInfo.put("venue", reservation.getSelectedSeat().getSeat().getConcert().getHall().getHallName());
         } catch (Exception e) {
             System.err.println("조인 오류 발생 (일부 데이터 임시 처리)");

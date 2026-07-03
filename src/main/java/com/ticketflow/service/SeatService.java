@@ -218,6 +218,21 @@ public class SeatService {
     public Long processBookingAndGetReservationKey(Map<String, Object> bookingData, Long userNo) {
         String concertId = bookingData.get("concertId").toString();
         String ticketType = bookingData.get("ticketType").toString();
+        Object dateObj = bookingData.get("date");
+        java.time.LocalDate concertDate = java.time.LocalDate.now(); // 기본값: 오늘
+
+        if (dateObj != null && !dateObj.toString().isBlank()) {
+            try {
+                // "2026-07-15" 글자를 진짜 날짜로 변환!
+                concertDate = java.time.LocalDate.parse(dateObj.toString());
+            } catch (Exception e) {
+                System.err.println("날짜 번역 실패: " + e.getMessage());
+            }
+        }
+        Object timeObj = bookingData.get("sessionId");
+        String sessionTime = (timeObj != null && !timeObj.toString().isBlank())
+                ? timeObj.toString()
+                : "시간 미정";
 
         // 프론트엔드로부터 전송받은 총 금액 안전 변환
         Long totalPrice = Double.valueOf(bookingData.get("totalPrice").toString()).longValue();
@@ -332,8 +347,8 @@ public class SeatService {
         Reservation reservation = Reservation.builder()
                 .selectedSeat(savedSelectedSeat)
                 .reservationCount(totalTicketCount)
-                .reservationDate(concert.getConcertStartDate() != null ? concert.getConcertStartDate() : java.time.LocalDate.now())
-                .sessionTime(concert.getConcertTime() != null ? concert.getConcertTime() : "시간 미정")
+                .reservationDate(concertDate)
+                .sessionTime(sessionTime)
                 .selectedSeatsText(seatsDisplayHtml)
                 .reservedSeatIds(String.join(",", realSeatIds))
                 .build();

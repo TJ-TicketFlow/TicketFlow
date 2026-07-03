@@ -284,7 +284,7 @@ function submitBooking() {
     if (isConcertClosed) return;
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
     const isStanding = qtySelects.length > 0;
-    let bookingData = { concertId, date: selectedDate, sessionId: selectedSessionId, ticketType: isStanding ? "STANDING" : "SEAT", quantities: {}, selectedSeats: [], totalPrice: 0 };
+    let bookingData = { concertId, date: selectedDate, sessionId: selectedSessionId, ticketType: isStanding ? "STANDING" : "SEAT", quantities: {}, selectedSeats: [], totalPrice: 0};
     if (isStanding) {
         qtySelects.forEach(s => {
             const qty = parseInt(s.value);
