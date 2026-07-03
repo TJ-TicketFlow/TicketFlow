@@ -81,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 function executeCancel(payNo) {
 
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
     // 🛡️ 스프링 시큐리티 방어막 통과를 위한 CSRF 토큰 챙기기 (HTML에 있는 meta 태그에서 꺼내옵니다)
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
@@ -107,10 +110,12 @@ function executeCancel(payNo) {
         })
         .then(message => {
             // 성공!
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
             document.getElementById('cancelSuccessModal').style.display = 'flex';
 
         })
         .catch(error => {
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
             console.error("❌ 예매 취소 실행 중 에러 발생:", error);
             alert(error.message);
         });
