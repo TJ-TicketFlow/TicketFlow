@@ -239,17 +239,39 @@ public class ConcertService {
 
     public List<String> autocomplete(String query) {
         try {
-            var response = elasticsearchClient.search(s -> s
-                    .index("concerts")
-                    .suggest(sg -> sg
-                            .suggesters("concert-suggest", fs -> fs
-                                    .completion(c -> c.field("suggest").skipDuplicates(true).size(10).fuzzy(f -> f.fuzziness("AUTO")))
-                            )
-                    ), ConcertSearchDto.class);
-            return response.suggest().get("concert-suggest").get(0).completion().options().stream()
-                    .map(option -> option.text())
+            String url = "http://elasticsearch:9200/concerts/_search";
+            String jsonQuery = String.format(
+                    "{\"suggest\": {\"concert-suggest\": {\"prefix\": \"%s\", \"completion\": {\"field\": \"suggest\"}}}}",
+                    query
+            );
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            headers.setAccept(Collections.singletonList(org.springframework.http.MediaType.APPLICATION_JSON));
+
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonQuery, headers);
+
+            // 결과값을 일단 Map으로 받습니다.
+            Map<String, Object> response = restTemplate.postForObject(url, entity, Map.class);
+
+            if (response == null || !response.containsKey("suggest")) return Collections.emptyList();
+
+            // [구조 분석]
+            // response -> "suggest" -> "concert-suggest" (List) -> [0] -> "options" (List)
+            Map<String, Object> suggestContainer = (Map<String, Object>) response.get("suggest");
+            List<Map<String, Object>> suggestList = (List<Map<String, Object>>) suggestContainer.get("concert-suggest");
+
+            if (suggestList == null || suggestList.isEmpty()) return Collections.emptyList();
+
+            List<Map<String, Object>> options = (List<Map<String, Object>>) suggestList.get(0).get("options");
+
+            return options.stream()
+                    .map(opt -> (String) opt.get("text"))
                     .collect(Collectors.toList());
+
         } catch (Exception e) {
+            // 어떤 데이터 구조에서 에러가 나는지 확인하기 위해 로그 출력
+            e.printStackTrace();
             return Collections.emptyList();
         }
     }
