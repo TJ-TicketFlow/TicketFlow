@@ -95,8 +95,10 @@
                     </div>
                     <form id="bookingForm" th:action="@{/seat/{concertId}(concertId=${concert.concertId})}" method="get">
                         <input type="hidden" name="concertId" th:value="${concert.concertId}">
+
                         <input type="hidden" name="sessionId" id="selectedSessionId">
                         <input type="hidden" name="date" id="selectedDate">
+
                         <button type="submit" class="btn-primary" id="submitBtn">예매하기</button>
                     </form>
                     <div id="ai-cancel-box" style="margin-top: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 10px; background: #f8f9fa; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">

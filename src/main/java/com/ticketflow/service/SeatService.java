@@ -387,4 +387,18 @@ public class SeatService {
         return null;
     }
 
+    /**
+     * 추가할 로직: 날짜/회차별 좌석 조회
+     * 실제 서비스에서는 DB에 date/sessionId 컬럼이 있어야 필터링이 가능합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Seat> getSeatsBySchedule(String concertId, String date, String sessionId) {
+        // 1. 만약 DB 구조상 날짜별로 테이블을 안 나누고 하나의 좌석 테이블을 쓴다면,
+        // 우선 전체를 가져온 뒤, 조건에 맞는 좌석 상태(매진/선점 등)를
+        // 해당 날짜/회차 기준으로 DB에서 가져와야 합니다.
+
+        // 현재 DB 구조상 전체 좌석을 가져온다면:
+        return seatRepository.findByConcert_ConcertId(concertId);
+    }
+
 }

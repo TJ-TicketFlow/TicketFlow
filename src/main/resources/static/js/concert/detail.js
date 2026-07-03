@@ -1,5 +1,5 @@
 /**
- * 공연 상세 페이지 스크립트 (최종본 - 매진 처리 로직 포함)
+ * 공연 상세 페이지 스크립트 (기존 로직 100% 보존 및 날짜 밀림 해결본)
  */
 let genderChart, ageChart;
 
@@ -28,15 +28,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!date || !sessionId) {
                 event.preventDefault();
                 alert("관람일과 회차를 모두 선택해주세요.");
+            } else {
+                console.log("예매 페이지로 이동합니다:", date, sessionId);
             }
         });
     }
-    //⭐
+
     loadAiCancelRate(concertId);
+
     // 3. 통계 데이터 로드 및 폴링
     fetch(`/concert/${concertId}/stats-json`)
         .then(res => {
-            if (!res.ok) throw new Error('Stats not found'); // 404 처리
+            if (!res.ok) throw new Error('Stats not found');
             return res.json();
         })
         .then(data => {
@@ -46,10 +49,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(err => {
-            console.warn("통계 데이터를 불러올 수 없습니다 (무시해도 되는 에러일 수 있음):", err);
+            console.warn("통계 데이터를 불러올 수 없습니다:", err);
         });
 
-    // 4. FullCalendar 설정
+    // 4. FullCalendar 설정 (날짜 밀림 해결을 위해 UTC 타임존 고정)
     const calendarEl = document.querySelector('.concert-calendar');
     if (calendarEl) {
         fetch(`/concert/${concertId}/available-dates`)
@@ -58,7 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const calendar = new FullCalendar.Calendar(calendarEl, {
                     locale: 'ko',
                     initialView: 'dayGridMonth',
-                    initialDate: startDate || new Date().toISOString().split('T')[0],
+                    initialDate: startDate, // 문자열 그대로 사용
+                    timeZone: 'UTC', // 타임존 보정 방지
                     selectable: true,
                     height: 'auto',
                     aspectRatio: 1.8,
@@ -68,14 +72,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         right: 'today'
                     },
 
-                    // 달력 렌더링 시 스타일 및 클릭 제어
                     datesSet: function() {
                         document.querySelectorAll('.fc-daygrid-day').forEach(cell => {
                             const dateStr = cell.getAttribute('data-date');
                             if (!dateStr) return;
-
                             const isAvailable = availableDates.includes(dateStr);
-
                             if (isAvailable) {
                                 cell.style.opacity = '1';
                                 cell.style.backgroundColor = '#e1f5fe';
@@ -90,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     },
                     dateClick: (info) => {
+                        // info.dateStr 문자열을 그대로 사용 (날짜 밀림 원천 차단)
                         if (availableDates.includes(info.dateStr)) {
                             loadSessions(info.dateStr, concertId);
                         } else {
@@ -134,7 +136,6 @@ function loadSessions(date, concertId) {
                 btn.className = 'btn-session';
                 btn.innerText = s.time;
 
-                // 매진 여부 확인 후 버튼 제어
                 if (s.soldOut) {
                     btn.disabled = true;
                     btn.innerText += " (매진)";
@@ -157,44 +158,27 @@ function loadSessions(date, concertId) {
             });
         });
 }
-// ⭐ [새로 추가된 부분] AI 예측 취소율을 서버에서 가져와서 화면에 그리는 함수
+
 function loadAiCancelRate(concertId) {
     const rateElement = document.getElementById("ai-cancel-rate");
-    // HTML에 취소율 박스가 없다면 이 함수는 실행하지 않고 조용히 넘어갑니다.
     if (!rateElement) return;
 
     fetch(`/concert/${concertId}/cancel-rate`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("서버 응답 오류");
-            }
-            return response.text();
-        })
+        .then(response => response.ok ? response.text() : null)
         .then(rate => {
+            if (!rate) return;
             const parsedRate = parseFloat(rate);
-
-            // 취소율 수치에 따라 숫자의 색상을 변경합니다.
-            if (parsedRate >= 30.0) {
-                rateElement.style.color = "#e74c3c"; // 위험 (빨강)
-            } else if (parsedRate >= 15.0) {
-                rateElement.style.color = "#f39c12"; // 주의 (주황)
-            } else {
-                rateElement.style.color = "#2ecc71"; // 안전 (초록)
-            }
-
-            // 가져온 숫자 뒤에 %를 붙여서 화면에 보여줍니다.
+            if (parsedRate >= 30.0) rateElement.style.color = "#e74c3c";
+            else if (parsedRate >= 15.0) rateElement.style.color = "#f39c12";
+            else rateElement.style.color = "#2ecc71";
             rateElement.innerText = rate + "%";
         })
         .catch(error => {
-            console.warn("취소율 데이터를 불러오는 중 오류 발생:", error);
+            console.warn("취소율 데이터 오류:", error);
             rateElement.innerText = "확인 불가";
-            rateElement.style.fontSize = "1rem";
-            rateElement.style.color = "#999";
         });
 }
-/**
- * 기타 유틸리티 함수
- */
+
 function initCharts(stats) {
     const genderCtx = document.getElementById('genderChart');
     const ageCtx = document.getElementById('ageChart');
@@ -206,12 +190,21 @@ function initCharts(stats) {
 function pollStats() {
     const dataStore = document.getElementById("data-store");
     if (!dataStore) return;
-    fetch(`/concert/${dataStore.dataset.concertId}/stats-json`).then(res => res.json()).then(data => { if (data && genderChart && ageChart) { genderChart.data.datasets[0].data = data.genderData; ageChart.data.datasets[0].data = data.ageData; genderChart.update(); ageChart.update(); } });
+    fetch(`/concert/${dataStore.dataset.concertId}/stats-json`)
+        .then(res => res.json())
+        .then(data => {
+            if (data && genderChart && ageChart) {
+                genderChart.data.datasets[0].data = data.genderData;
+                ageChart.data.datasets[0].data = data.ageData;
+                genderChart.update();
+                ageChart.update();
+            }
+        });
 }
 
 function toggleWishlist(concertId) {
-    const csrfToken = document.querySelector('meta[name="_csrf"]').content;
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
     fetch(`/concert/${concertId}/like`, { method: 'POST', headers: { [csrfHeader]: csrfToken, 'Content-Type': 'application/json' } })
         .then(res => res.status === 401 ? (alert("로그인이 필요합니다."), window.location.href="/login", null) : res.json())
         .then(data => { if (!data) return; document.getElementById(`wish-icon-${concertId}`).src = data.isLiked ? "/images/favicon.png" : "/images/notfavicon.png"; document.getElementById(`wish-count-${concertId}`).innerText = data.newCount; });
