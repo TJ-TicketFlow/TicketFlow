@@ -3,8 +3,12 @@ import com.ticketflow.entity.Pay;
 import com.ticketflow.entity.User;
 import com.ticketflow.repository.PayRepository; // 👈 레포지토리 임포트
 import ai.onnxruntime.*;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
@@ -21,8 +25,21 @@ public class CancelPredictionService {
     public CancelPredictionService(PayRepository payRepository) throws Exception {
         this.payRepository = payRepository;
         this.env = OrtEnvironment.getEnvironment();
-        String modelPath = "src/main/resources/ticket_cancellation_best_model.onnx";
-        this.session = env.createSession(modelPath, new OrtSession.SessionOptions());
+        ClassPathResource resource =
+                new ClassPathResource("ticket_cancellation_best_model.onnx");
+
+        Path tempFile = Files.createTempFile("ticket_model", ".onnx");
+
+        tempFile.toFile().deleteOnExit();
+
+        try (InputStream is = resource.getInputStream()) {
+            Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        this.session = env.createSession(
+                tempFile.toString(),
+                new OrtSession.SessionOptions()
+        );
     }
 
     public double calculatePerformanceCancelRate(List<Pay> concertPays) throws Exception {
