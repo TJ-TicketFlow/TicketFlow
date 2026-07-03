@@ -21,17 +21,23 @@ document.addEventListener("DOMContentLoaded", function() {
                     concerts.slice(0, 3).forEach(concert => {
                         const dateText = `${concert.startDate} ~ ${concert.endDate}`;
                         const card = `
-                            <div class="small-card">
-                                <a href="/concert/${concert.concertId}/detail-page" style="text-decoration: none; color: inherit; display: block;">
-                                    <img src="${concert.posterUrl}" alt="포스터">
-                                    <p class="concert-name">${concert.concertName}</p>
-                                    <div class="concert-meta">
-                                        <p>${dateText}</p>
-                                        <p>${concert.hallName}</p>
-                                    </div>
-                                </a>
-                            </div>
-                        `;
+    <div class="small-card">
+        <a href="/concert/${concert.concertId}/detail-page" style="text-decoration: none; color: inherit; display: block;">
+            <img src="${concert.posterUrl}" alt="포스터">
+            <p class="concert-name">${concert.concertName}</p>
+            <div class="concert-meta">
+                <p>${dateText}</p>
+                <p>${concert.hallName}</p>
+                
+                <div class="concert-footer" style="display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px;">
+                    <span class="booking-rate" style="font-size: 13px; color: #666;">
+                        예매율 <strong style="font-size: 15px; color: #ff4b5c; font-weight: 700; margin-left: 2px;">${concert.bookingRate || 0}%</strong>
+                    </span>
+                </div>
+            </div>
+        </a>
+    </div>
+`;
                         listDiv.innerHTML += card;
                     });
                 } else {

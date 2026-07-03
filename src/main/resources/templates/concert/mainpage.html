@@ -22,6 +22,80 @@
         .small-card img { width: 100%; height: 220px; object-fit: cover; border-radius: 20px; margin-bottom: 16px; }
         .small-card .concert-name { font-size: 16px; font-weight: 700; color: #333; margin: 12px 0 8px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .concert-meta { font-size: 13px; color: #777; line-height: 1.5; }
+
+        /* 💡 [CSS 마감] 카드 높이 균등 및 예매율 하단 수평 칼정렬 */
+        .concert-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .concert-card a {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            flex-grow: 1;
+            text-decoration: none;
+            color: inherit;
+            background: #fff;
+            border-radius: 28px;
+            overflow: hidden;
+        }
+
+        .poster-wrap {
+            width: 100%;
+            height: 220px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .poster-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .concert-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 20px;
+            background: #fff;
+            justify-content: space-between; /* 텍스트 그룹과 footer를 양 끝으로 강제 분리 */
+        }
+
+        .concert-text-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px; /* 텍스트 줄 간격 일정하게 고정 */
+            width: 100%;
+        }
+
+        .concert-text-wrap p, .concert-text-wrap h3 {
+            margin: 0;
+        }
+
+        .concert-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 16px;
+            border-top: 1px dashed #eee;
+            padding-top: 8px;
+            width: 100%;
+        }
+
+        .booking-rate {
+            font-size: 13px;
+            color: #777;
+        }
+
+        .booking-rate strong {
+            font-size: 14px;
+            color: #ff4b5c;
+            font-weight: 700;
+            margin-left: 3px;
+        }
     </style>
 </head>
 <body>
@@ -44,12 +118,19 @@
             <div class="concert-grid" id="upcoming-list">
                 <article class="concert-card" th:each="concert : ${upcomingConcerts}" th:if="${not #lists.isEmpty(upcomingConcerts)}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap"><img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img"></div>
                         <div class="concert-info">
-                            <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
-                            <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
-                            <p class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</p>
-                            <p class="concert-hall" th:text="${concert.hall.hallName}">공연장</p>
+                            <div class="concert-text-wrap">
+                                <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
+                                <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
+                                <p class="concert-date" th:text="${concert.startDate} + ' ~ ' + ${concert.endDate}">날짜</p>
+                                <p class="concert-hall" th:text="${concert.hallName}">공연장</p>
+                            </div>
+                            <div class="concert-footer">
+                                <span class="booking-rate">
+                                   예상 예매율 <strong th:text="${concert.predictSoldOutRate != null ? #numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%' : '0.0%'}">0.0%</strong>
+                                </span>
+                            </div>
                         </div>
                     </a>
                 </article>
@@ -61,12 +142,19 @@
             <div class="concert-grid" id="past-list" style="display: none;">
                 <article class="concert-card" th:each="concert : ${pastConcerts}" th:if="${not #lists.isEmpty(pastConcerts)}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap"><img th:src="${concert.concertPosterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img"></div>
                         <div class="concert-info">
-                            <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
-                            <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
-                            <p class="concert-date" th:text="${concert.concertStartDate} + ' ~ ' + ${concert.concertEndDate}">날짜</p>
-                            <p class="concert-hall" th:text="${concert.hall.hallName}">공연장</p>
+                            <div class="concert-text-wrap">
+                                <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
+                                <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
+                                <p class="concert-date" th:text="${concert.startDate} + ' ~ ' + ${concert.endDate}">날짜</p>
+                                <p class="concert-hall" th:text="${concert.hallName}">공연장</p>
+                            </div>
+                            <div class="concert-footer">
+                                <span class="booking-rate">
+                                    예상 예매율 <strong th:text="${concert.predictSoldOutRate != null ? #numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%' : '0.0%'}">0.0%</strong>
+                                </span>
+                            </div>
                         </div>
                     </a>
                 </article>
@@ -88,6 +176,7 @@
 <div id="data-store" th:data-is-logged-in="${isLoggedIn}" style="display:none;"></div>
 
 <script th:src="@{/js/concert/mainpage.js}"></script>
+
 
 </body>
 </html>

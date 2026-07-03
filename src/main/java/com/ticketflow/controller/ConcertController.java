@@ -25,6 +25,8 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// ... 상단 생략 ...
+
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/concert")
@@ -37,41 +39,63 @@ public class ConcertController {
     private final com.ticketflow.repository.PayRepository payRepository;
     private final StatsService statsService;
 
-    private boolean checkLogin(HttpSession session) {
-        return Boolean.TRUE.equals(session.getAttribute("logged_in"));
-    }
-
-    // =========================================================================
-    // [1] 화면 이동 (View) 영역
-    // =========================================================================
+    // 💡 1. 방금 만든 ONNX 예측 서비스 추가 주입!
+    private final com.ticketflow.service.ConcertPredictService concertPredictService;
 
     @GetMapping("/")
     public String mainPage(@RequestParam(required = false) String genre, Model model, Principal principal) {
-        // [중요] 로그인 여부를 모델에 전달 (이게 없으면 JS에서 isLoggedIn이 null/false로 인식됨)
         model.addAttribute("isLoggedIn", (principal != null));
-        LocalDate today = LocalDate.now(); // 추가
-        model.addAttribute("today", today); // 추가
+        LocalDate today = LocalDate.now();
+        model.addAttribute("today", today);
+
+        List<Concert> upcomingEntities;
+        List<Concert> pastEntities;
 
         if (genre != null && !genre.isEmpty()) {
             String koreanGenre = mapGenreCodeToName(genre);
             List<Concert> genreConcerts = concertService.getConcertsByGenre(koreanGenre);
 
-            List<Concert> upcoming = genreConcerts.stream()
+            upcomingEntities = genreConcerts.stream()
                     .filter(c -> c.getConcertEndDate().isAfter(today) || c.getConcertEndDate().isEqual(today))
                     .collect(Collectors.toList());
-            List<Concert> past = genreConcerts.stream()
+            pastEntities = genreConcerts.stream()
                     .filter(c -> c.getConcertEndDate().isBefore(today))
                     .collect(Collectors.toList());
-
-            model.addAttribute("upcomingConcerts", upcoming);
-            model.addAttribute("pastConcerts", past);
         } else {
-            model.addAttribute("upcomingConcerts", concertService.getUpcomingConcerts());
-            model.addAttribute("pastConcerts", concertService.getPastConcerts());
+            upcomingEntities = concertService.getUpcomingConcerts();
+            pastEntities = concertService.getPastConcerts();
         }
+
+        List<ConcertResponseDto> upcomingConcerts = upcomingEntities.stream()
+                .map(ConcertResponseDto::new)
+                .toList();
+        List<ConcertResponseDto> pastConcerts = pastEntities.stream()
+                .map(ConcertResponseDto::new)
+                .toList();
+
+        // 💡 2. [수정 구역] 가짜 mockRate 대신 실제 AI 모델의 예측값을 매칭시킵니다.
+        for (int i = 0; i < upcomingEntities.size(); i++) {
+            Concert entity = upcomingEntities.get(i);
+            ConcertResponseDto dto = upcomingConcerts.get(i);
+
+            // 실제 데이터베이스 내부의 공연 데이터를 기반으로 AI 스코어 계산
+            double realAiRate = concertPredictService.predictSoldOutRate(entity.getConcertId());
+            dto.setPredictSoldOutRate(realAiRate);
+        }
+
+        for (ConcertResponseDto dto : pastConcerts) {
+            dto.setPredictSoldOutRate(0.0);
+        }
+
+        model.addAttribute("upcomingConcerts", upcomingConcerts);
+        model.addAttribute("pastConcerts", pastConcerts);
         model.addAttribute("genre", genre);
+
         return "concert/mainpage";
     }
+
+    // ... 하단 생략 ...
+
 
     private String mapGenreCodeToName(String code) {
         return switch (code) {
@@ -87,7 +111,6 @@ public class ConcertController {
 
     @GetMapping("/{id}/detail-page")
     public String concertDetailPage(@PathVariable String id, Model model, Principal principal) {
-        // 🌟 [핵심] 상세 페이지 진입 시점에 최신 통계 강제 갱신
         try {
             statsService.updateStats(id);
         } catch (Exception e) {
@@ -143,7 +166,6 @@ public class ConcertController {
         return "concert/concert_detail";
     }
 
-
     @GetMapping("/ranking")
     public String rankingPage(@RequestParam(required = false) String genre, Model model) {
         List<Map<String, Object>> rankings = (genre != null && !genre.isEmpty())
@@ -165,9 +187,6 @@ public class ConcertController {
     // [2] 순수 데이터 API 영역 (REST API)
     // =========================================================================
 
-    // 먼저 DTO가 없다면 임시로 Map을 사용하거나, DTO 클래스를 생성하세요.
-// 아래는 DTO 없이 Map으로 처리하는 예시입니다.
-
     @GetMapping("/{id}/sessions")
     @ResponseBody
     public ResponseEntity<?> getSessionsByDate(@PathVariable String id, @RequestParam String date) {
@@ -175,18 +194,14 @@ public class ConcertController {
         List<String> rawTimes = concertService.findSessionsByDate(id, date);
         if (rawTimes == null || rawTimes.isEmpty()) return ResponseEntity.ok(Collections.emptyList());
 
-        // [수정된 부분] 매진 여부를 확인하여 맵에 담아 반환
         List<Map<String, Object>> sessionData = rawTimes.stream().map(time -> {
-            // 시간에서 불필요한 문자 제거 (기존 로직 유지)
             String cleanTime = time.replaceAll("[가-힣\\s\\(\\)\\~\\-]", "");
-
-            // 날짜를 포함해서 매진 확인
             boolean isSoldOut = concertService.isSessionSoldOut(id, cleanTime, localDate);
 
             Map<String, Object> map = new HashMap<>();
             map.put("id", cleanTime);
             map.put("time", cleanTime);
-            map.put("soldOut", isSoldOut); // 이 정보가 프론트로 전달됩니다.
+            map.put("soldOut", isSoldOut);
             return map;
         }).collect(Collectors.toList());
 
@@ -195,17 +210,11 @@ public class ConcertController {
 
     @PostMapping("/{id}/like")
     @ResponseBody
-    public ResponseEntity<?> toggleWishlist(@PathVariable String id, Principal principal) { // HttpSession 대신 Principal 사용
-
-        // 1. Principal이 null이면 로그인 안 된 상태
+    public ResponseEntity<?> toggleWishlist(@PathVariable String id, Principal principal) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
         }
-
-        // 2. 로그인된 유저의 아이디 추출
         String userId = principal.getName();
-
-        // 3. 서비스 로직 수행
         boolean isLiked = concertService.toggleWishlist(id, userId);
         int newCount = concertService.getWishlistCount(id);
 
@@ -219,8 +228,6 @@ public class ConcertController {
         }
 
         List<Concert> concertList = concertService.search(keyword);
-
-        // [수정] 현재 날짜를 모델에 추가
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("concertList", concertList);
         model.addAttribute("keyword", keyword);
@@ -248,26 +255,27 @@ public class ConcertController {
 
     @GetMapping("/liked")
     @ResponseBody
-    public ResponseEntity<?> getMyWishlist(HttpSession session) {
-        if (!checkLogin(session)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
+    public ResponseEntity<?> getMyWishlist(Principal principal) { // 💡 HttpSession 대신 Principal을 받습니다.
+        // 💡 주입받은 principal이 null이면 로그인되지 않은 상태입니다.
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
+        }
+
+        // 로그인된 경우의 로직 (현재는 빈 리스트 반환)
         return ResponseEntity.ok().body(Map.of("likedConcerts", Collections.emptyList()));
     }
 
-    // 1. 기존 메서드: 로그인 여부와 관계없이 '일반적인 추천(인기순)' 반환
     @GetMapping("/recommended")
     @ResponseBody
     public ResponseEntity<?> getGeneralRecommendations() {
-        // 예: 전체 공연 중 가장 찜이 많은 공연 TOP 3
         List<ConcertResponseDto> popular = concertService.getPopularConcerts(3);
         return ResponseEntity.ok(Map.of("recommended", popular));
     }
 
-    // 2. 새 메서드: 로그인한 유저만 위한 '개인화 추천'
     @GetMapping("/ai-recommend")
     @ResponseBody
     public ResponseEntity<?> getPersonalizedRecommendations(Principal principal) {
         if (principal == null) {
-            // 로그인 안 했으면 그냥 일반 추천을 호출하거나 빈 리스트 반환
             return getGeneralRecommendations();
         }
         List<ConcertResponseDto> personalized = concertService.getRecommendedConcerts(principal.getName());
@@ -285,7 +293,6 @@ public class ConcertController {
     @GetMapping("/{id}/available-dates")
     @ResponseBody
     public ResponseEntity<List<String>> getAvailableDates(@PathVariable String id) {
-        // 예: concertService에 findAvailableDatesByConcertId(id) 메서드 추가 필요
         List<String> dates = concertService.findAvailableDates(id);
         return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
     }
@@ -295,13 +302,8 @@ public class ConcertController {
     @ResponseBody
     public ResponseEntity<Double> getConcertCancelRate(@PathVariable String id) {
         try {
-            // 1. 해당 콘서트의 결제 완료 내역 가져오기
             List<Pay> concertPays = payRepository.findValidPaysByConcertId(id);
-
-            // 2. 머신러닝 예측 돌리기
             double cancelRate = cancelPredictionService.calculatePerformanceCancelRate(concertPays);
-
-            // 3. 소수점 둘째 자리까지만 예쁘게 자르기
             double roundedRate = Math.round(cancelRate * 100.0) / 100.0;
 
             return ResponseEntity.ok(roundedRate);

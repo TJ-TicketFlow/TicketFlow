@@ -8,10 +8,13 @@ import java.time.LocalDate;
 public class ConcertResponseDto {
     private final String concertId;
     private final String concertName;
-    private final String posterUrl;
-    private final LocalDate startDate; // LocalDate로 수정
-    private final LocalDate endDate;   // LocalDate로 수정
-    private final String hallName;
+    private final String posterUrl;      // 👈 HTML에서 concert.posterUrl 로 접근
+    private final LocalDate startDate;    // 👈 HTML에서 concert.startDate 로 접근
+    private final LocalDate endDate;      // 👈 HTML에서 concert.endDate 로 접근
+    private final String hallName;       // 👈 HTML에서 concert.hallName 로 접근
+    private final String concertGenre;   // 💡 [추가] 누락되었던 장르 필드 반영
+
+    private Double predictSoldOutRate;   // AI 예매율 예측값
 
     public ConcertResponseDto(Concert c) {
         this.concertId = c.getConcertId();
@@ -19,7 +22,11 @@ public class ConcertResponseDto {
         this.posterUrl = c.getConcertPosterUrl();
         this.startDate = c.getConcertStartDate();
         this.endDate = c.getConcertEndDate();
-        // NullPointerException 방지를 위해 엔티티에서 가져올 때 안전하게 처리
+        this.concertGenre = c.getConcertGenre(); // 💡 엔티티에서 장르 가져오기
         this.hallName = (c.getHall() != null) ? c.getHall().getHallName() : "미정";
+    }
+
+    public void setPredictSoldOutRate(Double predictSoldOutRate) {
+        this.predictSoldOutRate = predictSoldOutRate;
     }
 }
