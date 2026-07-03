@@ -120,13 +120,29 @@ if (concertId) {
             if (timeEl) timeEl.innerText = selectedSessionId || "시간 미정";
             if (posterEl) posterEl.src = concert.concertPosterUrl || "";
             if (concert.concertPriceInfo) {
-                concert.concertPriceInfo.split(',').forEach(item => {
-                    const pureNumbers = item.replace(/[^0-9]/g, "");
+                // 1. 🌟 쉼표(,)가 아니라 파이프(|) 기호를 기준으로 좌석을 나눕니다!
+                concert.concertPriceInfo.split('|').forEach(item => {
+                    const target = item.trim();
+                    if (!target) return;
+
+                    // 2. 문자열 안의 숫자만 쏙 뽑아냅니다. (천 단위 쉼표 무시)
+                    const pureNumbers = target.replace(/[^0-9]/g, "");
+
                     if (pureNumbers) {
                         let priceValue = parseInt(pureNumbers, 10);
-                        if (priceValue < 10000) priceValue *= 1000;
-                        const gradeName = item.replace(/[0-9원\s:]/g, "").trim() || "일반석";
-                        window.concertPriceMap[gradeName] = priceValue;
+
+                        // DB에 178로 적혔을 때를 대비한 기존 1000 곱하기 로직 유지
+                        if (priceValue > 0 && priceValue < 10000) {
+                            priceValue = priceValue * 1000;
+                        }
+
+                        // 3. 좌석 이름만 뽑아냅니다. (숫자, '원', 쉼표, 콜론 등 불필요한 기호 제거)
+                        const gradeName = target.replace(/[0-9원\s:,]/g, "").trim() || "일반석";
+
+                        // 4. 🌟 가격이 0원인 유령 좌석은 화면에 안 나오게 컷!
+                        if (priceValue > 0) {
+                            window.concertPriceMap[gradeName] = priceValue;
+                        }
                     }
                 });
             }

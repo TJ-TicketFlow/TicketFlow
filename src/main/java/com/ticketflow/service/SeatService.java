@@ -295,14 +295,14 @@ public class SeatService {
         // 8-B. 스탠딩(STANDING) 수량 지정 선택 형태의 예매 가선점 처리 로직
         else if ("STANDING".equals(ticketType)) {
             Map<String, Integer> quantities = (Map<String, Integer>) bookingData.get("quantities");
-            for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+            String timeStamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyMMddHHmmssSSS"));            for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
                 String grade = entry.getKey();
                 int qty = entry.getValue();
                 totalTicketCount += qty;
 
                 for (int i = 0; i < qty; i++) {
                     String shortGrade = grade.length() > 3 ? grade.substring(0, 3) : grade;
-                    String tempSeatId = schedulePrefix + "_S_" + shortGrade + "_" + i;
+                    String tempSeatId = schedulePrefix + "_S_" + shortGrade + "_" + timeStamp + "_" + i;
 
                     Seat seat = new Seat();
                     seat.setSeatId(tempSeatId);
