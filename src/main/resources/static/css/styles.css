@@ -61,6 +61,7 @@ body {
     display: flex; align-items: center; gap: 10px;
     /*background: var(--bg);*/ border: 1.5px solid var(--border);
     border-radius: 28px; padding: 10px 20px; transition: border-color 0.2s;
+    position: relative;
 }
 .search-bar:focus-within { border-color: var(--primary); }
 .search-bar input {
@@ -78,6 +79,33 @@ body {
     transition: all 0.2s; white-space: nowrap; font-weight: 500;
 }
 .nav-link:hover { background: var(--bg); color: var(--primary); }
+
+.suggestion-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    list-style: none;
+    padding: 8px 0;
+    margin: 5px 0 0 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.suggestion-list li {
+    padding: 10px 20px;
+    font-size: 14px;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.suggestion-list li:hover { background-color: var(--bg); }
 
 /* ══════════════════════════════════════
    3. CATEGORY BAR

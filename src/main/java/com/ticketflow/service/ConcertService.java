@@ -1,13 +1,16 @@
 package com.ticketflow.service;
 
 import com.ticketflow.dto.ConcertResponseDto;
+import com.ticketflow.dto.ConcertSearchDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
-
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.format.TextStyle;
@@ -20,11 +23,14 @@ import java.util.stream.Collectors;
 public class ConcertService {
 
     private final ConcertRepository concertRepository;
-    private final WishlistRepository wishlistRepository; // 의존성 주입 확인
-    private final UserRepository userRepository;         // User 엔티티 조회를 위해 추가
+    private final WishlistRepository wishlistRepository;
+    private final UserRepository userRepository;
     private final SelectedSeatRepository selectedSeatRepository;
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
+    private final ObjectMapper objectMapper;
+    private final co.elastic.clients.elasticsearch.ElasticsearchClient elasticsearchClient;
+    private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
 
     public List<Concert> getAllConcerts() {
         return concertRepository.findAll();
@@ -54,13 +60,7 @@ public class ConcertService {
             User user = userRepository.findByUserId(userId)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
             Concert concert = findById(concertId);
-
-            // Wishlist 엔티티 생성
-            Wishlist wishlist = Wishlist.builder()
-                    .user(user)
-                    .concert(concert)
-                    .build();
-
+            Wishlist wishlist = Wishlist.builder().user(user).concert(concert).build();
             wishlistRepository.save(wishlist);
             updateWishlistCount(concertId, 1);
             return true;
@@ -99,12 +99,18 @@ public class ConcertService {
 
     public List<Map<String, Object>> getRankedConcerts() {
         List<Object[]> results = concertRepository.findConcertsByRanking();
-        return results.stream().map(obj -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("concert", (Concert) obj[0]);
-            map.put("ranking", ((Number) obj[1]).intValue());
-            return map;
-        }).collect(Collectors.toList());
+        Map<String, Map<String, Object>> distinctMap = new LinkedHashMap<>();
+        for (Object[] obj : results) {
+            Concert concert = (Concert) obj[0];
+            int ranking = ((Number) obj[1]).intValue();
+            if (!distinctMap.containsKey(concert.getConcertId())) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("concert", concert);
+                map.put("ranking", ranking);
+                distinctMap.put(concert.getConcertId(), map);
+            }
+        }
+        return new ArrayList<>(distinctMap.values());
     }
 
     public List<Map<String, Object>> getRankedConcertsByGenre(String genre) {
@@ -120,29 +126,16 @@ public class ConcertService {
     public List<String> findSessionsByDate(String id, String selectedDate) {
         Concert concert = findById(id);
         LocalDate date = LocalDate.parse(selectedDate);
-
-        // 1. 공연 기간 검증 (선택한 날짜가 범위 내에 없으면 바로 종료)
-        if (date.isBefore(concert.getConcertStartDate()) || date.isAfter(concert.getConcertEndDate())) {
-            return Collections.emptyList();
-        }
-
+        if (date.isBefore(concert.getConcertStartDate()) || date.isAfter(concert.getConcertEndDate())) return Collections.emptyList();
         String allTimes = concert.getConcertTime();
         if (allTimes == null || allTimes.isEmpty()) return Collections.emptyList();
 
         // 2. 선택한 날짜의 요일 구하기 (예: "금요일")
         String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
-
-        return Arrays.stream(allTimes.split(","))
-                .map(String::trim)
-                .filter(time -> {
-                    // time 예시: "금요일(20:00)" 또는 "토요일~일요일(14:00)"
-                    // 요일 부분만 추출 (괄호 앞 부분)
-                    String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
-
-                    // 해당 요일이 포함되어 있는지 확인
-                    return targetPart.contains(dayOfWeek);
-                })
-                .collect(Collectors.toList());
+        return Arrays.stream(allTimes.split(",")).map(String::trim).filter(time -> {
+            String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
+            return targetPart.contains(dayOfWeek);
+        }).collect(Collectors.toList());
     }
 
     public List<Concert> getUpcomingConcerts() {
@@ -156,11 +149,24 @@ public class ConcertService {
     }
     // ConcertService.java 내부
     public List<Concert> search(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
+        if (keyword == null || keyword.trim().isEmpty()) return Collections.emptyList();
+        try {
+            String url = "http://elasticsearch:9200/concerts/_search";
+            String queryJson = String.format("{\"query\": {\"query_string\": {\"default_field\": \"concertName\", \"query\": \"*%s*\"}}}", keyword);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(queryJson, headers);
+            org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            Map<String, Object> body = response.getBody();
+            Map<String, Object> hitsContainer = (Map<String, Object>) body.get("hits");
+            List<Map<String, Object>> hits = (List<Map<String, Object>>) hitsContainer.get("hits");
+            List<String> concertIds = hits.stream()
+                    .map(hit -> (String) ((Map<String, Object>) hit.get("_source")).get("concertId"))
+                    .collect(Collectors.toList());
+            return concertIds.isEmpty() ? Collections.emptyList() : concertRepository.findAllById(concertIds);
+        } catch (Exception e) {
             return Collections.emptyList();
         }
-        // Repository에 있는 메서드 호출 (LIKE %keyword% 방식)
-        return concertRepository.findByConcertNameContaining(keyword);
     }
     public boolean isAllSoldOut(String concertId) {
         // 1. 해당 공연의 전체 좌석 수 (Seat 엔티티 기준)
@@ -177,12 +183,7 @@ public class ConcertService {
         // DB에 저장된 실제 좌석 등급 이름("일반석", "스탠딩" 등)을 정확히 넣으세요.
         long reservedGeneral = reservationRepository.countBySeatClass(concertId, sessionTime, date, "일반석");
         long reservedStanding = reservationRepository.countBySeatClass(concertId, sessionTime, date, "스탠딩");
-
-        // 총 좌석수를 구하는 로직 (각 클래스별로 좌석 개수를 미리 알고 있다면 하드코딩해도 됩니다)
-        long totalGeneral = 200;
-        long totalStanding = 400;
-
-        return (reservedGeneral >= totalGeneral) || (reservedStanding >= totalStanding);
+        return (reservedGeneral >= 200) || (reservedStanding >= 400);
     }
 
     public List<ConcertResponseDto> getPopularConcerts(int limit) {
@@ -192,10 +193,7 @@ public class ConcertService {
         return concertRepository.findAll().stream()
                 // 1) 지난 공연 제외 (종료일이 오늘 이전인 것 제외)
                 .filter(c -> !c.getConcertEndDate().isBefore(today))
-                // 2) 정렬: 찜 개수 내림차순, 같다면 종료일 오름차순(임박순)
-                .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed()
-                        .thenComparing(Concert::getConcertEndDate))
-                // 3) 개수 제한
+                .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed().thenComparing(Concert::getConcertEndDate))
                 .limit(limit)
                 .map(ConcertResponseDto::new)
                 .collect(Collectors.toList());
@@ -206,7 +204,7 @@ public class ConcertService {
         List<String> preferredGenres = wishlistRepository.findByUser_UserId(userId).stream()
                 .map(wish -> wish.getConcert().getConcertGenre())
                 .filter(Objects::nonNull)
-                .flatMap(g -> Arrays.stream(g.split(","))) // 쉼표 기준 분리
+                .flatMap(g -> Arrays.stream(g.split(",")))
                 .map(String::trim)
                 .filter(g -> !g.isEmpty())
                 .collect(Collectors.groupingBy(g -> g, Collectors.counting()))
@@ -224,14 +222,9 @@ public class ConcertService {
 
         // 2. 서비스단에서 유연한 필터링 수행 (방법 B)
         LocalDate today = LocalDate.now();
-        return concertRepository.findAll().stream() // 전체 공연을 가져옴 (데이터가 아주 많다면 JPQL로 페이징 필요)
-                .filter(c -> !c.getConcertEndDate().isBefore(today)) // 마감 안 된 공연
-                .filter(c -> {
-                    String[] concertGenres = c.getConcertGenre().split(","); // DB의 다중 장르 분리
-                    return Arrays.stream(concertGenres)
-                            .map(String::trim)
-                            .anyMatch(preferredGenres::contains); // 취향 장르가 하나라도 포함되면 True
-                })
+        return concertRepository.findAll().stream()
+                .filter(c -> !c.getConcertEndDate().isBefore(today))
+                .filter(c -> Arrays.stream(c.getConcertGenre().split(",")).map(String::trim).anyMatch(preferredGenres::contains))
                 .limit(3)
                 .map(ConcertResponseDto::new)
                 .collect(Collectors.toList());
@@ -250,22 +243,160 @@ public class ConcertService {
         // 공연 기간(startDate ~ endDate)을 하루씩 증가시키며 루프
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
-
-            // 해당 요일에 공연이 있는지 확인 (기존 findSessionsByDate와 동일한 로직)
-            boolean hasPerformance = Arrays.stream(allTimes.split(","))
-                    .map(String::trim)
-                    .anyMatch(time -> {
-                        String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
-                        return targetPart.contains(dayOfWeek);
-                    });
-
-            if (hasPerformance) {
-                availableDates.add(date.toString()); // "2026-06-20" 형식으로 저장
-            }
+            boolean hasPerformance = Arrays.stream(allTimes.split(",")).map(String::trim).anyMatch(time -> {
+                String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
+                return targetPart.contains(dayOfWeek);
+            });
+            if (hasPerformance) availableDates.add(date.toString());
         }
         return availableDates;
     }
 
+    @Transactional
+    public void saveConcert(Concert concert) {
+        try {
+            String name = concert.getConcertName();
+            String[] words = name.split("\\s+");
+            StringBuilder inputList = new StringBuilder();
 
+            for (int i = 0; i < words.length; i++) {
+                StringBuilder suffix = new StringBuilder();
+                for (int j = i; j < words.length; j++) {
+                    suffix.append(words[j]).append((j == words.length - 1) ? "" : " ");
+                }
+                inputList.append("\"").append(suffix.toString().trim()).append("\"");
+                if (i < words.length - 1) inputList.append(",");
+            }
 
+            String url = "http://elasticsearch:9200/concerts/_doc/" + concert.getConcertId();
+
+            // ★ 핵심 수정: concertName 대신 위에서 만든 inputList 변수를 삽입
+            String jsonString = String.format(
+                    "{\"concertId\":\"%s\", \"concertName\":\"%s\", \"suggest\":{\"input\":[%s]}}",
+                    concert.getConcertId(), concert.getConcertName(), inputList.toString()
+            );
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            restTemplate.exchange(url, org.springframework.http.HttpMethod.PUT, new org.springframework.http.HttpEntity<>(jsonString, headers), String.class);
+
+        } catch (Exception e) {
+            System.err.println("★ 저장 실패: " + e.getMessage());
+        }
+    }
+
+    public List<String> autocomplete(String query) {
+        try {
+            String url = "http://elasticsearch:9200/concerts/_search";
+            String jsonQuery = String.format(
+                    "{\"suggest\": {\"concert-suggest\": {\"prefix\": \"%s\", \"completion\": {\"field\": \"suggest\"}}}}",
+                    query
+            );
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            headers.setAccept(Collections.singletonList(org.springframework.http.MediaType.APPLICATION_JSON));
+
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonQuery, headers);
+
+            // 결과값을 일단 Map으로 받습니다.
+            Map<String, Object> response = restTemplate.postForObject(url, entity, Map.class);
+
+            if (response == null || !response.containsKey("suggest")) return Collections.emptyList();
+
+            // [구조 분석]
+            // response -> "suggest" -> "concert-suggest" (List) -> [0] -> "options" (List)
+            Map<String, Object> suggestContainer = (Map<String, Object>) response.get("suggest");
+            List<Map<String, Object>> suggestList = (List<Map<String, Object>>) suggestContainer.get("concert-suggest");
+
+            if (suggestList == null || suggestList.isEmpty()) return Collections.emptyList();
+
+            List<Map<String, Object>> options = (List<Map<String, Object>>) suggestList.get(0).get("options");
+
+            return options.stream()
+                    .map(opt -> (String) opt.get("text"))
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            // 어떤 데이터 구조에서 에러가 나는지 확인하기 위해 로그 출력
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
+    // [핵심] 엘라스틱서치 초기화 자동화 (재시도 로직 포함)
+    @EventListener(ContextRefreshedEvent.class)
+    public void initializeElasticsearch() {
+        new Thread(() -> {
+            boolean elasticReady = false;
+            int retries = 0;
+            while (!elasticReady && retries < 10) {
+                try {
+                    Thread.sleep(10000);
+                    org.springframework.http.ResponseEntity<String> ping =
+                            restTemplate.getForEntity("http://elasticsearch:9200/", String.class);
+                    if (ping.getStatusCode().is2xxSuccessful()) elasticReady = true;
+                } catch (Exception e) {
+                    retries++;
+                    System.out.println("★ 엘라스틱서치 대기 중... (" + retries + "/10회)");
+                }
+            }
+
+            if (elasticReady) {
+                try {
+                    String indexUrl = "http://elasticsearch:9200/concerts";
+                    try {
+                        restTemplate.exchange(indexUrl, org.springframework.http.HttpMethod.HEAD, null, String.class);
+                    } catch (Exception e) {
+                        createIndex(indexUrl);
+                    }
+                } catch (Exception e) {
+                    System.err.println("★ 초기화 실패: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+
+    private void createIndex(String url) {
+        try {
+            String mappingJson = "{\"mappings\": {\"properties\": {\"concertId\": { \"type\": \"keyword\" },\"concertName\": { \"type\": \"text\" },\"suggest\": { \"type\": \"completion\" }}}}";
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            restTemplate.put(url, new org.springframework.http.HttpEntity<>(mappingJson, headers));
+            syncAllConcertsToElasticsearch();
+        } catch (Exception e) {
+            System.err.println("★ 인덱스 생성 실패: " + e.getMessage());
+        }
+    }
+
+    public void syncAllConcertsToElasticsearch() {
+        try {
+            String countUrl = "http://elasticsearch:9200/concerts/_count";
+            org.springframework.http.ResponseEntity<Map> countResponse = restTemplate.getForEntity(countUrl, Map.class);
+            Integer count = (Integer) countResponse.getBody().get("count");
+
+            if (count == null || count == 0) {
+                List<Concert> allConcerts = concertRepository.findAll();
+                if (allConcerts.isEmpty()) return;
+
+                StringBuilder bulkBody = new StringBuilder();
+                for (Concert concert : allConcerts) {
+                    bulkBody.append("{\"index\":{\"_id\":\"").append(concert.getConcertId()).append("\"}}\n");
+                    bulkBody.append("{\"concertId\":\"").append(concert.getConcertId())
+                            .append("\", \"concertName\":\"").append(concert.getConcertName())
+                            .append("\", \"suggest\":{\"input\":[\"").append(concert.getConcertName()).append("\"]}}\n");
+                }
+
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+                restTemplate.postForEntity("http://elasticsearch:9200/concerts/_bulk",
+                        new org.springframework.http.HttpEntity<>(bulkBody.toString(), headers), String.class);
+
+                System.out.println("★ 대량 데이터 동기화 완료! " + allConcerts.size() + "건 입력됨.");
+            }
+        } catch (Exception e) {
+            System.err.println("★ 동기화 실패: " + e.getMessage());
+        }
+    }
 }
