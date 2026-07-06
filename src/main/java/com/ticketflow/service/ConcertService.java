@@ -97,30 +97,58 @@ public class ConcertService {
         return data;
     }
 
+    // ConcertService.java
+
+    // ConcertService.java
     public List<Map<String, Object>> getRankedConcerts() {
-        List<Object[]> results = concertRepository.findConcertsByRanking();
-        Map<String, Map<String, Object>> distinctMap = new LinkedHashMap<>();
-        for (Object[] obj : results) {
-            Concert concert = (Concert) obj[0];
-            int ranking = ((Number) obj[1]).intValue();
-            if (!distinctMap.containsKey(concert.getConcertId())) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("concert", concert);
-                map.put("ranking", ranking);
-                distinctMap.put(concert.getConcertId(), map);
-            }
+        List<Object[]> results = concertRepository.findConcertsWithLatestStats();
+
+        // 필터링 및 정렬
+        List<Map<String, Object>> rankedList = results.stream()
+                .filter(obj -> obj[1] != null && ((Stats) obj[1]).getReservationRate() > 0)
+                .sorted((o1, o2) -> Float.compare(((Stats) o2[1]).getReservationRate(), ((Stats) o1[1]).getReservationRate()))
+                .map(obj -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("concert", (Concert) obj[0]);
+                    map.put("stats", (Stats) obj[1]);
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        // [중요] 여기서 'ranking' 키를 추가해야 합니다!
+        for (int i = 0; i < rankedList.size(); i++) {
+            rankedList.get(i).put("ranking", i + 1);
         }
-        return new ArrayList<>(distinctMap.values());
+
+        return rankedList;
     }
 
     public List<Map<String, Object>> getRankedConcertsByGenre(String genre) {
-        List<Object[]> results = concertRepository.findConcertsByGenreRanking(genre);
-        return results.stream().map(obj -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("concert", (Concert) obj[0]);
-            map.put("ranking", ((Number) obj[1]).intValue());
-            return map;
-        }).collect(Collectors.toList());
+        // 1. 장르별 데이터 조회
+        List<Object[]> results = concertRepository.findConcertsByGenreWithLatestStats(genre);
+
+        if (results == null || results.isEmpty()) return Collections.emptyList();
+
+        // 2. Stream 처리 및 리스트 변환
+        List<Map<String, Object>> rankedList = results.stream()
+                .filter(obj -> obj[1] != null && ((Stats) obj[1]).getReservationRate() > 0)
+                .sorted((o1, o2) -> Double.compare(
+                        ((Stats) o2[1]).getReservationRate(),
+                        ((Stats) o1[1]).getReservationRate()))
+                .map(obj -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("concert", (Concert) obj[0]);
+                    map.put("stats", (Stats) obj[1]); // [추가] stats 정보도 반드시 넣어줘야 합니다!
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        // 3. [핵심] 여기서 랭킹(1, 2, 3...)을 부여합니다.
+        for (int i = 0; i < rankedList.size(); i++) {
+            rankedList.get(i).put("ranking", i + 1);
+        }
+
+        return rankedList;
     }
 
     public List<String> findSessionsByDate(String id, String selectedDate) {
@@ -189,11 +217,16 @@ public class ConcertService {
     public List<ConcertResponseDto> getPopularConcerts(int limit) {
         LocalDate today = LocalDate.now();
 
-        // 1. 모든 공연을 가져와서 필터링 및 정렬 수행
         return concertRepository.findAll().stream()
-                // 1) 지난 공연 제외 (종료일이 오늘 이전인 것 제외)
                 .filter(c -> !c.getConcertEndDate().isBefore(today))
-                .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed().thenComparing(Concert::getConcertEndDate))
+                // [수정] 예매율 대신 예매된 좌석 수로 필터링
+                .filter(c -> {
+                    long totalSeats = seatRepository.countByConcert_ConcertId(c.getConcertId());
+                    long reservedSeats = selectedSeatRepository.countByConcert_ConcertId(c.getConcertId());
+                    // 예매율이 0.1% 이상인 것만 (즉, 하나라도 예매된 경우)
+                    return totalSeats > 0 && reservedSeats > 0;
+                })
+                .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed())
                 .limit(limit)
                 .map(ConcertResponseDto::new)
                 .collect(Collectors.toList());

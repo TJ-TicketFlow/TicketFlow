@@ -7,6 +7,7 @@ import com.ticketflow.entity.User;
 import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.repository.ConcertRepository;
 import com.ticketflow.entity.UserCoupon;
+import com.ticketflow.repository.WishlistRepository;
 import com.ticketflow.service.ConcertService;
 import com.ticketflow.service.MembershipService;
 import com.ticketflow.service.StatsService;
@@ -39,6 +40,7 @@ public class ConcertController {
     private final com.ticketflow.service.CancelPredictionService cancelPredictionService;
     private final com.ticketflow.repository.PayRepository payRepository;
     private final StatsService statsService;
+    private final WishlistRepository wishlistRepository;
 
     // 💡 1. 방금 만든 ONNX 예측 서비스 추가 주입!
     private final com.ticketflow.service.ConcertPredictService concertPredictService;
@@ -168,18 +170,26 @@ public class ConcertController {
 
     @GetMapping("/ranking")
     public String rankingPage(@RequestParam(required = false) String genre, Model model) {
+        // 1. 데이터 가져오기
         List<Map<String, Object>> rankings = (genre != null && !genre.isEmpty())
                 ? concertService.getRankedConcertsByGenre(mapGenreCodeToName(genre))
                 : concertService.getRankedConcerts();
 
+        // 2. null 체크
+        if (rankings == null) rankings = Collections.emptyList();
+
+        // 로그 추가 (실제 들어오는지 확인)
+        System.out.println("★ 랭킹 데이터 개수: " + rankings.size());
+
+        // 3. 랭킹 분리 (가장 안전한 방식)
+        int size = rankings.size();
+        List<Map<String, Object>> top3 = size >= 3 ? rankings.subList(0, 3) : rankings;
+        List<Map<String, Object>> restRankings = size > 3 ? rankings.subList(3, size) : Collections.emptyList();
+
+        model.addAttribute("top3", top3);
+        model.addAttribute("restRankings", restRankings);
         model.addAttribute("genre", genre == null ? "all" : genre);
-        if (rankings.size() >= 3) {
-            model.addAttribute("top3", rankings.subList(0, 3));
-            model.addAttribute("restRankings", rankings.subList(3, rankings.size()));
-        } else {
-            model.addAttribute("top3", rankings);
-            model.addAttribute("restRankings", Collections.emptyList());
-        }
+
         return "concert/ranking";
     }
 
@@ -290,22 +300,28 @@ public class ConcertController {
     // 1. 기존 메서드: 로그인 여부와 관계없이 '일반적인 추천(인기순)' 반환
     @GetMapping("/recommended")
     @ResponseBody
-    public ResponseEntity<?> getGeneralRecommendations() {
-        // 예: 전체 공연 중 가장 찜이 많은 공연 TOP 3
-        List<ConcertResponseDto> popular = concertService.getPopularConcerts(3);
-        return ResponseEntity.ok(Map.of("recommended", popular));
-    }
+    public ResponseEntity<?> getRecommended(Principal principal) {
+        List<ConcertResponseDto> list = new ArrayList<>();
 
-    // 2. 새 메서드: 로그인한 유저만 위한 '개인화 추천'
-    @GetMapping("/ai-recommend")
-    @ResponseBody
-    public ResponseEntity<?> getPersonalizedRecommendations(Principal principal) {
-        if (principal == null) {
-            // 로그인 안 했으면 그냥 일반 추천을 호출하거나 빈 리스트 반환
-            return getGeneralRecommendations();
+        // 1. 개인화 추천 시도
+        if (principal != null) {
+            long wishlistCount = wishlistRepository.countByUser_UserId(principal.getName());
+            if (wishlistCount > 0) {
+                list = concertService.getRecommendedConcerts(principal.getName());
+            }
         }
-        List<ConcertResponseDto> personalized = concertService.getRecommendedConcerts(principal.getName());
-        return ResponseEntity.ok(Map.of("aiRecommended", personalized));
+
+        // 2. 데이터가 없을 경우 전체 데이터에서 최신순으로 가져오기
+        if (list == null || list.isEmpty()) {
+            list = concertRepository.findAll().stream()
+                    // 💡 여기에 실제 엔티티의 필드명인 concertStartDate 사용
+                    .sorted(Comparator.comparing(Concert::getConcertStartDate).reversed())
+                    .limit(3)
+                    .map(ConcertResponseDto::new)
+                    .collect(Collectors.toList());
+        }
+
+        return ResponseEntity.ok(Map.of("recommended", list));
     }
 
     @GetMapping("/{id}/stats-json")

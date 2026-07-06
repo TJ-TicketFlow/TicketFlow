@@ -37,20 +37,27 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAiCancelRate(concertId);
 
     // 3. 통계 데이터 로드 및 폴링
-    fetch(`/concert/${concertId}/stats-json`)
-        .then(res => {
-            if (!res.ok) throw new Error('Stats not found');
-            return res.json();
-        })
-        .then(data => {
-            if (data && data.genderData && data.ageData) {
-                initCharts(data);
-                setInterval(pollStats, 3000);
-            }
-        })
-        .catch(err => {
-            console.warn("통계 데이터를 불러올 수 없습니다:", err);
+// HTML에서 전역 변수로 선언된 statsData를 먼저 확인합니다.
+    if (typeof statsData !== 'undefined' && statsData) {
+        // HTML에 데이터가 있다면 즉시 초기화
+        initCharts({
+            genderData: [statsData.male, statsData.female],
+            ageData: [statsData.age10, statsData.age20, statsData.age30, statsData.age40, statsData.age50]
         });
+        // 데이터가 이미 있으니 바로 폴링 시작
+        setInterval(pollStats, 3000);
+    } else {
+        // 만약 데이터가 없다면 비동기로 호출 (혹시 나중에 동적으로 통계가 추가되는 경우 대비)
+        fetch(`/concert/${concertId}/stats-json`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && data.genderData && data.ageData) {
+                    initCharts(data);
+                    setInterval(pollStats, 3000);
+                }
+            })
+            .catch(err => console.warn("통계 데이터를 불러올 수 없습니다:", err));
+    }
 
     // 4. FullCalendar 설정 (날짜 밀림 해결을 위해 UTC 타임존 고정)
     const calendarEl = document.querySelector('.concert-calendar');

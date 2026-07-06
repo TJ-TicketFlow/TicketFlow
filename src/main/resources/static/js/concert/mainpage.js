@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. data-store에서 로그인 정보 가져오기
     const dataStore = document.getElementById("data-store");
     const isLoggedIn = dataStore ? (dataStore.dataset.isLoggedIn === 'true') : false;
 
@@ -9,17 +8,24 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (!listDiv) return;
 
-        const fetchUrl = isLoggedIn ? '/concert/ai-recommend' : '/concert/recommended';
-        const dataKey = isLoggedIn ? 'aiRecommended' : 'recommended';
+        // [수정 핵심]
+        // 1. 위시리스트가 없거나 비로그인이면 모두 '/concert/recommended'를 호출합니다.
+        // 2. 서버 컨트롤러에서 'isLoggedIn' 파라미터를 넘겨주거나,
+        //    위시리스트 여부를 체크해서 없으면 자동으로 기본 추천을 내보내게 하세요.
+        const fetchUrl = '/concert/recommended';
+        const dataKey = 'recommended';
 
         fetch(fetchUrl)
             .then(response => response.json())
             .then(data => {
+                // 서버로부터 받은 데이터가 있으면 사용, 없으면 빈 배열
                 const concerts = data[dataKey] || [];
+
                 if (concerts.length > 0) {
                     listDiv.innerHTML = "";
                     concerts.slice(0, 3).forEach(concert => {
                         const dateText = `${concert.startDate} ~ ${concert.endDate}`;
+                        // HTML 생성 부분은 그대로 유지
                         const card = `
     <div class="small-card">
         <a href="/concert/${concert.concertId}/detail-page" style="text-decoration: none; color: inherit; display: block;">
@@ -28,7 +34,6 @@ document.addEventListener("DOMContentLoaded", function() {
             <div class="concert-meta">
                 <p>${dateText}</p>
                 <p>${concert.hallName}</p>
-                
                 <div class="concert-footer" style="display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px;">
                     <span class="booking-rate" style="font-size: 13px; color: #666;">
                         예매율 <strong style="font-size: 15px; color: #ff4b5c; font-weight: 700; margin-left: 2px;">${concert.bookingRate || 0}%</strong>
@@ -36,11 +41,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
             </div>
         </a>
-    </div>
-`;
+    </div>`;
                         listDiv.innerHTML += card;
                     });
                 } else {
+                    // 데이터가 하나도 없을 때만 섹션을 숨깁니다.
                     if (section) section.style.display = 'none';
                 }
             })

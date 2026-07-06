@@ -31,16 +31,15 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
      * 중복을 방지하기 위해 DISTINCT를 사용하고,
      * Stats 데이터가 1:N이라면 가장 최신 데이터 하나만 조인하도록 수정해야 합니다.
      */
-    @Query(value = "SELECT DISTINCT c, RANK() OVER (ORDER BY s.predictSoldOutRate DESC) as ranking " +
-            "FROM Concert c " +
-            "JOIN c.stats s " +
-            "WHERE s.id = (SELECT MAX(s2.id) FROM Stats s2 WHERE s2.concert.concertId = c.concertId)")
-    List<Object[]> findConcertsByRanking();
-
+    // 1. 전체 랭킹 조회 (필터링 조건 제거)
     // ConcertRepository.java
-    @Query("SELECT c, RANK() OVER (ORDER BY s.reservationRate DESC) as ranking " +
-            "FROM Concert c JOIN c.stats s WHERE c.concertGenre = :genre")
-    List<Object[]> findConcertsByGenreRanking(@Param("genre") String genre);
+// [수정] INNER JOIN을 LEFT JOIN으로 변경하여 통계가 없어도 공연이 나오게 함
+    @Query("SELECT DISTINCT c, s FROM Concert c LEFT JOIN c.stats s WHERE s.id = (SELECT MAX(s2.id) FROM Stats s2 WHERE s2.concert.concertId = c.concertId)")
+    List<Object[]> findConcertsWithLatestStats();
+
+    // 2. 장르별 랭킹 조회 (필터링 조건 제거)
+    @Query("SELECT DISTINCT c, s FROM Concert c JOIN c.stats s WHERE c.concertGenre LIKE %:genre% AND s.id = (SELECT MAX(s2.id) FROM Stats s2 WHERE s2.concert.concertId = c.concertId)")
+    List<Object[]> findConcertsByGenreWithLatestStats(@Param("genre") String genre);
 
     // 1. 인기 공연 조회 (Wishlist 테이블과 조인)
     @Query("SELECT c FROM Concert c JOIN Wishlist w ON c.concertId = w.concert.concertId " +
