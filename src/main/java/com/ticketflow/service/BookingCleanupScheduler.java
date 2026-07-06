@@ -20,14 +20,14 @@ public class BookingCleanupScheduler {
     private final ReservationRepository reservationRepository;
     private final PayRepository payRepository;
     private final BookingService bookingService;
+    private static final long PAY_TIMEOUT_MINUTES = 30;
 
     // 1분(60,000ms)마다 주기적으로 자동 실행
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 30000)
     @Transactional
     public void cleanupExpiredBookings() {
 
-        long timesetting = 10;
-        LocalDateTime thresholdTime = LocalDateTime.now().minusMinutes(timesetting);
+        LocalDateTime thresholdTime = LocalDateTime.now().minusMinutes(PAY_TIMEOUT_MINUTES);
 
         // ==============================================================
         // 작전 1: 개발자님의 쿼리를 활용한 '결제 장부(Pay)' 청소
@@ -35,12 +35,11 @@ public class BookingCleanupScheduler {
         List<Pay> expiredPays = payRepository.findExpiredPendingPayments(thresholdTime);
 
         if (!expiredPays.isEmpty()) {
-            System.out.println("🧹 [스케줄러]" + timesetting +"분 경과 결제 진행 중 멈춘 내역(Pay) " + expiredPays.size() + "건 청소 시작!");
 
             for (Pay pay : expiredPays) {
                 // 1) 결제 상태를 실패로 변경
                 pay.setPayStatus("FAILED");
-                pay.setPayFailReason("결제 대기 시간("+ timesetting +"분) 초과 자동 취소");
+                pay.setPayFailReason("결제 대기 시간("+ PAY_TIMEOUT_MINUTES +"분) 초과 자동 취소");
 
                 // 2) 묶인 좌석을 구출!
                 if (pay.getReservation() != null) {
@@ -56,13 +55,11 @@ public class BookingCleanupScheduler {
         List<Reservation> abandonedReservations = reservationRepository.findExpiredAndUnpaidReservations(thresholdTime);
 
         if (!abandonedReservations.isEmpty()) {
-            System.out.println("🧹 [스케줄러] 아예 결제 시도조차 안 하고" + timesetting + "분 지난 예약(Reservation) " + abandonedReservations.size() + "건 좌석 구출 시작!");
 
             for (Reservation reservation : abandonedReservations) {
                 try {
                     // 예약 장부만 덩그러니 남았으므로, 좌석만 바로 풀어버리면 됩니다.
                     bookingService.releaseUnpaidSeat(reservation.getReservationKey());
-                    System.out.println("✅ 결제 미시도 좀비 예약번호 " + reservation.getReservationKey() + " 좌석 회수 완료.");
                 } catch (Exception e) {
                     System.err.println("🚨 예약번호 " + reservation.getReservationKey() + " 좌석 회수 중 에러: " + e.getMessage());
                 }
