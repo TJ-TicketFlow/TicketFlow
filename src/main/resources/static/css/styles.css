@@ -238,7 +238,11 @@ body {
 
 /* 포스터 및 상세 정보 */
 .detail-poster { width: 100%; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-.detail-title { font-size: 32px; font-weight: 800; margin-bottom: 20px; color: #111; }
+.detail-title { font-size: 32px; font-weight: 800; margin-bottom: 20px; color: #111;
+    word-break: break-all; /* 너무 길면 다음 줄로 넘김 */
+    margin-top: 0;
+    padding-right: 20px;   /* 옆 정보와 겹치지 않게 여유 공간 확보 */
+}
 
 .detail-meta { display: flex; flex-direction: column; gap: 15px; font-size: 15px; color: #4b5563; }
 .detail-meta p { margin: 0; display: flex; gap: 10px; line-height: 1.6; }
@@ -289,7 +293,10 @@ body {
 }
 
 #calendar { width: 340px !important; height: 320px !important; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
-
+.info-middle {
+    min-width: 350px; /* 제목 영역의 최소 너비를 설정합니다 (원하는 값으로 조절 가능) */
+    flex: 1;          /* 필요 시 늘어날 수 있게 함 */
+}
 /* 버튼 */
 .btn-session { padding: 8px 16px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; border-radius: 6px; }
 .btn-session.active { background: #3b82f6; color: white; border-color: #3b82f6; }
