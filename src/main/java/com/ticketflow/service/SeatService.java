@@ -41,7 +41,7 @@ public class SeatService {
         }
 
         // "스탠딩"이라는 단어가 명확히 포함된 경우에만 배치도가 없는 스탠딩형으로 판단
-        if (priceInfo.contains("스탠딩")) {
+        if (priceInfo.contains("스탠딩")||priceInfo.contains("VIP") ) {
             return "STANDING"; // 앞서 seatmap.js 조건문과 맞추기 위해 STANDING 리턴
         } else {
             return "SEAT_A";
