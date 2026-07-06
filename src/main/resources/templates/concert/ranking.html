@@ -50,7 +50,7 @@
                             <h4 style="margin: 0; font-size: 1rem; width: 40%;" th:text="${item.concert.concertName}"></h4>
                             <div style="font-size: 0.85rem; color: #666;" th:text="${item.concert.concertStartDate}"></div>
                             <div style="font-weight: bold; color: var(--primary);" th:if="${not #lists.isEmpty(item.concert.stats)}">
-                                <span th:text="${item.concert.stats[0].reservationRate} + '%'"></span>
+                                예매율: <span th:text="${item.concert.stats[0].reservationRate} + '%'"></span>
                             </div>
                         </div>
                     </a>
