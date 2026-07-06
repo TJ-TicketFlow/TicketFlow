@@ -20,9 +20,9 @@ public class BookingCleanupScheduler {
     private final ReservationRepository reservationRepository;
     private final PayRepository payRepository;
     private final BookingService bookingService;
-    private static final long PAY_TIMEOUT_MINUTES = 30;
+    private static final long PAY_TIMEOUT_MINUTES = 10;
 
-    // 1분(60,000ms)마다 주기적으로 자동 실행
+    // 30초(30,000ms)마다 주기적으로 자동 실행
     @Scheduled(fixedRate = 30000)
     @Transactional
     public void cleanupExpiredBookings() {

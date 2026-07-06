@@ -1068,7 +1068,7 @@ public class BookingService {
         long elapsedSeconds = java.time.Duration.between(reservation.getReservationCreatedAt(), now).getSeconds();
 
         // 4. 30분(1800초)에서 지금까지 흘러간 초를 뺍니다.
-        long remaining = (30 * 60) - elapsedSeconds;
+        long remaining = (10 * 60) - elapsedSeconds;
 
         return remaining > 0 ? remaining : 0L;
     }
