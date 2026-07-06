@@ -181,14 +181,27 @@ public class BookingController {
     // ==========================================
     @PostMapping("/release-seat")
     @ResponseBody
-    public ResponseEntity<String> releaseSeat(@RequestBody Map<String, Long> payload, java.security.Principal principal) {
-        if (principal == null) return ResponseEntity.badRequest().build();
+    public ResponseEntity<String> releaseSeat(@RequestBody Map<String, Object> payload, java.security.Principal principal) { // 🌟 Map<String, Object>로 변경!
+        System.out.println("🚨 [디버그] release-seat API 호출됨!");
 
-        Long reservationKey = payload.get("reservationKey");
-        if (reservationKey != null) {
+        if (principal == null) {
+            System.out.println("🚨 [디버그] 로그인 정보 없음! 여기서 튕김!");
+            return ResponseEntity.badRequest().build();
+        }
+
+        Object keyObj = payload.get("reservationKey");
+        if (keyObj != null) {
+            // 🌟 [핵심 수정] Object로 받아서 문자로 바꾼 뒤, Long으로 아주 안전하게 변환합니다!
+            Long reservationKey = Long.valueOf(keyObj.toString());
+            System.out.println("🚨 [디버그] 안전하게 변환된 예약 번호: " + reservationKey);
+
             // 서비스 로직 실행
             bookingService.releaseUnpaidSeat(reservationKey);
+            System.out.println("🚨 [디버그] 서비스 해제 로직 호출 완료!");
+        } else {
+            System.out.println("🚨 [디버그] 프론트에서 넘어온 예약 번호가 없습니다!");
         }
+
         return ResponseEntity.ok("Seat released");
     }
 }

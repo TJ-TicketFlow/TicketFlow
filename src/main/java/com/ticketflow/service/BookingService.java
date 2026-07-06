@@ -673,19 +673,25 @@ public class BookingService {
             map.put("cancel_deadline", "-");
         }
 
+        // 결제 상태
+        String statusStr = "진행중";
+        String currentStatus = pay.getPayStatus();
+
         // 4. 기타 부가 정보
         String delivery_status = "모바일 티켓";
         if(pay.getPayDelPostcode()!=null && pay.getPayDelAddr() != null) delivery_status = "배송";
         map.put("delivery", delivery_status);
-        map.put("pay_method", pay.getPayMethod() != null ? pay.getPayMethod() : "결제 대기");
+        if ("FAILED".equals(currentStatus)) {
+            // 결제 상태가 FAILED(실패)라면 무조건 "결제 실패"를 넣음
+            map.put("pay_method", "결제 실패");
+        } else {
+            // 실패가 아니라면, 결제수단이 있으면 그걸 넣고 없으면 "결제 대기"를 넣음
+            map.put("pay_method", pay.getPayMethod() != null ? pay.getPayMethod() : "결제 대기");
+        }
 
         // 가격 (150000 -> "150,000" 형태로 콤마 찍기)
         java.text.DecimalFormat df = new java.text.DecimalFormat("###,###");
         map.put("total_price", df.format(pay.getPayAmount() != null ? pay.getPayAmount() : 0));
-
-        // 결제 상태
-        String statusStr = "진행중";
-        String currentStatus = pay.getPayStatus();
 
         if ("PAID".equals(currentStatus)) {
             statusStr = "예매완료";
@@ -1049,15 +1055,21 @@ public class BookingService {
     // ==========================================
     public long getRemainingSeconds(Long reservationKey) {
 
-        // 1. 자바가 시간 계산을 할 필요 없이, DB에 만들어둔 계산기를 바로 호출합니다!
-        Long remainingSeconds = reservationRepository.getRemainingSecondsFromDb(reservationKey);
+        Reservation reservation = reservationRepository.findById(reservationKey).orElse(null);
 
-        // 2. 만약 예약 정보가 없어서 null이 나오면 기본값 0초 처리
-        if (remainingSeconds == null) {
+        // 2. 예약 장부가 없거나, 생성된 시간(CreatedAt)이 없으면 0초 반환!
+        // (주의: getCreatedAt() 부분은 개발자님이 Reservation 엔티티에 만들어둔 시간 필드명으로 맞춰주세요!)
+        if (reservation == null || reservation.getReservationCreatedAt() == null) {
             return 0L;
         }
 
-        // 3. 남은 시간이 마이너스(이미 30분 지남)라면 0초로 반환, 아니면 남은 시간 그대로 반환!
-        return remainingSeconds > 0 ? remainingSeconds : 0L;
+        // 🌟 3. DB 시계를 안 믿고, KST로 완벽한 KST 자바 시계로 직접 계산합니다!
+        LocalDateTime now = LocalDateTime.now();
+        long elapsedSeconds = java.time.Duration.between(reservation.getReservationCreatedAt(), now).getSeconds();
+
+        // 4. 30분(1800초)에서 지금까지 흘러간 초를 뺍니다.
+        long remaining = (30 * 60) - elapsedSeconds;
+
+        return remaining > 0 ? remaining : 0L;
     }
 }

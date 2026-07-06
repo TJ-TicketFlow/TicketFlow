@@ -47,7 +47,7 @@
                     </tr>
                     <tr>
                         <td>관람일</td>
-                        <td colspan="3" th:text="${ticket['date']}"></td>
+                        <td colspan="3" th:text="${ticket['date']}+ ' (KST)'"></td>
                     </tr>
                     <tr>
                         <td>공연장 / 좌석</td>
@@ -69,7 +69,7 @@
             <table class="pay-table">
                 <tr>
                     <td class="label-cell">예매일</td>
-                    <td th:text="${ticket['order_date']}"></td>
+                    <td th:text="${ticket['order_date']} + ' (KST)'"></td>
                     <td class="label-cell" style="border-left:1px solid var(--border);">예매상태</td>
                     <td><strong th:text="${ticket['status']}"></strong></td>
                 </tr>
@@ -86,10 +86,10 @@
 
         <div class="section-title">예매취소 안내</div>
         <div class="cancel-notice">
-            <div class="cancel-deadline">취소 마감시간: <span th:text="${ticket['cancel_deadline']} + ' 까지'"></span></div>
+            <div class="cancel-deadline">취소 마감시간: <span th:text="${ticket['cancel_deadline']}+ ' (KST)' + ' 까지'"></span></div>
             <div class="cancel-fee-title">&lt;취소수수료안내&gt;</div>
             <div class="cancel-fee-desc">
-                취소 일자에 따라서 취소수수료가 발생합니다.<br>
+                모든 시간은 'KST' 기준입니다.<br>취소 일자에 따라서 취소수수료가 발생합니다.<br>
                 <ul>
                     <li>단, 예매 발권 전 12시 이전 취소시에는 취소수수료 없음(취소기한내에한함)</li>
                     <li>예매 후 7일 이내라도 취소시점이 관람일로부터 10일 이내라면 그에 해당하는 취소수수료가 부과됩니다.</li>

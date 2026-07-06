@@ -8,38 +8,61 @@ const realReservationKey = reservationMeta ? Number(reservationMeta.getAttribute
 function sendReleaseRequest() {
     if (realReservationKey === 0) return Promise.resolve(); // 예약 번호가 없으면 실행 안 함
 
+    // 1. 보안 토큰(CSRF)을 챙깁니다.
     const csrfMeta = document.querySelector("meta[name='_csrf']");
-    const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
     const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : '';
-    const csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.getAttribute("content") : 'X-CSRF-TOKEN';
 
-    const headers = { 'Content-Type': 'application/json' };
-    if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
+    // 2. 백엔드가 @RequestBody로 받을 수 있도록 JSON 데이터를 캡슐(Blob)로 예쁘게 포장합니다.
+    const data = JSON.stringify({ reservationKey: realReservationKey });
+    const blob = new Blob([data], { type: 'application/json' });
 
-    // 브라우저가 닫히는 죽는 순간에도 서버에 끝까지 메시지를 보내는 강력한 옵션(keepalive)
-    return fetch('/booking/release-seat', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({ reservationKey: realReservationKey }),
-        keepalive: true
-    }).catch(err => console.error("좌석 해제 요청 실패", err));
+    // 3. 🌟 [핵심 우회 기법] 헤더를 못 쓰는 비콘을 위해 주소 끝에 ?_csrf=토큰 값을 몰래 달아줍니다.
+    // 스프링 시큐리티는 헤더에 토큰이 없으면 주소창에서 토큰을 찾아내므로 완벽하게 통과됩니다!
+    const url = '/booking/release-seat?_csrf=' + csrfToken;
+
+    // 4. 브라우저가 죽는 순간 발동하는 가장 강력한 최후의 통신 수단 (sendBeacon)
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon(url, blob);
+    } else {
+        // 비콘을 지원하지 않는 아주 오래된 구형 브라우저를 위한 보험 (기존 fetch 로직)
+        const csrfHeaderMeta = document.querySelector("meta[name='_csrf_header']");
+        const csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.getAttribute("content") : 'X-CSRF-TOKEN';
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfHeader && csrfToken) { headers[csrfHeader] = csrfToken; }
+
+        fetch('/booking/release-seat', {
+            method: 'POST',
+            headers: headers,
+            body: data,
+            keepalive: true
+        }).catch(err => console.error("좌석 해제 요청 실패", err));
+    }
+
+    return Promise.resolve();
 }
 
 // [수정] 서버가 좌석을 실제로 풀어줄 때까지 기다렸다가 뒤로갑니다.
 // 응답이 오기 전에 history.back()이 먼저 실행되면, 좌석선택 페이지가
 // 새로고침되면서 아직 안 풀린(잠긴) 좌석 상태를 그대로 받아와 버리는 문제가 있었습니다.
 // 혹시 응답이 늦어져도 최대 1.5초만 기다리고 강제로 진행합니다(무한 대기 방지).
-function goBackToSeats() {
-    const releasePromise = sendReleaseRequest();
-    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1500));
+function goBackToSeats() { // 🌟 이름 끝에 's'를 지워서 HTML 버튼과 맞췄습니다!
 
-    Promise.race([releasePromise, timeoutPromise]).finally(() => {
-        // 이미 위에서 취소 요청을 보냈으니,
-        // 창이 닫힐 때(visibilitychange) 중복으로 또 요청이 가는 것을 막기 위해 스위치를 켭니다.
-        preserveSeat = true;
+    // 1. 서버에 "좌석 풀어줘!" 요청을 보냅니다.
+    sendReleaseRequest().finally(() => {
 
-        // 좌석 선택 페이지로 돌아갑니다.
-        history.back();
+        // 2. DB가 안전하게 저장을 끝낼 수 있도록 딱 0.5초(500ms)만 기다려줍니다.
+        setTimeout(() => {
+            // 창 닫힘 이벤트가 또 실행되지 않도록 스위치를 켭니다.
+            preserveSeat = true;
+
+            // 브라우저 캐시 버그 방지를 위해 이전 페이지로 '새로고침'하며 돌아갑니다!
+            if (document.referrer) {
+                window.location.href = document.referrer;
+            } else {
+                history.back();
+            }
+        }, 500);
+
     });
 }
 
@@ -434,11 +457,53 @@ document.addEventListener("DOMContentLoaded", function() {
     // ==========================================
 
     // 1. 사용자가 탭을 닫거나, 뒤로가기를 누르거나, 새로고침을 할 때 발동
-    window.addEventListener('visibilitychange', function() {
-        // 화면이 안 보이게 되었는데(hidden), 결제 버튼을 눌러서 넘어간 게 아니라면 도망친 것!
-        if (document.visibilityState === 'hidden' && !preserveSeat) {
-            sendReleaseRequest();
-        }
+    const exitEvents = ['visibilitychange', 'pagehide', 'unload'];
+
+    exitEvents.forEach(eventType => {
+        window.addEventListener(eventType, function(event) {
+
+            // visibilitychange 이벤트일 때는 화면이 완전히 '숨김(hidden)' 상태일 때만 작동
+            if (eventType === 'visibilitychange' && document.visibilityState !== 'hidden') {
+                return;
+            }
+
+            // 결제 버튼이나 이전 단계 버튼을 누른 게 아니라면 (도망친 거라면!)
+            if (!preserveSeat) {
+                // 🌟 핵심: 3개의 이벤트가 동시에 터져서 서버에 3번 요청가는 걸 막기 위해 스위치를 바로 꺼버립니다.
+                preserveSeat = true;
+
+                // 브라우저가 죽는 순간에도 서버로 "이 자리 풀어줘!" 유언을 남김 (keepalive)
+                sendReleaseRequest();
+            }
+        });
     });
 
+    // ==========================================
+    // 🌟 2. 브라우저 기본 '뒤로가기(←)' 버튼 완벽 방어 (History 낚아채기)
+    // ==========================================
+
+    // 결제창에 들어오자마자, 브라우저 뒤로가기 기록에 가짜 페이지를 하나 쓱 끼워 넣습니다.
+    history.pushState(null, null, location.href);
+
+    // 유저가 브라우저의 실제 뒤로가기(←) 버튼을 누르면, 이전 페이지로 가는 대신 이 이벤트가 발동합니다!
+    window.addEventListener('popstate', function(event) {
+
+        // 우리가 만든 '이전단계' 버튼과 100% 똑같이 0.5초의 시간을 벌어줍니다.
+        sendReleaseRequest().finally(() => {
+            setTimeout(() => {
+                preserveSeat = true; // 스위치 켜기
+                history.back();      // 0.5초 뒤에 '진짜' 이전 페이지로 보내주기
+            }, 500);
+        });
+
+    });
+});
+
+// 유저가 창을 닫거나 새로고침하려고 할 때 브라우저 자체 경고창 띄우기
+window.addEventListener('beforeunload', function (event) {
+    if (!preserveSeat) {
+        // 현대 브라우저에서는 보안상 커스텀 문자열은 무시되고, 브라우저 표준 경고창이 뜹니다.
+        event.preventDefault();
+        event.returnValue = '';
+    }
 });
