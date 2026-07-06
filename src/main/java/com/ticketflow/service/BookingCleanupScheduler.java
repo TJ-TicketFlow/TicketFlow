@@ -27,7 +27,6 @@ public class BookingCleanupScheduler {
     public void cleanupExpiredBookings() {
 
         long timesetting = 10;
-        // 기준 시간: 지금으로부터 30분 전
         LocalDateTime thresholdTime = LocalDateTime.now().minusMinutes(timesetting);
 
         // ==============================================================
