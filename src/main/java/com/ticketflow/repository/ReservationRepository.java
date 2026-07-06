@@ -28,10 +28,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                           @Param("sessionTime") String sessionTime,
                           @Param("reservationDate") LocalDate reservationDate,
                           @Param("seatClass") String seatClass);
-
-    @Query(value = "SELECT TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(reservation_created_at, INTERVAL 30 MINUTE)) " +
-            "FROM reservation WHERE reservation_key = :reservationKey", nativeQuery = true)
-    Long getRemainingSecondsFromDb(@Param("reservationKey") Long reservationKey);
+    
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Reservation r " +
