@@ -26,8 +26,9 @@ public class BookingCleanupScheduler {
     @Transactional
     public void cleanupExpiredBookings() {
 
+        long timesetting = 10;
         // 기준 시간: 지금으로부터 30분 전
-        LocalDateTime thresholdTime = LocalDateTime.now().minusMinutes(30);
+        LocalDateTime thresholdTime = LocalDateTime.now().minusMinutes(timesetting);
 
         // ==============================================================
         // 작전 1: 개발자님의 쿼리를 활용한 '결제 장부(Pay)' 청소
@@ -35,12 +36,12 @@ public class BookingCleanupScheduler {
         List<Pay> expiredPays = payRepository.findExpiredPendingPayments(thresholdTime);
 
         if (!expiredPays.isEmpty()) {
-            System.out.println("🧹 [스케줄러] 30분 경과 결제 진행 중 멈춘 내역(Pay) " + expiredPays.size() + "건 청소 시작!");
+            System.out.println("🧹 [스케줄러]" + timesetting +"분 경과 결제 진행 중 멈춘 내역(Pay) " + expiredPays.size() + "건 청소 시작!");
 
             for (Pay pay : expiredPays) {
                 // 1) 결제 상태를 실패로 변경
                 pay.setPayStatus("FAILED");
-                pay.setPayFailReason("결제 대기 시간(30분) 초과 자동 취소");
+                pay.setPayFailReason("결제 대기 시간("+ timesetting +"분) 초과 자동 취소");
 
                 // 2) 묶인 좌석을 구출!
                 if (pay.getReservation() != null) {
@@ -56,7 +57,7 @@ public class BookingCleanupScheduler {
         List<Reservation> abandonedReservations = reservationRepository.findExpiredAndUnpaidReservations(thresholdTime);
 
         if (!abandonedReservations.isEmpty()) {
-            System.out.println("🧹 [스케줄러] 아예 결제 시도조차 안 하고 30분 지난 예약(Reservation) " + abandonedReservations.size() + "건 좌석 구출 시작!");
+            System.out.println("🧹 [스케줄러] 아예 결제 시도조차 안 하고" + timesetting + "분 지난 예약(Reservation) " + abandonedReservations.size() + "건 좌석 구출 시작!");
 
             for (Reservation reservation : abandonedReservations) {
                 try {
