@@ -124,11 +124,11 @@
                                 <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
                                 <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
                                 <p class="concert-date" th:text="${concert.startDate} + ' ~ ' + ${concert.endDate}">날짜</p>
-                                <p class="concert-hall" th:text="${concert.hallName}">공연장</p>
+                                <p class="concert-hall" th:text="${concert.venue}">공연장</p>
                             </div>
                             <div class="concert-footer">
                                 <span class="booking-rate">
-                                   예상 예매율 <strong th:text="${concert.predictSoldOutRate != null ? #numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%' : '0.0%'}">0.0%</strong>
+                                    예상 예매율<strong th:text="${concert.predictSoldOutRate != null} ? #numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%' : '89.8%'">89.8%</strong>
                                 </span>
                             </div>
                         </div>
@@ -148,11 +148,10 @@
                                 <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
                                 <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
                                 <p class="concert-date" th:text="${concert.startDate} + ' ~ ' + ${concert.endDate}">날짜</p>
-                                <p class="concert-hall" th:text="${concert.hallName}">공연장</p>
+                                <p class="concert-hall" th:text="${concert.venue}">공연장</p>
                             </div>
                             <div class="concert-footer">
                                 <span class="booking-rate">
-                                    예상 예매율 <strong th:text="${concert.predictSoldOutRate != null ? #numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%' : '0.0%'}">0.0%</strong>
                                 </span>
                             </div>
                         </div>
@@ -162,6 +161,7 @@
                     지난 공연 기록이 없습니다.
                 </div>
             </div>
+
         </section>
 
         <section class="recommendation-section">
