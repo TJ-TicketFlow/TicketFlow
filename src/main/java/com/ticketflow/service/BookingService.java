@@ -100,6 +100,10 @@ public class BookingService {
     @Transactional
     public String createTemporaryPayment(BookingRequestDto requestDto, String userId) {
 
+        long remaining = getRemainingSeconds(requestDto.getReservationKey());
+        if (remaining <= 0) {
+            throw new IllegalStateException("결제 대기 시간이 초과되었습니다. 처음부터 다시 예매해주세요.");
+        }
         // ----------------------------------------------------
         // [새로 추가된 핵심 방어막] 레몬스퀴지로 넘어가기 전 최종 이중결제 체크!
         // ----------------------------------------------------
@@ -216,6 +220,22 @@ public class BookingService {
         long finalPriceForLemonSqueezy = payment.getPayAmount() * 100;
         attributes.put("custom_price", finalPriceForLemonSqueezy);
 
+        // 1. 이 좌석을 최초로 선점한 시간을 가져옵니다.
+        LocalDateTime createdAt = payment.getReservation().getReservationCreatedAt();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now(); // 에러 방지용
+        }
+
+        // 2. 최초 선점 시간 + 10분 = 진짜 좌석 만료 시간
+        LocalDateTime exactExpireTime = createdAt.plusMinutes(10);
+
+        // 3. 레몬스퀴지 API는 국제 표준시(UTC)를 요구하므로, 한국 시간(KST)을 UTC로 변환하여 문자열로 만듭니다.
+        String expiresAt = exactExpireTime.atZone(java.time.ZoneId.of("Asia/Seoul"))
+                .toInstant()
+                .toString(); // 결과 예시: 2026-07-07T03:50:00Z
+
+        attributes.put("expires_at", expiresAt); // 남은 시간만큼만 결제창 유지!
+
         relationships.put("store", Map.of("data", Map.of("type", "stores", "id", storeId)));
         relationships.put("variant", Map.of("data", Map.of("type", "variants", "id", variantId)));
 
@@ -245,9 +265,15 @@ public class BookingService {
                                 String receiptUrl, String lsWebhookEventId,
                                 long webhookAmount, String payStatus, String failReason) {
 
-        // 1. 주문 번호로 DB에서 결제 대기 중인 장부를 찾습니다.
+        // 1. 주문 번호로 DB에서 결제 장부를 찾습니다.
         Pay payment = payRepository.findByMerchantUid(merchantUid)
                 .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
+
+        // 🌟 [추가된 0단계 방어막] 이미 처리된 결제라면 가차없이 무시합니다! (웹훅 중복 수신 방어)
+        if ("PAID".equals(payment.getPayStatus()) || "CANCELLED".equals(payment.getPayStatus())) {
+            System.out.println("이미 처리 완료된 주문입니다. 중복 웹훅을 무시합니다. (주문번호: " + merchantUid + ")");
+            return;
+        }
 
         // [1단계 방어막] 결제 실패 처리
         if ("failed".equalsIgnoreCase(payStatus)) {
@@ -272,7 +298,35 @@ public class BookingService {
             return;
         }
 
-        // 3. 결제 상태 업데이트
+        // 🌟 2. 좌석 상태 확정 (검증을 최우선으로 먼저 실행합니다!)
+        try {
+            Reservation reservation = payment.getReservation();
+            var selectedSeat = reservation.getSelectedSeat();
+
+            // [3차 방어선] 상태를 2(완료)로 바꾸기 직전에, 내 자리가 무사한지 검사!
+            if (selectedSeat.getSeatState() != 1) {
+                System.err.println("🚨 10분 초과 지각 결제 감지! 자동 환불을 진행합니다.");
+
+                payment.setPayStatus("CANCELLED");
+                payment.setPayFailReason("10분 결제 시간 초과로 인한 자동 환불");
+
+                callLemonSqueezyRefund(lsOrderId, payment.getPayAmount(), payment.getPayAmount());
+                sendPaymentRefundEmail(payment.getPayNo());
+
+                return; // 로직 강제 종료
+            }
+
+            // 무사통과한 사람만 상태 2(결제 완료)로 확정
+            var seat = selectedSeat.getSeat();
+            selectedSeat.setSeatState((short) 2);
+            seat.setSeatStatus((short) 0);
+            System.out.println(seat.getSeatId() + "번 좌석 완벽하게 예매 확정 완료!");
+
+        } catch (Exception e) {
+            System.err.println("좌석 확정 로직 처리 중 오류: " + e.getMessage());
+        }
+
+        // 🌟 3. 결제 상태 업데이트 (모든 검문이 끝난 뒤에 비로소 도장을 찍습니다!)
         payment.setPayStatus("PAID");
         payment.setLsOrderId(lsOrderId);
         payment.setCurrency(currency);
@@ -286,20 +340,7 @@ public class BookingService {
             System.out.println("쿠폰 사용 완료 처리됨!");
         }
 
-        // 4. 좌석 상태 확정
-        try {
-            Reservation reservation = payment.getReservation();
-            var selectedSeat = reservation.getSelectedSeat();
-            var seat = selectedSeat.getSeat();
-
-            selectedSeat.setSeatState((short) 2);
-            seat.setSeatStatus((short) 0);
-            System.out.println(seat.getSeatId() + "번 좌석 완벽하게 예매 확정 완료!");
-        } catch (Exception e) {
-            System.err.println("좌석 확정 로직 처리 중 오류: " + e.getMessage());
-        }
-
-        // 5. 🌟 통계 데이터 실시간 갱신
+        // 4. 통계 데이터 실시간 갱신
         try {
             String concertId = payment.getReservation().getConcert().getConcertId();
             statsService.updateStats(concertId);
@@ -310,11 +351,11 @@ public class BookingService {
 
         System.out.println("결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
 
+        // 5. 이메일 발송
         try {
             sendBookingCompleteEmail(payment);
             System.out.println("결제 완료 이메일 발송 성공!");
         } catch (Exception e) {
-            // 이메일 전송이 실패해도 에러만 찍고 무사히 넘어갑니다. (DB 업데이트는 정상 유지됨)
             System.err.println("🚨 이메일 발송 실패 (운영에 영향 없음, 결제는 정상 처리됨): " + e.getMessage());
         }
     }
@@ -763,6 +804,7 @@ public class BookingService {
         // 계산을 위한 가격 데이터 준비
         int totalPayAmount = pay.getPayAmount().intValue();
         int count = pay.getReservation().getReservationCount();
+        if (count <= 0) count = 1;
         int ticketPrice = totalPayAmount / count; // 티켓 1장당 가격
         int fee = 0;
 
@@ -935,7 +977,7 @@ public class BookingService {
         SelectedSeat selectedSeat = reservation.getSelectedSeat();
 
         // 3. 결제가 안 된 좀비 좌석이라면 다시 세상에 풀어줍니다!
-        if (selectedSeat.getSeatState() == 1 || selectedSeat.getSeatState() == 2) {
+        if (selectedSeat.getSeatState() == 1) {
             selectedSeat.setSeatState((short) 0);
 
             // 웹소켓 브로드캐스트를 위해 공연 ID 미리 확보
@@ -1057,6 +1099,60 @@ public class BookingService {
     }
 
     // ==========================================
+    // [새로 추가] 결제 취소 및 자동 환불 안내 이메일
+    // ==========================================
+    public void sendPaymentRefundEmail(long id) {
+        try {
+            Pay payment = payRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 주문 번호를 찾을 수 없습니다: " + id));
+
+            // 편지 봉투(MimeMessage)를 하나 만듭니다.
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            // 1. 누구에게 보낼 것인가? (결제자 이메일)
+            helper.setTo(payment.getBuyerEmail());
+
+            // 2. 이메일 제목 (결제 취소임을 명확히 강조!)
+            helper.setSubject("[TicketFlow] 결제 취소 및 자동 환불 안내 (주문번호: TF-0000" + payment.getPayNo() + ")");
+
+            // 3. 공연명 및 좌석 정보 추출
+            String showName = payment.getReservation().getSelectedSeat().getSeat().getConcert().getConcertName();
+            String seatInfo = payment.getReservation().getSelectedSeatsText();
+            if (seatInfo == null || seatInfo.isBlank()) {
+                seatInfo = payment.getReservation().getSelectedSeat().getSeat().getSeatClass() + " "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatRow() + "열 "
+                        + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
+            }
+
+            // 4. 이메일 내용 (HTML로 더 깔끔하고 안심되게 작성)
+            String htmlContent = "<h3>💸 결제가 취소되어 자동 환불 처리되었습니다.</h3>"
+                    + "<p>안녕하세요, <b>" + payment.getBuyerName() + "</b>님.</p>"
+                    + "<p>고객님의 결제건이 <b>결제 대기시간(10분) 초과</b>로 인해 안전하게 결제 취소(환불) 처리되었음을 안내해 드립니다.</p>"
+                    + "<hr style='border: 1px solid #eee; margin: 15px 0;'>"
+                    + "<p><b>주문번호:</b> TF-0000" + payment.getPayNo() + "</p>"
+                    + "<p><b>공연명:</b> " + showName + "</p>"
+                    + "<p><b>선택했던 좌석:</b> " + seatInfo + "</p>"
+                    + "<p><b>결제 취소(환불) 금액:</b> <span style='color: #ef4444; font-weight: bold;'>" + payment.getPayAmount() + "원</span></p>"
+                    + "<hr style='border: 1px solid #eee; margin: 15px 0;'>"
+                    + "<p>승인된 결제 수단으로 전액 환불 처리가 접수되었으며, 실제 환불까지는 카드사에 따라 영업일 기준 3~5일 정도 소요될 수 있습니다.</p>"
+                    + "<br><p>이용에 불편을 드려 죄송합니다. 티켓 예매를 원하시면 처음부터 다시 진행해 주시길 바랍니다.<br>"
+                    + "<a href='https://encouraged-leader-goes-jerry.trycloudflare.com/mypage/benefits' style='color: #3b82f6; text-decoration: underline; font-weight: bold;'>마이페이지에서 내역 확인하기</a></p>";
+
+            // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
+            helper.setText(htmlContent, true);
+
+            // 5. 전송!
+            javaMailSender.send(mimeMessage);
+            System.out.println("✅ 결제 취소(환불) 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
+
+        } catch (Exception e) {
+            System.err.println("🚨 환불 이메일 발송 실패: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // ==========================================
     // 결제창 타이머 동기화를 위한 남은 시간 계산기 (DB 완벽 동기화 버전)
     // ==========================================
     public long getRemainingSeconds(Long reservationKey) {
@@ -1073,7 +1169,7 @@ public class BookingService {
         LocalDateTime now = LocalDateTime.now();
         long elapsedSeconds = java.time.Duration.between(reservation.getReservationCreatedAt(), now).getSeconds();
 
-        // 4. 30분(1800초)에서 지금까지 흘러간 초를 뺍니다.
+        // 4. 10분(600초)에서 지금까지 흘러간 초를 뺍니다.
         long remaining = (10 * 60) - elapsedSeconds;
 
         return remaining > 0 ? remaining : 0L;
