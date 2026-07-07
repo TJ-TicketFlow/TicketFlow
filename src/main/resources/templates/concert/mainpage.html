@@ -118,7 +118,7 @@
             <div class="concert-grid" id="upcoming-list">
                 <article class="concert-card" th:each="concert : ${upcomingConcerts}" th:if="${not #lists.isEmpty(upcomingConcerts)}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img" loading="lazy" decoding="async"></div>
                         <div class="concert-info">
                             <div class="concert-text-wrap">
                                 <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
@@ -128,7 +128,7 @@
                             </div>
                             <div class="concert-footer">
                                 <span class="booking-rate">
-                                    예상 예매율<span th:text="${#numbers.formatDecimal(concert.reservationRate, 1, 2)} + '%'">85.50%</span>
+                                    예상 예매율
                                     </span>
                                 </span>
                             </div>
@@ -143,7 +143,7 @@
             <div class="concert-grid" id="past-list" style="display: none;">
                 <article class="concert-card" th:each="concert : ${pastConcerts}" th:if="${not #lists.isEmpty(pastConcerts)}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img" loading="lazy" decoding="async"></div>
                         <div class="concert-info">
                             <div class="concert-text-wrap">
                                 <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
