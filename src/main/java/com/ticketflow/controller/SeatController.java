@@ -77,7 +77,8 @@ public class SeatController {
      */
     @ResponseBody
     @GetMapping("/api/concert/{concertId}")
-    public ResponseEntity<?> getConcertInfo(@PathVariable String concertId) {
+    public ResponseEntity<?> getConcertInfo(@PathVariable String concertId,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
         try {
             Concert concert = concertService.findById(concertId);
             String layoutType = seatService.getSeatLayoutType(concertId);
@@ -94,6 +95,17 @@ public class SeatController {
             responseData.put("concertDate", concert.getConcertStartDate().toString());
             responseData.put("concertRuntime", concert.getConcertRuntime());
             responseData.put("concertPriceInfo", concert.getConcertPriceInfo());
+
+            // 🌟 [추가] 로그인한 사용자가 이 공연에 대해 이미 보유 중인 티켓 매수를 함께 내려줘서
+            // 프론트엔드(seatmap.js)가 "계정당 최대 4매" 제한을 정확하게 안내할 수 있도록 합니다.
+            long myBookedCount = 0;
+            if (userDetails != null) {
+                Long userNo = userRepository.findByUserId(userDetails.getUsername())
+                        .map(User::getUserNo)
+                        .orElse(null);
+                myBookedCount = seatService.getActiveTicketCount(userNo, concertId);
+            }
+            responseData.put("myBookedCount", myBookedCount);
 
             return ResponseEntity.ok(responseData);
         } catch (Exception e) {

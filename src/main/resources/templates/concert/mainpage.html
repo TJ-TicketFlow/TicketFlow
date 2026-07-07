@@ -118,7 +118,7 @@
             <div class="concert-grid" id="upcoming-list">
                 <article class="concert-card" th:each="concert : ${upcomingConcerts}" th:if="${not #lists.isEmpty(upcomingConcerts)}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img" loading="lazy" decoding="async"></div>
                         <div class="concert-info">
                             <div class="concert-text-wrap">
                                 <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
@@ -128,8 +128,7 @@
                             </div>
                             <div class="concert-footer">
                                 <span class="booking-rate">
-                                    예상 예매율<span th:text="${concert.predictSoldOutRate != null} ? ${#numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%'} : '89.8%'">
-                                    </span>
+                                    예상 예매율<strong th:text="${concert.predictSoldOutRate != null} ? #numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%' : '89.8%'">89.8%</strong>
                                 </span>
                             </div>
                         </div>
@@ -143,17 +142,13 @@
             <div class="concert-grid" id="past-list" style="display: none;">
                 <article class="concert-card" th:each="concert : ${pastConcerts}" th:if="${not #lists.isEmpty(pastConcerts)}">
                     <a th:href="@{/concert/{id}/detail-page(id=${concert.concertId})}">
-                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img"></div>
+                        <div class="poster-wrap"><img th:src="${concert.posterUrl}" alt="포스터" class="poster-img" loading="lazy" decoding="async"></div>
                         <div class="concert-info">
                             <div class="concert-text-wrap">
                                 <p class="concert-genre" th:text="${concert.concertGenre}">장르</p>
                                 <h3 class="concert-name" th:text="${concert.concertName}">공연명</h3>
                                 <p class="concert-date" th:text="${concert.startDate} + ' ~ ' + ${concert.endDate}">날짜</p>
                                 <p class="concert-hall" th:text="${concert.hallName}">공연장</p>
-                            </div>
-                            <div class="concert-footer">
-                                <span class="booking-rate">
-                                </span>
                             </div>
                         </div>
                     </a>
