@@ -133,7 +133,23 @@ public class UserService {
     public void withdraw(String userId) {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        userRepository.delete(user);
+
+        // 🌟 1. 절대 중복되지 않는 고유 꼬리표 만들기 (예: _1730000000000)
+        String delSuffix = "_" + System.currentTimeMillis();
+
+        // 🌟 2. 아이디와 이메일에 회원번호+꼬리표를 붙여서 유니크 충돌 완벽 방지!
+        // 결과 예시: del_15_1730000000000 (약 20자)
+        user.setUserId("del_" + user.getUserNo() + delSuffix);
+
+        // 결과 예시: del_15_1730000000000@x.com (약 26자 -> 50자 제한 안전!)
+        user.setUserEmail("del_" + user.getUserNo() + delSuffix + "@x.com");
+
+        // 🌟 3. 나머지 개인정보 마스킹 (법적 의무)
+        user.setUserName("탈퇴회원");
+        user.setUserPhoneNumber("000-0000-0000");
+        user.setUserPw(""); // 비밀번호 무효화
+
+        // userRepository.delete(user); // <--- 이건 꼭 지우거나 주석 처리하세요!
     }
 
     /**

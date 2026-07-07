@@ -47,14 +47,15 @@
                 </div>
             </form>
         </div>
-
+        <form id="withdrawForm" th:action="@{/mypage/withdraw}" method="post" style="display: none;"></form>
     </th:block>
 </th:block>
 
 <script>
     function confirmWithdraw() {
         if (confirm('정말 탈퇴하시겠습니까? 탈퇴 후 모든 데이터가 삭제됩니다.')) {
-            window.location.href = '/mypage/withdraw';
+            // 주소창 이동(GET) 대신, 폼을 제출(POST)합니다!
+            document.getElementById('withdrawForm').submit();
         }
     }
 </script>
