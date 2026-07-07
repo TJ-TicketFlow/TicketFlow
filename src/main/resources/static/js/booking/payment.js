@@ -129,6 +129,7 @@ document.addEventListener("DOMContentLoaded", function() {
             // 0.1초 정도 여유를 주어 00:00이 화면에 보인 직후 알림창을 띄웁니다.
             setTimeout(() => {
                 alert("결제 대기 시간이 초과되었습니다. 메인 화면으로 돌아갑니다.");
+                preserveSeat = true;
                 sendReleaseRequest();
                 window.location.href = '/';
             }, 100);
