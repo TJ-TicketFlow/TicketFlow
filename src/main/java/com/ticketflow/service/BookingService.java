@@ -346,19 +346,6 @@ public class BookingService {
             System.out.println("쿠폰 사용 완료 처리됨!");
         }
 
-        // 4. 좌석 상태 확정
-        try {
-            Reservation reservation = payment.getReservation();
-            var selectedSeat = reservation.getSelectedSeat();
-            var seat = selectedSeat.getSeat();
-
-            selectedSeat.setSeatState((short) 2);
-            seat.setSeatStatus((short) 0);
-            System.out.println(seat.getSeatId() + "번 좌석 완벽하게 예매 확정 완료!");
-        } catch (Exception e) {
-            System.err.println("좌석 확정 로직 처리 중 오류: " + e.getMessage());
-        }
-
         // 5. 🌟 통계 데이터 실시간 갱신
         String concertId = null; // 아래 캐시 갱신에서 쓰기 위해 블록 외부로 변수 추출
         // 4. 통계 데이터 실시간 갱신
