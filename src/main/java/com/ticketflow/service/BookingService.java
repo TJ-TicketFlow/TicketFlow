@@ -992,7 +992,7 @@ public class BookingService {
                     + "<p><b>공연명:</b> " + showName + "</p>"
                     + "<p><b>좌석:</b> " + seatInfo + "</p>"
                     + "<p><b>결제금액:</b> " + payment.getPayAmount() + "원</p>"
-                    + "<br><p><a href='http://localhost:8080/mypage/benefits' style='color: #3b82f6; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
+                    + "<br><p><a href='https://encouraged-leader-goes-jerry.trycloudflare.com/mypage/benefits' style='color: #3b82f6; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
             // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
             helper.setText(htmlContent, true);
 
@@ -1036,7 +1036,7 @@ public class BookingService {
                     // 💡 취소 메일이므로, 추후에 환불 수수료를 뺀 '최종 환불 금액'을 넘겨주면 더 좋습니다!
                     + "<p><b>결제 취소 금액:</b> " + payment.getPayAmount() + "원</p>"
                     + "<br><p>결제하신 수단으로 환불 처리가 진행될 예정입니다.<br>"
-                    + "<a href='http://localhost:8080/mypage/benefits' style='color: #ef4444; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
+                    + "<a href='https://encouraged-leader-goes-jerry.trycloudflare.com/mypage/benefits' style='color: #ef4444; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
             // true를 적어주면 단순 텍스트가 아니라 HTML 디자인이 적용됩니다.
             helper.setText(htmlContent, true);
 
