@@ -126,17 +126,43 @@ document.addEventListener("DOMContentLoaded", function() {
             clearInterval(timerInterval);
             renderTimer(); // 화면에 00:00을 확실히 찍어줍니다.
 
-            // 0.1초 정도 여유를 주어 00:00이 화면에 보인 직후 알림창을 띄웁니다.
+            // 1️⃣ 0.1초(100ms) 뒤에 일단 로딩 안내창부터 화면에 띄웁니다.
             setTimeout(() => {
-                alert("결제 대기 시간이 초과되었습니다. 메인 화면으로 돌아갑니다.");
+                try {
+                    // Url 객체가 진짜로 있을 때만 닫기 시도
+                    if (window.LemonSqueezy && window.LemonSqueezy.Url) {
+                        window.LemonSqueezy.Url.Close();
+                    }
+                } catch (e) {
+                    console.log("닫을 팝업창이 없거나 오류 발생 (무시하고 정상 진행)");
+                }
+
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'flex'; // 화면 덮기
+                    const textDiv = loadingOverlay.querySelector('.loading-text');
+                    if (textDiv) {
+                        // 안의 글자를 결제 초과 안내로 싹 바꿉니다.
+                        textDiv.innerHTML = '⏳ 결제 대기 시간이 초과되었습니다.<br><span style="font-size: 13px; opacity: 0.8;">메인 화면으로 이동합니다...</span>';
+                    }
+                }
+
+                preserveSeat = true;
                 sendReleaseRequest();
-                window.location.href = '/';
+
+                // 2️⃣ 🌟 안내창이 화면에 뜬 상태로 유저가 글자를 읽을 수 있게 2초(2000ms) 기다렸다가 이동!
+                setTimeout(() => {
+                    window.location.href = '/'; // 메인으로 이동
+                }, 2000);
+
             }, 100);
-            return;
+
+            return; // 타이머 로직 강제 종료
         }
 
         // 남은 시간 화면에 다시 그리기
         renderTimer();
+
     }, 1000);
 
     // [기초 HTML 상자들 가져오기]
@@ -429,7 +455,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 })
                 .then(checkoutUrl => {
                     preserveSeat = true;
-                    window.location.href = checkoutUrl;
+                    if (window.LemonSqueezy) {
+                        // 스크립트가 잘 있으면 팝업창(모달)으로 예쁘게 띄우기!
+                        window.LemonSqueezy.Url.Open(checkoutUrl);
+                    } else {
+                        // 만약 통신 오류나 광고차단기로 스크립트가 막혔다면?
+                        // 에러 띄우지 말고 예전처럼 안전하게 다음 페이지로 보내주기 (보험)
+                        window.location.href = checkoutUrl;
+                    }
                 })
                 .catch(error => {
                     console.error('결제 준비 중 오류 발생:', error);

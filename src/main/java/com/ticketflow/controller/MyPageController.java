@@ -334,7 +334,7 @@ public class MyPageController {
         return ResponseEntity.ok().body(Map.of("success", true));
     }
 
-    @GetMapping("/withdraw")
+    @PostMapping("/withdraw")
     public String withdraw(@AuthenticationPrincipal UserDetails userDetails,
                            HttpServletRequest request,
                            HttpServletResponse response,

@@ -5,6 +5,7 @@ import com.ticketflow.dto.ConcertSearchDto;
 import com.ticketflow.entity.*;
 import com.ticketflow.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict; // 👈 [추가] 캐시 삭제 어노테이션 임포트
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +33,36 @@ public class ConcertService {
     private final co.elastic.clients.elasticsearch.ElasticsearchClient elasticsearchClient;
     private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
 
+    // ========================================================
+    // ⚡ [수정] stats 테이블의 reservationRate(예매율)를 실시간 업데이트
+    // ========================================================
+    @CacheEvict(value = {"mainConcerts", "concerts", "popularConcerts"}, allEntries = true)
+    @Transactional
+    public void refreshMainPageCache(String concertId) {
+        Concert concert = concertRepository.findById(concertId).orElse(null);
+        if (concert != null) {
+            // 1. 해당 공연의 전체 좌석 수 및 예매된 좌석 수 계산
+            long totalSeats = seatRepository.countByConcert_ConcertId(concertId);
+            long reservedSeats = selectedSeatRepository.countByConcert_ConcertId(concertId);
+
+            if (totalSeats > 0) {
+                double rate = ((double) reservedSeats / totalSeats) * 100;
+
+                // 2. ⭕ [Stats 테이블 연동] 공연에 종속된 Stats 객체 가져오기
+                if (concert.getStats() != null && !concert.getStats().isEmpty()) {
+                    // 가장 최근 혹은 첫 번째 Stats 데이터를 가져와 예매율 업데이트
+                    Stats stats = concert.getStats().get(0);
+                    stats.setReservationRate((float) rate); // 👈 stats 테이블의 예매율 컬럼 수정!
+
+                    System.out.println("➔ 🔄 [Stats 업데이트] 공연 ID: " + concertId + " | 실시간 예매율: " + String.format("%.2f", rate) + "%");
+                } else {
+                    // 만약 해당 공연에 변동될 Stats 레코드가 아예 없다면 새로 생성해 빌드하는 로직이 필요할 수 있습니다.
+                    System.out.println("⚠️ [경고] 해당 공연에 연결된 Stats 데이터(레코드)가 존재하지 않습니다.");
+                }
+            }
+        }
+        System.out.println("➔ 🔄 [Caffeine Cache] 예매 완료 감지: 메인 페이지 캐시 데이터를 강제 초기화했습니다.");
+    }
     public List<Concert> getAllConcerts() {
         return concertRepository.findAll();
     }
@@ -48,7 +79,6 @@ public class ConcertService {
     // [위시리스트] 찜 토글 로직
     @Transactional
     public boolean toggleWishlist(String concertId, String userId) {
-        // Repository 호출 시 변수명 소문자 wishlistRepository 사용
         boolean isAlreadyLiked = wishlistRepository.existsByUser_UserIdAndConcert_ConcertId(userId, concertId);
 
         if (isAlreadyLiked) {
@@ -56,7 +86,6 @@ public class ConcertService {
             updateWishlistCount(concertId, -1);
             return false;
         } else {
-            // User와 Concert 엔티티 조회
             User user = userRepository.findByUserId(userId)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
             Concert concert = findById(concertId);
@@ -74,7 +103,6 @@ public class ConcertService {
 
     // [위시리스트] 개수 조회
     public int getWishlistCount(String concertId) {
-        // 1. Repository에 countByConcert_ConcertId 메서드가 있어야 함
         return (int) wishlistRepository.countByConcert_ConcertId(concertId);
     }
 
@@ -84,8 +112,6 @@ public class ConcertService {
         Concert concert = findById(concertId);
         concert.setConcertWishlistCount(concert.getConcertWishlistCount() + delta);
     }
-
-    // --- 기존 코드 (통계, 랭킹, 세션 등 유지) ---
 
     public Map<String, List<?>> getStatsData(String concertId) {
         Concert concert = findById(concertId);
@@ -97,13 +123,9 @@ public class ConcertService {
         return data;
     }
 
-    // ConcertService.java
-
-    // ConcertService.java
     public List<Map<String, Object>> getRankedConcerts() {
         List<Object[]> results = concertRepository.findConcertsWithLatestStats();
 
-        // 필터링 및 정렬
         List<Map<String, Object>> rankedList = results.stream()
                 .filter(obj -> obj[1] != null && ((Stats) obj[1]).getReservationRate() > 0)
                 .sorted((o1, o2) -> Float.compare(((Stats) o2[1]).getReservationRate(), ((Stats) o1[1]).getReservationRate()))
@@ -115,7 +137,6 @@ public class ConcertService {
                 })
                 .collect(Collectors.toList());
 
-        // [중요] 여기서 'ranking' 키를 추가해야 합니다!
         for (int i = 0; i < rankedList.size(); i++) {
             rankedList.get(i).put("ranking", i + 1);
         }
@@ -124,12 +145,10 @@ public class ConcertService {
     }
 
     public List<Map<String, Object>> getRankedConcertsByGenre(String genre) {
-        // 1. 장르별 데이터 조회
         List<Object[]> results = concertRepository.findConcertsByGenreWithLatestStats(genre);
 
         if (results == null || results.isEmpty()) return Collections.emptyList();
 
-        // 2. Stream 처리 및 리스트 변환
         List<Map<String, Object>> rankedList = results.stream()
                 .filter(obj -> obj[1] != null && ((Stats) obj[1]).getReservationRate() > 0)
                 .sorted((o1, o2) -> Double.compare(
@@ -138,12 +157,11 @@ public class ConcertService {
                 .map(obj -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("concert", (Concert) obj[0]);
-                    map.put("stats", (Stats) obj[1]); // [추가] stats 정보도 반드시 넣어줘야 합니다!
+                    map.put("stats", (Stats) obj[1]);
                     return map;
                 })
                 .collect(Collectors.toList());
 
-        // 3. [핵심] 여기서 랭킹(1, 2, 3...)을 부여합니다.
         for (int i = 0; i < rankedList.size(); i++) {
             rankedList.get(i).put("ranking", i + 1);
         }
@@ -158,7 +176,6 @@ public class ConcertService {
         String allTimes = concert.getConcertTime();
         if (allTimes == null || allTimes.isEmpty()) return Collections.emptyList();
 
-        // 2. 선택한 날짜의 요일 구하기 (예: "금요일")
         String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
         return Arrays.stream(allTimes.split(",")).map(String::trim).filter(time -> {
             String targetPart = time.contains("(") ? time.split("\\(")[0] : time;
@@ -175,7 +192,7 @@ public class ConcertService {
         LocalDate today = LocalDate.now();
         return getAllConcerts().stream().filter(c -> c.getConcertEndDate().isBefore(today)).collect(Collectors.toList());
     }
-    // ConcertService.java 내부
+
     public List<Concert> search(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) return Collections.emptyList();
         try {
@@ -196,19 +213,14 @@ public class ConcertService {
             return Collections.emptyList();
         }
     }
+
     public boolean isAllSoldOut(String concertId) {
-        // 1. 해당 공연의 전체 좌석 수 (Seat 엔티티 기준)
         long totalSeats = seatRepository.countByConcert_ConcertId(concertId);
-
-        // 2. 해당 공연의 예매된 좌석 수 (SelectedSeat 엔티티 기준)
         long reservedSeats = selectedSeatRepository.countByConcert_ConcertId(concertId);
-
-        // 3. 남은 자리가 없는지 확인 (0보다 크면 매진 아님)
         return totalSeats > 0 && reservedSeats >= totalSeats;
     }
 
     public boolean isSessionSoldOut(String concertId, String sessionTime, LocalDate date) {
-        // DB에 저장된 실제 좌석 등급 이름("일반석", "스탠딩" 등)을 정확히 넣으세요.
         long reservedGeneral = reservationRepository.countBySeatClass(concertId, sessionTime, date, "일반석");
         long reservedStanding = reservationRepository.countBySeatClass(concertId, sessionTime, date, "스탠딩");
         return (reservedGeneral >= 200) || (reservedStanding >= 400);
@@ -219,11 +231,9 @@ public class ConcertService {
 
         return concertRepository.findAll().stream()
                 .filter(c -> !c.getConcertEndDate().isBefore(today))
-                // [수정] 예매율 대신 예매된 좌석 수로 필터링
                 .filter(c -> {
                     long totalSeats = seatRepository.countByConcert_ConcertId(c.getConcertId());
                     long reservedSeats = selectedSeatRepository.countByConcert_ConcertId(c.getConcertId());
-                    // 예매율이 0.1% 이상인 것만 (즉, 하나라도 예매된 경우)
                     return totalSeats > 0 && reservedSeats > 0;
                 })
                 .sorted(Comparator.comparing(Concert::getConcertWishlistCount).reversed())
@@ -233,7 +243,6 @@ public class ConcertService {
     }
 
     public List<ConcertResponseDto> getRecommendedConcerts(String userId) {
-        // 1. 유저가 선호하는 장르 목록 추출 (기존 로직 유지)
         List<String> preferredGenres = wishlistRepository.findByUser_UserId(userId).stream()
                 .map(wish -> wish.getConcert().getConcertGenre())
                 .filter(Objects::nonNull)
@@ -248,12 +257,10 @@ public class ConcertService {
                 .collect(Collectors.toList());
 
         if (preferredGenres.isEmpty()) {
-            // 선호 장르가 없으면 인기순으로 기본 추천
             return concertRepository.findPopularAndUpcoming(PageRequest.of(0, 3)).stream()
                     .map(ConcertResponseDto::new).collect(Collectors.toList());
         }
 
-        // 2. 서비스단에서 유연한 필터링 수행 (방법 B)
         LocalDate today = LocalDate.now();
         return concertRepository.findAll().stream()
                 .filter(c -> !c.getConcertEndDate().isBefore(today))
@@ -273,7 +280,6 @@ public class ConcertService {
 
         List<String> availableDates = new ArrayList<>();
 
-        // 공연 기간(startDate ~ endDate)을 하루씩 증가시키며 루프
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             String dayOfWeek = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN);
             boolean hasPerformance = Arrays.stream(allTimes.split(",")).map(String::trim).anyMatch(time -> {
@@ -303,7 +309,6 @@ public class ConcertService {
 
             String url = "http://elasticsearch:9200/concerts/_doc/" + concert.getConcertId();
 
-            // ★ 핵심 수정: concertName 대신 위에서 만든 inputList 변수를 삽입
             String jsonString = String.format(
                     "{\"concertId\":\"%s\", \"concertName\":\"%s\", \"suggest\":{\"input\":[%s]}}",
                     concert.getConcertId(), concert.getConcertName(), inputList.toString()
@@ -332,13 +337,10 @@ public class ConcertService {
 
             org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonQuery, headers);
 
-            // 결과값을 일단 Map으로 받습니다.
             Map<String, Object> response = restTemplate.postForObject(url, entity, Map.class);
 
             if (response == null || !response.containsKey("suggest")) return Collections.emptyList();
 
-            // [구조 분석]
-            // response -> "suggest" -> "concert-suggest" (List) -> [0] -> "options" (List)
             Map<String, Object> suggestContainer = (Map<String, Object>) response.get("suggest");
             List<Map<String, Object>> suggestList = (List<Map<String, Object>>) suggestContainer.get("concert-suggest");
 
@@ -351,13 +353,11 @@ public class ConcertService {
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            // 어떤 데이터 구조에서 에러가 나는지 확인하기 위해 로그 출력
             e.printStackTrace();
             return Collections.emptyList();
         }
     }
 
-    // [핵심] 엘라스틱서치 초기화 자동화 (재시도 로직 포함)
     @EventListener(ContextRefreshedEvent.class)
     public void initializeElasticsearch() {
         new Thread(() -> {

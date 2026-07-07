@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/concert")
+@RequestMapping("/")
 public class ConcertController {
 
     private final ConcertService concertService;
@@ -109,7 +109,7 @@ public class ConcertController {
         };
     }
 
-    @GetMapping("/{id}/detail-page")
+    @GetMapping("/concert/{id}/detail-page")
     public String concertDetailPage(@PathVariable String id, Model model, Principal principal) {
         // 🌟 [핵심] 상세 페이지 진입 시점에 최신 통계 강제 갱신
         try {
@@ -168,7 +168,7 @@ public class ConcertController {
     }
 
 
-    @GetMapping("/ranking")
+    @GetMapping("/concert/ranking")
     public String rankingPage(@RequestParam(required = false) String genre, Model model) {
         // 1. 데이터 가져오기
         List<Map<String, Object>> rankings = (genre != null && !genre.isEmpty())
@@ -200,7 +200,7 @@ public class ConcertController {
     // 먼저 DTO가 없다면 임시로 Map을 사용하거나, DTO 클래스를 생성하세요.
 // 아래는 DTO 없이 Map으로 처리하는 예시입니다.
 
-    @GetMapping("/{id}/sessions")
+    @GetMapping("/concert/{id}/sessions")
     @ResponseBody
     public ResponseEntity<?> getSessionsByDate(@PathVariable String id, @RequestParam String date) {
         LocalDate localDate = LocalDate.parse(date);
@@ -225,7 +225,7 @@ public class ConcertController {
         return ResponseEntity.ok(sessionData);
     }
 
-    @PostMapping("/{id}/like")
+    @PostMapping("/concert/{id}/like")
     @ResponseBody
     public ResponseEntity<?> toggleWishlist(@PathVariable String id, Principal principal) { // HttpSession 대신 Principal 사용
 
@@ -244,10 +244,10 @@ public class ConcertController {
         return ResponseEntity.ok().body(Map.of("isLiked", isLiked, "newCount", newCount));
     }
 
-    @GetMapping("/search")
+    @GetMapping("/concert/search")
     public String searchConcerts(@RequestParam(required = false) String keyword, Model model) {
         if (keyword == null || keyword.isEmpty()) {
-            return "redirect:/concert/";
+            return "redirect:/";
         }
 
         List<Concert> concertList = concertService.search(keyword);
@@ -262,7 +262,7 @@ public class ConcertController {
         return "concert/search_results";
     }
 
-    @GetMapping("/suggest")
+    @GetMapping("/concert/suggest")
     @ResponseBody
     public ResponseEntity<?> suggestConcerts(@RequestParam String q) {
         if (q == null || q.trim().isEmpty()) {
@@ -273,19 +273,19 @@ public class ConcertController {
         return ResponseEntity.ok(Map.of("suggestions", suggestions));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/concert/{id}")
     @ResponseBody
     public ResponseEntity<?> getConcertDetail(@PathVariable String id) {
         return ResponseEntity.ok().body(Map.of("id", id, "title", "테스트 공연", "posterUrl", "/images/poster_dummy.png"));
     }
 
-    @GetMapping("/category/{name}")
+    @GetMapping("/concert/category/{name}")
     @ResponseBody
     public ResponseEntity<?> getConcertsByCategory(@PathVariable String name) {
         return ResponseEntity.ok().body(Map.of("category", name, "concerts", Collections.emptyList()));
     }
 
-    @GetMapping("/liked")
+    @GetMapping("/concert/liked")
     @ResponseBody
     public ResponseEntity<?> getMyWishlist(Principal principal) { // 💡 HttpSession 대신 Principal을 받습니다.
         // 💡 주입받은 principal이 null이면 로그인되지 않은 상태입니다.
@@ -298,7 +298,7 @@ public class ConcertController {
     }
 
     // 1. 기존 메서드: 로그인 여부와 관계없이 '일반적인 추천(인기순)' 반환
-    @GetMapping("/recommended")
+    @GetMapping("/concert/recommended")
     @ResponseBody
     public ResponseEntity<?> getRecommended(Principal principal) {
         List<ConcertResponseDto> list = new ArrayList<>();
@@ -324,7 +324,7 @@ public class ConcertController {
         return ResponseEntity.ok(Map.of("recommended", list));
     }
 
-    @GetMapping("/{id}/stats-json")
+    @GetMapping("/concert/{id}/stats-json")
     @ResponseBody
     public ResponseEntity<?> getStatsJson(@PathVariable String id) {
         Object stats = concertService.getStatsData(id);
@@ -332,7 +332,7 @@ public class ConcertController {
         return ResponseEntity.ok(stats);
     }
 
-    @GetMapping("/{id}/available-dates")
+    @GetMapping("/concert/{id}/available-dates")
     @ResponseBody
     public ResponseEntity<List<String>> getAvailableDates(@PathVariable String id) {
         // 예: concertService에 findAvailableDatesByConcertId(id) 메서드 추가 필요
@@ -340,7 +340,7 @@ public class ConcertController {
         return ResponseEntity.ok(dates != null ? dates : Collections.emptyList());
     }
 
-    @GetMapping("/sync-elasticsearch")
+    @GetMapping("/concert/sync-elasticsearch")
     @ResponseBody
     public String syncElastic() {
         List<Concert> allConcerts = concertRepository.findAll();
@@ -351,7 +351,7 @@ public class ConcertController {
     }
 
     @Cacheable(value = "cancelRateCache", key = "#id")
-    @GetMapping("/{id}/cancel-rate")
+    @GetMapping("/concert/{id}/cancel-rate")
     @ResponseBody
     public ResponseEntity<Double> getConcertCancelRate(@PathVariable String id) {
         try {
