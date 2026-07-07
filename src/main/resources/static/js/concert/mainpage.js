@@ -34,11 +34,6 @@ document.addEventListener("DOMContentLoaded", function() {
             <div class="concert-meta">
                 <p>${dateText}</p>
                 <p>${concert.hallName}</p>
-                <div class="concert-footer" style="display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px;">
-                    <span class="booking-rate" style="font-size: 13px; color: #666;">
-                        예매율 <strong style="font-size: 15px; color: #ff4b5c; font-weight: 700; margin-left: 2px;">${concert.bookingRate || 0}%</strong>
-                    </span>
-                </div>
             </div>
         </a>
     </div>`;
