@@ -34,29 +34,35 @@ public class ConcertService {
     private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
 
     // ========================================================
-    // ⚡ [새로 추가된 로직] 예매율 캐시 동기화 및 실시간 업데이트 기능
+    // ⚡ [수정] stats 테이블의 reservationRate(예매율)를 실시간 업데이트
     // ========================================================
     @CacheEvict(value = {"mainConcerts", "concerts", "popularConcerts"}, allEntries = true)
     @Transactional
     public void refreshMainPageCache(String concertId) {
         Concert concert = concertRepository.findById(concertId).orElse(null);
         if (concert != null) {
-            // 1. 해당 공연의 전체 좌석 수 계산
+            // 1. 해당 공연의 전체 좌석 수 및 예매된 좌석 수 계산
             long totalSeats = seatRepository.countByConcert_ConcertId(concertId);
-            // 2. 해당 공연의 현재 예매 완료된(선택된) 좌석 수 계산
             long reservedSeats = selectedSeatRepository.countByConcert_ConcertId(concertId);
 
             if (totalSeats > 0) {
                 double rate = ((double) reservedSeats / totalSeats) * 100;
 
-                // [참고] 만약 Concert 엔티티 내부에 예매율(bookingRate 등)을 저장하는 컬럼과
-                // setter 메서드가 명시되어 있다면 아래 주석을 해제하여 DB 데이터 자체도 동기화하세요.
-                // concert.setBookingRate((float) rate);
+                // 2. ⭕ [Stats 테이블 연동] 공연에 종속된 Stats 객체 가져오기
+                if (concert.getStats() != null && !concert.getStats().isEmpty()) {
+                    // 가장 최근 혹은 첫 번째 Stats 데이터를 가져와 예매율 업데이트
+                    Stats stats = concert.getStats().get(0);
+                    stats.setReservationRate((float) rate); // 👈 stats 테이블의 예매율 컬럼 수정!
+
+                    System.out.println("➔ 🔄 [Stats 업데이트] 공연 ID: " + concertId + " | 실시간 예매율: " + String.format("%.2f", rate) + "%");
+                } else {
+                    // 만약 해당 공연에 변동될 Stats 레코드가 아예 없다면 새로 생성해 빌드하는 로직이 필요할 수 있습니다.
+                    System.out.println("⚠️ [경고] 해당 공연에 연결된 Stats 데이터(레코드)가 존재하지 않습니다.");
+                }
             }
         }
         System.out.println("➔ 🔄 [Caffeine Cache] 예매 완료 감지: 메인 페이지 캐시 데이터를 강제 초기화했습니다.");
     }
-
     public List<Concert> getAllConcerts() {
         return concertRepository.findAll();
     }
