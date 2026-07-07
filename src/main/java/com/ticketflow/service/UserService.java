@@ -8,6 +8,7 @@ import com.ticketflow.entity.UserCoupon;
 import com.ticketflow.repository.CouponRepository;
 import com.ticketflow.repository.UserCouponRepository;
 import com.ticketflow.repository.UserRepository;
+import com.ticketflow.repository.WishlistRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
+    private final WishlistRepository wishlistRepository;
 
     // ───────────────────────────────────────────────
     // 회원가입
@@ -133,7 +135,28 @@ public class UserService {
     public void withdraw(String userId) {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        userRepository.delete(user);
+
+        // 0. [추가] 위시리스트(찜) 전체 삭제
+        // 예매/결제 내역은 법적/통계 목적상 남겨두지만, 위시리스트는 순수하게 개인화된
+        // 데이터이고 탈퇴 이후에는 아무 의미가 없으므로 탈퇴 시 함께 삭제합니다.
+        wishlistRepository.deleteByUser_UserId(userId);
+
+        // 1. 절대 중복되지 않는 고유 꼬리표 만들기 (예: _1730000000000)
+        String delSuffix = "_" + System.currentTimeMillis();
+
+        // 2. 아이디와 이메일에 회원번호+꼬리표를 붙여서 유니크 충돌 완벽 방지!
+        // 결과 예시: del_15_1730000000000 (약 20자)
+        user.setUserId("del_" + user.getUserNo() + delSuffix);
+
+        // 결과 예시: del_15_1730000000000@x.com (약 26자 -> 50자 제한 안전!)
+        user.setUserEmail("del_" + user.getUserNo() + delSuffix + "@x.com");
+
+        // 3. 나머지 개인정보 마스킹 (법적 의무)
+        user.setUserName("탈퇴회원");
+        user.setUserPhoneNumber("000-0000-0000");
+        user.setUserPw(""); // 비밀번호 무효화
+
+        // userRepository.delete(user); // <--- 이건 꼭 지우거나 주석 처리하세요!
     }
 
     /**
