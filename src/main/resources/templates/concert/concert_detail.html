@@ -122,28 +122,33 @@
                 <img th:src="${imgUrl}" alt="상세 정보">
             </div>
         </div>
-        <div class="stats-section">
+        <section class="stats-section">
             <h3>예매자 통계</h3>
-            <div th:if="${stats != null}" class="stats-chart-wrapper">
+
+            <div th:if="${stats != null and stats['totalReservations'] > 0}" class="stats-chart-wrapper">
                 <div class="chart-box-doughnut"><h3>성별 예매 비율</h3><canvas id="genderChart"></canvas></div>
                 <div class="chart-box-bar"><h3>연령대별 예매 비율</h3><canvas id="ageChart"></canvas></div>
             </div>
-            <div th:unless="${stats != null}" class="empty-msg"><p>아직 예매 데이터가 없습니다.</p></div>
-        </div>
+
+            <div th:unless="${stats != null and stats['totalReservations'] > 0}" class="empty-msg" style="text-align: center; padding: 40px; color: #888;">
+                <p>아직 예매 데이터가 없습니다.</p>
+            </div>
+        </section>
     </section>
 </main>
 
 <div id="data-store" th:data-concert-id="${concert.concertId}" th:data-start-date="${concert.concertStartDate}" th:data-end-date="${concert.concertEndDate}" style="display:none;"></div>
 <div th:replace="~{fragments/footer :: footer}"></div>
-<script th:if="${stats != null}" th:inline="javascript">
+<script th:if="${stats != null and stats['totalReservations'] > 0}" th:inline="javascript">
     const statsData = {
-        male: [[${stats.genderData[0]}]],
-        female: [[${stats.genderData[1]}]],
-        age10: [[${stats.ageData[0]}]],
-        age20: [[${stats.ageData[1]}]],
-        age30: [[${stats.ageData[2]}]],
-        age40: [[${stats.ageData[3]}]],
-        age50: [[${stats.ageData[4]}]]
+        male: [[${stats['genderData'][0]}]],
+        female: [[${stats['genderData'][1]}]],
+        // stats.ageData[0] -> stats['ageData'][0]
+        age10: [[${stats['ageData'][0]}]],
+        age20: [[${stats['ageData'][1]}]],
+        age30: [[${stats['ageData'][2]}]],
+        age40: [[${stats['ageData'][3]}]],
+        age50: [[${stats['ageData'][4]}]]
     };
 </script>
 <script th:src="@{/js/concert/detail.js}"></script>
