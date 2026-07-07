@@ -310,7 +310,13 @@ public class BookingService {
 
         System.out.println("결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);
 
-        sendBookingCompleteEmail(payment);
+        try {
+            sendBookingCompleteEmail(payment);
+            System.out.println("결제 완료 이메일 발송 성공!");
+        } catch (Exception e) {
+            // 이메일 전송이 실패해도 에러만 찍고 무사히 넘어갑니다. (DB 업데이트는 정상 유지됨)
+            System.err.println("🚨 이메일 발송 실패 (운영에 영향 없음, 결제는 정상 처리됨): " + e.getMessage());
+        }
     }
 
     // ==========================================
