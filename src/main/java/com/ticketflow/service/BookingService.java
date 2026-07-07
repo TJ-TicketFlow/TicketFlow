@@ -39,6 +39,9 @@ public class BookingService {
     private final SeatRepository seatRepository;
     private final StatsService statsService;
 
+
+    private final ConcertService concertService; // 👈 1. ConcertService 주입받기
+
     // 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
     private final JavaMailSender javaMailSender;
@@ -239,6 +242,9 @@ public class BookingService {
     // ==========================================
     // 5. 레몬스퀴지 웹훅
     // ==========================================
+    // ⚠️ [필수 확인] 이 메서드가 포함된 클래스(예: PaymentService) 상단에
+// private final ConcertService concertService; 가 의존성 주입(DI)되어 있어야 합니다.
+
     @Transactional
     public void completePayment(String merchantUid, String lsOrderId,
                                 String currency, String lsCustomerId,
@@ -300,12 +306,26 @@ public class BookingService {
         }
 
         // 5. 🌟 통계 데이터 실시간 갱신
+        String concertId = null; // 아래 캐시 갱신에서 쓰기 위해 블록 외부로 변수 추출
         try {
-            String concertId = payment.getReservation().getConcert().getConcertId();
+            concertId = payment.getReservation().getConcert().getConcertId();
             statsService.updateStats(concertId);
             System.out.println("통계 데이터 업데이트 완료: " + concertId);
         } catch (Exception e) {
             System.err.println("통계 업데이트 실패 (운영에 영향 없음): " + e.getMessage());
+        }
+
+        // =========================================================================
+        // ⚡ [새로 추가된 로직] 결제 성공 확정 후 메인 페이지 예매율 & Caffeine 캐시 즉시 동기화
+        // =========================================================================
+        if (concertId != null) {
+            try {
+                concertService.refreshMainPageCache(concertId);
+                System.out.println("➔ 🔄 [성공] 결제 완료 시점에 메인 페이지 실시간 예매율 갱신 및 캐시 초기화 명령을 실행했습니다.");
+            } catch (Exception e) {
+                // 예매율 연산이나 캐시 도중 에러가 나더라도 사용자의 소중한 결제가 롤백되지 않도록 try-catch 방어막을 씌웁니다.
+                System.err.println("🚨 [경고] 예매율 캐시 갱신 중 오류 발생 (결제 완료 및 좌석 확정은 무사히 유지됨): " + e.getMessage());
+            }
         }
 
         System.out.println("결제 완료 및 상세 정보 업데이트 성공! 주문번호: " + merchantUid);

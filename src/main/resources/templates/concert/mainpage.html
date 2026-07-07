@@ -128,7 +128,7 @@
                             </div>
                             <div class="concert-footer">
                                 <span class="booking-rate">
-                                    예상 예매율<span th:text="${concert.predictSoldOutRate != null} ? ${#numbers.formatDecimal(concert.predictSoldOutRate, 1, 1) + '%'} : '89.8%'">
+                                    예상 예매율<span th:text="${#numbers.formatDecimal(concert.reservationRate, 1, 2)} + '%'">85.50%</span>
                                     </span>
                                 </span>
                             </div>
