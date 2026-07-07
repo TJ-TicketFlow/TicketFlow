@@ -219,6 +219,10 @@ public class BookingService {
         checkoutData.put("name", payment.getBuyerName());
         checkoutData.put("email", payment.getBuyerEmail());
 
+        Map<String, Object> billingAddress = new HashMap<>();
+        billingAddress.put("country", "KR");
+        checkoutData.put("billing_address", billingAddress);
+
         attributes.put("checkout_data", checkoutData);
         long finalPriceForLemonSqueezy = payment.getPayAmount() * 100;
         attributes.put("custom_price", finalPriceForLemonSqueezy);

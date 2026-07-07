@@ -128,6 +128,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
             // 0.1초 정도 여유를 주어 00:00이 화면에 보인 직후 알림창을 띄웁니다.
             setTimeout(() => {
+                if (window.LemonSqueezy) {
+                    window.LemonSqueezy.Url.Close();
+                }
                 alert("결제 대기 시간이 초과되었습니다. 메인 화면으로 돌아갑니다.");
                 preserveSeat = true;
                 sendReleaseRequest();
@@ -430,7 +433,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 })
                 .then(checkoutUrl => {
                     preserveSeat = true;
-                    window.location.href = checkoutUrl;
+                    if (window.LemonSqueezy) {
+                        // 스크립트가 잘 있으면 팝업창(모달)으로 예쁘게 띄우기!
+                        window.LemonSqueezy.Url.Open(checkoutUrl);
+                    } else {
+                        // 만약 통신 오류나 광고차단기로 스크립트가 막혔다면?
+                        // 에러 띄우지 말고 예전처럼 안전하게 다음 페이지로 보내주기 (보험)
+                        window.location.href = checkoutUrl;
+                    }
                 })
                 .catch(error => {
                     console.error('결제 준비 중 오류 발생:', error);
