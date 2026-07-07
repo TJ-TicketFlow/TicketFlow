@@ -107,7 +107,6 @@ if (concertId) {
         .then(concert => {
             console.log("① [수신 데이터] concert:", concert);
 
-            // DB 컬럼명(concert_status)을 고려하여 두 값을 모두 매칭해봅니다.
             window.currentLayoutType = concert.layoutType || concert.concertStatus || "SEAT";
 
             const titleEl = document.getElementById("concert-name");
@@ -137,7 +136,6 @@ if (concertId) {
                     }
                 });
             }
-            // 좌석 가져오기 요청
             return fetch(`/seat/api/seats/${concertId}?date=${selectedDate}&sessionId=${selectedSessionId}`);
         })
         .then(res => res.json())
@@ -148,8 +146,6 @@ if (concertId) {
             const cleanType = String(window.currentLayoutType || "").trim().toUpperCase();
             console.log("③ [레이아웃 판정] 원본값:", window.currentLayoutType, "-> 변환값:", cleanType);
 
-            // 🚨 [테스트용 강제 설정] 만약 무조건 좌석 배치도를 보고 싶다면
-            // 아래의 IF 문을 주석 처리하고 바로 renderSeat(); 만 남겨보세요!
             if (cleanType.includes("STANDING") || cleanType.startsWith("STAND")) {
                 console.log("➔ 스탠딩 UI(수량 선택) 모드로 진입합니다.");
                 showQuantitySelectionForm();
@@ -165,7 +161,7 @@ if (concertId) {
 
 
 // ==========================================
-// 3. 렌더링 함수 (데이터 매칭 안전보장 버전)
+// 3. 렌더링 함수 (지정석 배치도 완벽 제어 버전)
 // ==========================================
 function renderSeat() {
     console.log("🎬 renderSeat() 함수 시작됨");
@@ -177,7 +173,7 @@ function renderSeat() {
     seatContainer.appendChild(stageDiv);
 
     const priceList = Object.values(window.concertPriceMap).sort((a, b) => b - a);
-    const defaultPrice = priceList[0] || window.defaultSinglePrice || 100000; // 가격 정보 없을 때를 위한 기본 기본값 방어
+    const defaultPrice = priceList[0] || window.defaultSinglePrice || 100000;
 
     seatLayouts.map1.forEach((row, rowIndex) => {
         const rowDiv = document.createElement("div");
@@ -198,7 +194,6 @@ function renderSeat() {
             const actualCol = seatColIndex + 1;
             const seatId = `SEAT_R${actualRow}_C${actualCol}`;
 
-            // s 데이터 구조 유연화 방어 코드
             const foundSeat = window.dbSeatsData.find(s =>
                 s && (s.seatId === seatId || (String(s.seatRow) === String(actualRow) && String(s.seatCol) === String(actualCol)))
             );
@@ -210,7 +205,7 @@ function renderSeat() {
             seatDiv.dataset.selected = "false";
             seatDiv.dataset.price = targetSeat.price || defaultPrice;
 
-            // 초기 상태 설정
+            // 초기 좌석 상태 UI 맵핑
             if (targetSeat.userNo && currentUserNo && Number(targetSeat.userNo) === currentUserNo) {
                 seatDiv.dataset.status = "available";
                 seatDiv.dataset.selected = "true";
@@ -228,6 +223,7 @@ function renderSeat() {
                 seatDiv.style.cursor = "pointer";
             }
 
+            // [중복 결합 문제 완전 교정] 클릭 이벤트 리스너 단 한 번만 매핑
             seatDiv.addEventListener("click", () => {
                 if (isConcertClosed) { alert("예매가 마감되었습니다."); return; }
                 if (seatDiv.dataset.status === "locked") { alert("선택할 수 없는 좌석입니다."); return; }
@@ -235,54 +231,22 @@ function renderSeat() {
                 const isSelected = seatDiv.dataset.selected === "true";
 
                 if (!isSelected) {
-                    // ➔ seatmap.js 내의 seatDiv.addEventListener("click", ...) 부분 교체
+                    // ① 내가 이 회차에 이미 완전히 소유(예매완료)하고 있는 좌석 수 연산
+                    // DB에서 가져온 데이터 중 내 유저 정보가 박혀있는 좌석 수
+                    const alreadyBookedCount = window.dbSeatsData.filter(s =>
+                        s && s.userNo && currentUserNo && Number(s.userNo) === currentUserNo
+                    ).length;
 
-                    seatDiv.addEventListener("click", () => {
-                        if (isConcertClosed) { alert("예매가 마감되었습니다."); return; }
-                        if (seatDiv.dataset.status === "locked") { alert("선택할 수 없는 좌석입니다."); return; }
+                    // ② 현재 이 브라우저 화면에서 실시간으로 파랗게 클릭해둔 선택 수
+                    const currentlySelectingCount = seatContainer.querySelectorAll('[data-selected="true"]').length;
 
-                        const isSelected = seatDiv.dataset.selected === "true";
-
-                        if (!isSelected) {
-                            // ① [추가] 내가 이미 과거에 예매 완료한 좌석 수 계산
-                            // (dbSeatsData에서 이미 내 회원번호(userNo)가 등록되어 선점된 좌석을 찾습니다)
-                            const alreadyBookedCount = window.dbSeatsData.filter(s =>
-                                s && s.userNo && currentUserNo && Number(s.userNo) === currentUserNo
-                            ).length;
-
-                            // ② 현재 화면에서 실시간으로 선택 중인 새 좌석 수
-                            const currentlySelectingCount = seatContainer.querySelectorAll('[data-selected="true"]').length;
-
-                            // ③ 두 값을 합산하여 4장 초과 검증
-                            if ((alreadyBookedCount + currentlySelectingCount) >= 4) {
-                                alert(`인당 최대 4장까지만 예매 가능합니다.\n(회원님이 이미 예매하신 좌석: ${alreadyBookedCount}장)`);
-                                return;
-                            }
-
-                            // 통과 시 선택 처리
-                            seatDiv.dataset.selected = "true";
-                            seatDiv.style.background = "#1d4ed8";
-                            seatDiv.style.border = "1px solid #1e40af";
-
-                            if (stompClient?.connected) {
-                                stompClient.publish({ destination: "/app/seat/select", body: JSON.stringify({ concertId, seatId, userNo: currentUserNo }) });
-                            }
-                        } else {
-                            // 선택 해제 로직 (기존과 동일)
-                            seatDiv.dataset.selected = "false";
-                            seatDiv.style.background = "#3b82f6";
-                            seatDiv.style.border = "1px solid #2563eb";
-
-                            if (stompClient?.connected) {
-                                stompClient.publish({ destination: "/app/seat/cancel", body: JSON.stringify({ concertId, seatId, userNo: currentUserNo }) });
-                            }
-                        }
-
-                        const active = seatContainer.querySelectorAll('[data-selected="true"]');
-                        updateSelectedSeatsUI(active);
-                        calculateAndDisplayTotalPrice(active);
-                    });
+                    // ③ 총합 차단 제한 검증 (4장 이상이면 진행 차단)
+                    if ((alreadyBookedCount + currentlySelectingCount) >= 4) {
+                        alert(`인당 최대 4장까지만 예매 가능합니다.\n(기존에 예매 완료하신 좌석: ${alreadyBookedCount}장)`);
+                        return;
                     }
+
+                    // 예매 가능 한도 이내일 때 정상 처리
                     seatDiv.dataset.selected = "true";
                     seatDiv.style.background = "#1d4ed8";
                     seatDiv.style.border = "1px solid #1e40af";
@@ -290,7 +254,8 @@ function renderSeat() {
                     if (stompClient?.connected) {
                         stompClient.publish({ destination: "/app/seat/select", body: JSON.stringify({ concertId, seatId, userNo: currentUserNo }) });
                     }
-                else {
+                } else {
+                    // 선택되어 있던 좌석 해제 처리
                     seatDiv.dataset.selected = "false";
                     seatDiv.style.background = "#3b82f6";
                     seatDiv.style.border = "1px solid #2563eb";
@@ -300,6 +265,7 @@ function renderSeat() {
                     }
                 }
 
+                // UI 실시간 총액 반영 호출
                 const active = seatContainer.querySelectorAll('[data-selected="true"]');
                 updateSelectedSeatsUI(active);
                 calculateAndDisplayTotalPrice(active);
@@ -340,6 +306,7 @@ function submitBooking() {
     const qtySelects = seatContainer.querySelectorAll(".ticket-qty-select");
     const isStanding = qtySelects.length > 0;
     let bookingData = { concertId, date: selectedDate, sessionId: selectedSessionId, ticketType: isStanding ? "STANDING" : "SEAT", quantities: {}, selectedSeats: [], totalPrice: 0};
+
     if (isStanding) {
         qtySelects.forEach(s => {
             const qty = parseInt(s.value);
@@ -354,7 +321,14 @@ function submitBooking() {
             bookingData.selectedSeats.push(s.dataset.seatId);
             bookingData.totalPrice += parseInt(s.dataset.price || 0);
         });
+
+        // 빈 좌석으로 예매 요청 방지
+        if (bookingData.selectedSeats.length === 0) {
+            alert("선택된 좌석이 없습니다.");
+            return;
+        }
     }
+
     fetch("/seat/api/booking/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -368,10 +342,9 @@ function submitBooking() {
 }
 
 // ===================================================
-// 🎫 4. 티켓 장수 선택형 UI 렌더링 영역 (스탠딩 전용 - 예쁜 파란/하양 CSS 복원!)
+// 🎫 4. 티켓 장수 선택형 UI 렌더링 영역 (스탠딩 전용)
 // ===================================================
 function showQuantitySelectionForm() {
-    // 1. 지정석 전용 우측 사이드바 숨기기 및 레이아웃 정렬
     const rightSidebar = document.querySelector(".right-sidebar");
     if (rightSidebar) rightSidebar.style.display = "none";
 
@@ -380,7 +353,6 @@ function showQuantitySelectionForm() {
 
     seatContainer.innerHTML = "";
 
-    // 2. 🌟 잃어버렸던 예쁜 하얀색 둥근 박스 껍데기 복원!
     const formWrapper = document.createElement("div");
     formWrapper.style.padding = "40px 30px";
     formWrapper.style.background = "#ffffff";
@@ -400,7 +372,6 @@ function showQuantitySelectionForm() {
     const qtyRowsContainer = formWrapper.querySelector("#qty-rows");
     const grades = Object.keys(window.concertPriceMap);
 
-    // 3. 등급별 수량 선택 박스 예쁘게 채워넣기
     if (grades.length > 0) {
         grades.forEach(gradeName => {
             const price = window.concertPriceMap[gradeName];
@@ -412,7 +383,6 @@ function showQuantitySelectionForm() {
         qtyRowsContainer.innerHTML = `<p style="text-align:center; color:#ef4444; font-weight:bold; margin-top:20px;">공연 가격 정보를 읽어오지 못했습니다.</p>`;
     }
 
-    // 4. 🌟 파란색 총 결제 금액 박스 복원!
     const totalBox = document.createElement("div");
     totalBox.style.marginTop = "30px"; totalBox.style.paddingTop = "20px"; totalBox.style.borderTop = "2px dashed #e2e8f0";
     totalBox.style.display = "flex"; totalBox.style.justifyContent = "space-between"; totalBox.style.alignItems = "center";
@@ -422,7 +392,6 @@ function showQuantitySelectionForm() {
     `;
     formWrapper.appendChild(totalBox);
 
-    // 5. 🌟 꽉 차는 파란색 예매하기 버튼 복원!
     const submitBtn = document.createElement("button");
     submitBtn.innerText = "예매하기";
     submitBtn.id = "submit-btn";
@@ -431,14 +400,12 @@ function showQuantitySelectionForm() {
     submitBtn.style.borderRadius = "6px"; submitBtn.style.fontSize = "16px"; submitBtn.style.fontWeight = "bold";
     submitBtn.style.cursor = "pointer";
 
-    // 클릭 시, 이미 완벽하게 고쳐둔 submitBooking 함수 실행!
     submitBtn.addEventListener("click", () => { submitBooking(); });
     formWrapper.appendChild(submitBtn);
 
     seatContainer.appendChild(formWrapper);
 }
 
-// 개별 행(Row) 디자인을 담당하는 함수 복원!
 function createQuantityRow(container, label, price, gradeCode) {
     const row = document.createElement("div");
     row.style.display = "flex"; row.style.justifyContent = "space-between"; row.style.alignItems = "center";
@@ -465,31 +432,24 @@ function createQuantityRow(container, label, price, gradeCode) {
     container.appendChild(row);
 }
 
-// 4장 초과 방지 및 총액 계산 로직 복원!
-// ➔ seatmap.js 맨 아래 handleQuantityChange(changedSelect) 함수 전체 교체
-
 function handleQuantityChange(changedSelect) {
     const selects = seatContainer.querySelectorAll(".ticket-qty-select");
     let newlySelectedTickets = 0;
     let totalPrice = 0;
 
-    // 현재 화면 드롭다운에서 선택한 수량 합산
     selects.forEach(select => { newlySelectedTickets += parseInt(select.value, 10); });
 
-    // ① [추가] 스탠딩도 과거에 이미 예매한 수량이 DB 데이터에 녹아있다면 합산 처리
     const alreadyBookedTickets = window.dbSeatsData.filter(s =>
         s && s.userNo && currentUserNo && Number(s.userNo) === currentUserNo
     ).length;
 
-    // ② 총합이 4장을 넘는지 검증
     if ((alreadyBookedTickets + newlySelectedTickets) > 4) {
         alert(`티켓은 기존 예매 내역을 포함하여 최대 4장까지만 선택 가능합니다.\n(이미 예매하신 수량: ${alreadyBookedTickets}장)`);
         if (changedSelect) changedSelect.value = "0";
-        handleQuantityChange(null); // 0장으로 원복 후 재연산
+        handleQuantityChange(null);
         return;
     }
 
-    // 금액 연산
     selects.forEach(select => {
         const qty = parseInt(select.value, 10);
         const price = parseInt(select.dataset.price, 10);
