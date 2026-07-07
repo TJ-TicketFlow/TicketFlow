@@ -18,16 +18,16 @@ public class MainController {
         this.concertService = concertService;
     }
 
-    /**
-     * 루트("/") 접근 시
-     */
-    @GetMapping("/")
-    public String index(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails != null) {
-            return "redirect:/mypage/benefits";
-        }
-        return "redirect:/login";
-    }
+//    /**
+//     * 루트("/") 접근 시
+//     */
+//    @GetMapping("/")
+//    public String index(@AuthenticationPrincipal UserDetails userDetails) {
+//        if (userDetails != null) {
+//            return "redirect:/mypage/benefits";
+//        }
+//        return "redirect:/login";
+//    }
 
     @GetMapping("/main")
     public String mainPage(Model model) {

@@ -52,17 +52,17 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("user_id")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/concert/", true)
+                        .defaultSuccessUrl("/", true)
                         .successHandler((request, response, authentication) -> {
                             request.getSession().setAttribute("logged_in", true);
-                            response.sendRedirect("/mypage/benefits");
+                            response.sendRedirect("/");
                         })
                         .failureUrl("/login?error")
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/concert/")
+                        .logoutSuccessUrl("/")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()
