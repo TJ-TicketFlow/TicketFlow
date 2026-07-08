@@ -8,7 +8,7 @@
         <div th:if="${errorMessage}" class="flash-msg" th:text="${errorMessage}"></div>
 
         <div class="profile-card">
-            <form th:action="@{/mypage/profile}" method="post">
+            <form id="profileForm" th:action="@{/mypage/profile}" method="post">
 
                 <div class="section-label">기본 정보</div>
                 <div class="field">
@@ -58,6 +58,27 @@
             document.getElementById('withdrawForm').submit();
         }
     }
+
+    // 🌟 [추가] 새 비밀번호 확인란이 실제로는 검증되지 않던 문제 수정 (제출 전 클라이언트 측 확인)
+    // 최종 검증은 서버(UserService.updatePassword)에서도 다시 한 번 수행됩니다.
+    document.getElementById('profileForm').addEventListener('submit', function (e) {
+        const newPw = document.querySelector('input[name="newPassword"]').value;
+        const newPwConfirm = document.querySelector('input[name="newPasswordConfirm"]').value;
+
+        if (newPw === '' && newPwConfirm === '') return; // 비밀번호 변경을 안 하는 경우는 통과
+
+        if (newPw !== newPwConfirm) {
+            e.preventDefault();
+            alert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+
+        const strongPwRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]).{8,}$/;
+        if (!strongPwRegex.test(newPw)) {
+            e.preventDefault();
+            alert('새 비밀번호는 영문, 숫자, 특수문자를 모두 포함하여 8자 이상이어야 합니다.');
+        }
+    });
 </script>
 </body>
 </html>

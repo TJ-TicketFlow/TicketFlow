@@ -12,8 +12,9 @@
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
-<body>
 
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
 <div class="main-layout">
 
     <div class="popup">
@@ -60,5 +61,5 @@
 <script src="/js/seatmap.js"></script>
 
 </body>
-
+<div th:replace="~{fragments/footer :: footer}"></div>
 </html>

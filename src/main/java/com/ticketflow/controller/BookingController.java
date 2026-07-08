@@ -100,7 +100,7 @@ public class BookingController {
         }
 
         // ==============================================================
-        // 🌟 [수정된 부분] try-catch로 감싸서 캡차 실패 메시지를 프론트로 전달합니다!
+        // [수정된 부분] try-catch로 감싸서 캡차 실패 메시지를 프론트로 전달합니다!
         // ==============================================================
         try {
             // 3. 정상적이면 레몬스퀴지 주소 생성해서 리턴!
@@ -181,7 +181,7 @@ public class BookingController {
     // ==========================================
     @PostMapping("/release-seat")
     @ResponseBody
-    public ResponseEntity<String> releaseSeat(@RequestBody Map<String, Object> payload, java.security.Principal principal) { // 🌟 Map<String, Object>로 변경!
+    public ResponseEntity<String> releaseSeat(@RequestBody Map<String, Object> payload, java.security.Principal principal) { // Map<String, Object>로 변경!
         System.out.println("🚨 [디버그] release-seat API 호출됨!");
 
         if (principal == null) {
@@ -191,7 +191,7 @@ public class BookingController {
 
         Object keyObj = payload.get("reservationKey");
         if (keyObj != null) {
-            // 🌟 [핵심 수정] Object로 받아서 문자로 바꾼 뒤, Long으로 아주 안전하게 변환합니다!
+            // [핵심 수정] Object로 받아서 문자로 바꾼 뒤, Long으로 아주 안전하게 변환합니다!
             Long reservationKey = Long.valueOf(keyObj.toString());
             System.out.println("🚨 [디버그] 안전하게 변환된 예약 번호: " + reservationKey);
 

@@ -111,7 +111,7 @@ public class ConcertController {
 
     @GetMapping("/concert/{id}/detail-page")
     public String concertDetailPage(@PathVariable String id, Model model, Principal principal) {
-        // 🌟 [핵심] 상세 페이지 진입 시점에 최신 통계 강제 갱신
+        // [핵심] 상세 페이지 진입 시점에 최신 통계 강제 갱신
         try {
             statsService.updateStats(id);
         } catch (Exception e) {

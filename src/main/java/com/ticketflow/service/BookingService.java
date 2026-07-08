@@ -350,7 +350,7 @@ public class BookingService {
             System.out.println("쿠폰 사용 완료 처리됨!");
         }
 
-        // 5. 🌟 통계 데이터 실시간 갱신
+        // 5. 통계 데이터 실시간 갱신
         String concertId = null; // 아래 캐시 갱신에서 쓰기 위해 블록 외부로 변수 추출
         // 4. 통계 데이터 실시간 갱신
         try {
@@ -1190,7 +1190,7 @@ public class BookingService {
             return 0L;
         }
 
-        // 🌟 3. DB 시계를 안 믿고, KST로 완벽한 KST 자바 시계로 직접 계산합니다!
+        // 3. DB 시계를 안 믿고, KST로 완벽한 KST 자바 시계로 직접 계산합니다!
         LocalDateTime now = LocalDateTime.now();
         long elapsedSeconds = java.time.Duration.between(reservation.getReservationCreatedAt(), now).getSeconds();
 

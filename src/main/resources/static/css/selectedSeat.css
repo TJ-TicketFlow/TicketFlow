@@ -55,7 +55,7 @@ body {
     color: #1e293b;
 }
 
-/* 🌟 [추가] 선택한 좌석 팝업 전용 스타일 */
+/* [추가] 선택한 좌석 팝업 전용 스타일 */
 .selection-title {
     font-size: 16px;
     font-weight: 700;

@@ -19,15 +19,15 @@ body {
 
 
 .popup {
-    flex: none !important;          /* 🌟 추가: flex 안에서 절대 크기가 변하지 않도록 완전 고정 */
-    width: 280px !important;        /* 🌟 중요: width 뒤에 !important를 붙여서 강제 적용 */
+    flex: none !important;          /* 추가: flex 안에서 절대 크기가 변하지 않도록 완전 고정 */
+    width: 280px !important;        /* 중요: width 뒤에 !important를 붙여서 강제 적용 */
     margin: 0 !important;
     padding: 15px;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     background: #fff;
-    box-sizing: border-box;         /* 🌟 추가: 패딩과 테두리가 너비 280px 안에 포함되도록 설정 */
+    box-sizing: border-box;         /* 추가: 패딩과 테두리가 너비 280px 안에 포함되도록 설정 */
 }
 
 /* 💥 [가장 중요] 포스터 이미지 크기 제어 */

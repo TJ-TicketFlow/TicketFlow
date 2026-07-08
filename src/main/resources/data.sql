@@ -5,7 +5,7 @@ VALUES (1, '홍대 롤링홀', '서울특별시 마포구 서교동 어울마당
 
 -- 2. 자식 테이블(concert)에 KOPIS 공연 ID를 포함하여 데이터 삽입
 INSERT IGNORE INTO concert (
-    concert_id, -- 🌟 String 타입 Primary Key 추가
+    concert_id, -- String 타입 Primary Key 추가
     hall_id,
     concert_name,
     concert_start_date,

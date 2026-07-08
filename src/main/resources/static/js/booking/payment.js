@@ -16,7 +16,7 @@ function sendReleaseRequest() {
     const data = JSON.stringify({ reservationKey: realReservationKey });
     const blob = new Blob([data], { type: 'application/json' });
 
-    // 3. 🌟 [핵심 우회 기법] 헤더를 못 쓰는 비콘을 위해 주소 끝에 ?_csrf=토큰 값을 몰래 달아줍니다.
+    // 3. [핵심 우회 기법] 헤더를 못 쓰는 비콘을 위해 주소 끝에 ?_csrf=토큰 값을 몰래 달아줍니다.
     // 스프링 시큐리티는 헤더에 토큰이 없으면 주소창에서 토큰을 찾아내므로 완벽하게 통과됩니다!
     const url = '/booking/release-seat?_csrf=' + csrfToken;
 
@@ -45,7 +45,7 @@ function sendReleaseRequest() {
 // 응답이 오기 전에 history.back()이 먼저 실행되면, 좌석선택 페이지가
 // 새로고침되면서 아직 안 풀린(잠긴) 좌석 상태를 그대로 받아와 버리는 문제가 있었습니다.
 // 혹시 응답이 늦어져도 최대 1.5초만 기다리고 강제로 진행합니다(무한 대기 방지).
-function goBackToSeats() { // 🌟 이름 끝에 's'를 지워서 HTML 버튼과 맞췄습니다!
+function goBackToSeats() { // 이름 끝에 's'를 지워서 HTML 버튼과 맞췄습니다!
 
     // 1. 서버에 "좌석 풀어줘!" 요청을 보냅니다.
     sendReleaseRequest().finally(() => {
@@ -502,7 +502,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
             // 결제 버튼이나 이전 단계 버튼을 누른 게 아니라면 (도망친 거라면!)
             if (!preserveSeat) {
-                // 🌟 핵심: 3개의 이벤트가 동시에 터져서 서버에 3번 요청가는 걸 막기 위해 스위치를 바로 꺼버립니다.
+                // 핵심: 3개의 이벤트가 동시에 터져서 서버에 3번 요청가는 걸 막기 위해 스위치를 바로 꺼버립니다.
                 preserveSeat = true;
 
                 // 브라우저가 죽는 순간에도 서버로 "이 자리 풀어줘!" 유언을 남김 (keepalive)
@@ -512,7 +512,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // ==========================================
-    // 🌟 2. 브라우저 기본 '뒤로가기(←)' 버튼 완벽 방어 (History 낚아채기)
+    // 2. 브라우저 기본 '뒤로가기(←)' 버튼 완벽 방어 (History 낚아채기)
     // ==========================================
 
     // 결제창에 들어오자마자, 브라우저 뒤로가기 기록에 가짜 페이지를 하나 쓱 끼워 넣습니다.

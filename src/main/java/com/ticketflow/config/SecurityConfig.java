@@ -52,11 +52,16 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("user_id")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/", true)
-                        .successHandler((request, response, authentication) -> {
-                            request.getSession().setAttribute("logged_in", true);
-                            response.sendRedirect("/");
-                        })
+                        // 🌟 [수정] 기존에는 defaultSuccessUrl("/", true) 와, "/"로만 무조건
+                        // 리다이렉트하는 커스텀 successHandler가 동시에 설정되어 있었습니다.
+                        // successHandler가 등록되면 defaultSuccessUrl은 완전히 무시되므로
+                        // (죽은 설정), 실제 동작은 successHandler가 전부 결정하고 있었는데
+                        // 그 핸들러가 무조건 "/"로만 보내서, 로그인 안 된 상태로 /mypage 같은
+                        // 보호된 페이지에 접근했다가 로그인 화면으로 튕겨나간 경우에도 로그인 후
+                        // 원래 가려던 페이지로 못 돌아가고 항상 홈으로만 이동하는 문제가 있었습니다.
+                        // alwaysUse=false로 두면 Spring Security가 "원래 가려던 페이지
+                        // (SavedRequest)"가 있으면 그곳으로, 없으면 "/"로 보내줍니다.
+                        .defaultSuccessUrl("/", false)
                         .failureUrl("/login?error")
                         .permitAll()
                 )

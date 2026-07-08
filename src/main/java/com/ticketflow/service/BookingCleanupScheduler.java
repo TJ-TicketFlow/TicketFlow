@@ -16,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BookingCleanupScheduler {
 
-    // 🌟 두 개의 창고와 서비스 도구를 모두 가져옵니다.
+    // 두 개의 창고와 서비스 도구를 모두 가져옵니다.
     private final ReservationRepository reservationRepository;
     private final PayRepository payRepository;
     private final BookingService bookingService;

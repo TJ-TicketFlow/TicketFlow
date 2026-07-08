@@ -65,7 +65,7 @@ function selectDate(which,dateStr){
 }
 
 // ==========================================
-// 🌟 1. 페이지 로딩 완료 시 날짜 및 탭 활성화 세팅
+// 1. 페이지 로딩 완료 시 날짜 및 탭 활성화 세팅
 // ==========================================
 document.addEventListener("DOMContentLoaded", function() {
     // 날짜 세팅
@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 // ==========================================
-// 🌟 2. 상태 필터 버튼 로직 (서버로 찐 데이터 요청하기!)
+// 2. 상태 필터 버튼 로직 (서버로 찐 데이터 요청하기!)
 // ==========================================
 function setFilter(btn, status) {
     // 현재 달력에 선택된 날짜 가져오기 (날짜 안 날아가게 꽉 쥐기!)
@@ -102,7 +102,7 @@ function setFilter(btn, status) {
     window.location.href = `/mypage/tickets?status=${status}&startDate=${startStr}&endDate=${endStr}&page=0`;
 }
 // ==========================================
-// 🌟 3. 조회 버튼 로직 (날짜 검색 시에도 탭 유지 및 1페이지 리셋)
+// 3. 조회 버튼 로직 (날짜 검색 시에도 탭 유지 및 1페이지 리셋)
 // ==========================================
 function searchByDate(){
     const startStr = state.from.selected;

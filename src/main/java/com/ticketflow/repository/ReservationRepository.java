@@ -16,7 +16,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     // 기존 메서드 유지
     List<Reservation> findBySelectedSeat_User_UserId(String userId);
 
-    // [추가] 계정당 최대 예매 매수 제한(4매)을 서버에서 강제하기 위한 집계 쿼리
+    // 🌟 [추가] 계정당 최대 예매 매수 제한(4매)을 서버에서 강제하기 위한 집계 쿼리
     // 취소(CANCELLED)/실패(FAILED)한 결제 건은 제외하고, 결제 대기중이거나(READY, Pay 없음) 결제 완료(PAID)된
     // 예매만 "현재 보유 중인 티켓"으로 집계합니다.
     @Query("SELECT COALESCE(SUM(r.reservationCount), 0) FROM Reservation r " +
@@ -39,7 +39,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                           @Param("sessionTime") String sessionTime,
                           @Param("reservationDate") LocalDate reservationDate,
                           @Param("seatClass") String seatClass);
-
+    
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Reservation r " +

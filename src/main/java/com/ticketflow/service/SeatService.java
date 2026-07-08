@@ -25,7 +25,7 @@ public class SeatService {
     private final ReservationRepository reservationRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    // [추가] 계정(로그인 유저) 하나당 공연 하나에 대해 예매 가능한 최대 티켓 매수
+    // 🌟 [추가] 계정(로그인 유저) 하나당 공연 하나에 대해 예매 가능한 최대 티켓 매수
     private static final int MAX_TICKETS_PER_USER_PER_CONCERT = 4;
 
     /**
@@ -216,7 +216,7 @@ public class SeatService {
     }
 
     // =========================================================================
-    // 8. 프론트엔드의 최종 예매 데이터를 받아 DB 결제 가선점 임시 장부 생성 및 저장 로직
+    // 🌟 8. 프론트엔드의 최종 예매 데이터를 받아 DB 결제 가선점 임시 장부 생성 및 저장 로직
     // =========================================================================
     public Long processBookingAndGetReservationKey(Map<String, Object> bookingData, Long userNo) {
         String concertId = bookingData.get("concertId").toString();
@@ -249,7 +249,7 @@ public class SeatService {
         Concert concert = concertRepository.findById(concertId).orElseThrow(() -> new RuntimeException("공연 찾을 수 없음"));
 
         // =========================================================================
-        // [추가] 계정당 최대 4매 예매 제한 - 서버 측 강제 검증 (핵심 버그 수정)
+        // 🌟 [추가] 계정당 최대 4매 예매 제한 - 서버 측 강제 검증 (핵심 버그 수정)
         // 기존에는 프론트엔드(JS)에서만 4개 제한을 검사했기 때문에, 이미 4매를 예매한
         // 사용자가 페이지를 새로고침하거나 API를 다시 호출하면 얼마든지 추가로 예매가
         // 가능했습니다. 여기서 서버가 실제 DB 기준으로 다시 한 번 확실하게 검증합니다.
@@ -484,7 +484,7 @@ public class SeatService {
     }
 
     /**
-     * [추가] 요청받은 bookingData에서 이번에 새로 예매하려는 티켓 매수를 계산합니다.
+     * 🌟 [추가] 요청받은 bookingData에서 이번에 새로 예매하려는 티켓 매수를 계산합니다.
      * (좌석 지정형 SEAT / 수량 선택형 STANDING 모두 지원)
      */
     @SuppressWarnings("unchecked")
@@ -501,7 +501,7 @@ public class SeatService {
     }
 
     /**
-     * [추가] 특정 유저가 특정 공연에 대해 현재 보유 중인(취소/실패 제외) 티켓 매수를 조회합니다.
+     * 🌟 [추가] 특정 유저가 특정 공연에 대해 현재 보유 중인(취소/실패 제외) 티켓 매수를 조회합니다.
      * 좌석 선택 화면 진입 시 프론트엔드에 미리 안내하기 위해 사용됩니다.
      */
     @Transactional(readOnly = true)

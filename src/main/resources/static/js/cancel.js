@@ -7,7 +7,7 @@ window.addEventListener('pagehide', function (event) {
 
         const url = `/seat/api/booking/cancel-ajax`;
 
-        // 🌟 [핵심 개선] sendBeacon이 규격화된 Form 데이터 형태로 보내도록 랩핑합니다.
+        // [핵심 개선] sendBeacon이 규격화된 Form 데이터 형태로 보내도록 랩핑합니다.
         // 이렇게 보내야 Spring의 @RequestParam("reservationKey")이 100% 안 터지고 인식합니다.
         const formData = new FormData();
         formData.append("reservationKey", resKey);
