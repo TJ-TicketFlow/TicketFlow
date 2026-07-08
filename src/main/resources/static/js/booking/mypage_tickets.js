@@ -97,7 +97,7 @@ function setFilter(btn, status) {
     const startStr = state.from.selected;
     const endStr = state.to.selected;
 
-    // 💡 [핵심] CSS로 숨기는 게 아니라, 서버에 "상태+날짜+1페이지(page=0)" 조건을 달아서 페이지를 새로 이동시킵니다!
+    //[핵심] CSS로 숨기는 게 아니라, 서버에 "상태+날짜+1페이지(page=0)" 조건을 달아서 페이지를 새로 이동시킵니다!
     // (스프링부트 Pageable은 보통 0이 1페이지입니다)
     window.location.href = `/mypage/tickets?status=${status}&startDate=${startStr}&endDate=${endStr}&page=0`;
 }
@@ -112,7 +112,7 @@ function searchByDate(){
     const urlParams = new URLSearchParams(window.location.search);
     const currentStatus = urlParams.get('status') || '전체';
 
-    // 💡 [핵심] 날짜를 검색해도 기존 탭 상태를 유지한 채 1페이지(page=0)로 리셋합니다!
+    //[핵심] 날짜를 검색해도 기존 탭 상태를 유지한 채 1페이지(page=0)로 리셋합니다!
     window.location.href = `/mypage/tickets?status=${currentStatus}&startDate=${startStr}&endDate=${endStr}&page=0`;
 }
 // 초기화 버튼 로직

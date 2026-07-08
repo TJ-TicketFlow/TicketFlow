@@ -28,12 +28,12 @@ function connectSeatSocket(targetConcertId) {
         webSocketFactory: () => socket,
         reconnectDelay: 5000,
         onConnect: () => {
-            console.log("✅ [WebSocket] 좌석 실시간 알림 서버에 연결되었습니다.");
+            console.log("[WebSocket] 좌석 실시간 알림 서버에 연결되었습니다.");
             stompClient.subscribe(`/topic/seat/${targetConcertId}`, (message) => handleRemoteSeatEvent(JSON.parse(message.body)));
             stompClient.subscribe(`/topic/concert/${targetConcertId}/notice`, (message) => handleConcertNotice(JSON.parse(message.body)));
         },
         onStompError: (frame) => {
-            console.error('🚨 [WebSocket] STOMP 프로토콜 에러 발생:', frame.headers['message']);
+            console.error('[WebSocket] STOMP 프로토콜 에러 발생:', frame.headers['message']);
         }
     });
     stompClient.activate();
@@ -109,7 +109,7 @@ if (concertId) {
 
             window.currentLayoutType = concert.layoutType || concert.concertStatus || "SEAT";
 
-            // 🌟 [수정] 서버가 실제 DB를 기준으로 계산해서 내려준, 내가 이미 보유한 티켓 매수.
+            // [수정] 서버가 실제 DB를 기준으로 계산해서 내려준, 내가 이미 보유한 티켓 매수.
             // (기존에는 좌석 목록(seats)에 존재하지도 않는 s.userNo 필드를 기준으로 계산해서
             //  항상 0으로 취급되는 버그가 있었습니다. 이제 서버가 내려주는 값을 그대로 사용합니다.)
             window.myBookedCount = Number(concert.myBookedCount) || 0;
@@ -160,7 +160,7 @@ if (concertId) {
             }
         })
         .catch(err => {
-            console.error("🚨 [통신 에러] 데이터를 읽는 중 실패했습니다. 백엔드 로그를 확인하세요:", err);
+            console.error("[통신 에러] 데이터를 읽는 중 실패했습니다. 백엔드 로그를 확인하세요:", err);
         });
 }
 
@@ -237,7 +237,7 @@ function renderSeat() {
 
                 if (!isSelected) {
                     // ① 내가 이 공연에 대해 이미 보유 중인(결제 완료 + 결제 대기중) 티켓 수
-                    // 🌟 [수정] 좌석 목록에는 애초에 userNo 필드가 내려오지 않아 항상 0으로만
+                    // [수정] 좌석 목록에는 애초에 userNo 필드가 내려오지 않아 항상 0으로만
                     // 계산되던 버그를 수정했습니다. 이제 서버(/seat/api/concert/{concertId})가
                     // DB를 기준으로 정확히 계산해서 내려준 값(window.myBookedCount)을 사용합니다.
                     const alreadyBookedCount = window.myBookedCount || 0;
@@ -446,7 +446,7 @@ function handleQuantityChange(changedSelect) {
 
     selects.forEach(select => { newlySelectedTickets += parseInt(select.value, 10); });
 
-    // 🌟 [수정] 좌석 데이터에는 userNo가 없어 항상 0으로 계산되던 버그를 수정.
+    // [수정] 좌석 데이터에는 userNo가 없어 항상 0으로 계산되던 버그를 수정.
     // 서버가 내려준 실제 보유 티켓 수(window.myBookedCount)를 사용합니다.
     const alreadyBookedTickets = window.myBookedCount || 0;
 

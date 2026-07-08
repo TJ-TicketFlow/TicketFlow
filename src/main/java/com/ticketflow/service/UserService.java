@@ -60,7 +60,7 @@ public class UserService {
         if (isEmailDuplicated(dto.getEmail())) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
-        // 🌟 [추가] 이메일 인증 여부를 서버가 직접 재확인 (기존에는 프론트 JS 변수만 확인해서
+        // [추가] 이메일 인증 여부를 서버가 직접 재확인 (기존에는 프론트 JS 변수만 확인해서
         // /register API를 직접 호출하면 인증 절차를 건너뛸 수 있었던 문제를 수정)
         if (!emailVerificationService.isVerified(dto.getEmail())) {
             throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
@@ -93,7 +93,7 @@ public class UserService {
 
         userRepository.save(user);
         issueWelcomeCoupon(user);
-        // 🌟 [추가] 가입에 사용한 인증 상태는 소모(삭제)해서 재사용을 막습니다.
+        // [추가] 가입에 사용한 인증 상태는 소모(삭제)해서 재사용을 막습니다.
         emailVerificationService.consumeVerification(dto.getEmail());
     }
 
@@ -114,7 +114,7 @@ public class UserService {
     // 회원정보 수정
     // ───────────────────────────────────────────────
 
-    // 🌟 [추가] 회원가입(RegisterRequestDto)과 동일한 비밀번호 규칙 - 영문+숫자+특수문자 포함 8자 이상
+    // [추가] 회원가입(RegisterRequestDto)과 동일한 비밀번호 규칙 - 영문+숫자+특수문자 포함 8자 이상
     private static final java.util.regex.Pattern PASSWORD_PATTERN = java.util.regex.Pattern.compile(
             "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,}$"
     );
@@ -137,15 +137,15 @@ public class UserService {
         if (dto.getNewPassword() == null || dto.getNewPassword().isBlank()) {
             throw new IllegalArgumentException("새 비밀번호를 입력해주세요.");
         }
-        // 🌟 [추가] 회원가입 때와 동일한 비밀번호 강도 규칙 강제
+        // [추가] 회원가입 때와 동일한 비밀번호 강도 규칙 강제
         if (!PASSWORD_PATTERN.matcher(dto.getNewPassword()).matches()) {
             throw new IllegalArgumentException("새 비밀번호는 영문, 숫자, 특수문자를 모두 포함하여 8자 이상이어야 합니다.");
         }
-        // 🌟 [추가] "새 비밀번호 확인" 입력칸이 실제로는 아무 검증도 안 되던 문제 수정
+        // [추가] "새 비밀번호 확인" 입력칸이 실제로는 아무 검증도 안 되던 문제 수정
         if (dto.getNewPasswordConfirm() == null || !dto.getNewPassword().equals(dto.getNewPasswordConfirm())) {
             throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
         }
-        // 🌟 [추가] 기존 비밀번호와 동일한 값으로 "변경"하는 것을 방지 (선택적이지만 흔한 관례)
+        // [추가] 기존 비밀번호와 동일한 값으로 "변경"하는 것을 방지 (선택적이지만 흔한 관례)
         if (passwordEncoder.matches(dto.getNewPassword(), user.getUserPw())) {
             throw new IllegalArgumentException("현재 비밀번호와 다른 새 비밀번호를 입력해주세요.");
         }
@@ -161,22 +161,22 @@ public class UserService {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 🌟 0. [추가] 위시리스트(찜) 전체 삭제
+        // 0. [추가] 위시리스트(찜) 전체 삭제
         // 예매/결제 내역은 법적/통계 목적상 남겨두지만, 위시리스트는 순수하게 개인화된
         // 데이터이고 탈퇴 이후에는 아무 의미가 없으므로 탈퇴 시 함께 삭제합니다.
         wishlistRepository.deleteByUser_UserId(userId);
 
-        // 🌟 1. 절대 중복되지 않는 고유 꼬리표 만들기 (예: _1730000000000)
+        // 1. 절대 중복되지 않는 고유 꼬리표 만들기 (예: _1730000000000)
         String delSuffix = "_" + System.currentTimeMillis();
 
-        // 🌟 2. 아이디와 이메일에 회원번호+꼬리표를 붙여서 유니크 충돌 완벽 방지!
+        // 2. 아이디와 이메일에 회원번호+꼬리표를 붙여서 유니크 충돌 완벽 방지!
         // 결과 예시: del_15_1730000000000 (약 20자)
         user.setUserId("del_" + user.getUserNo() + delSuffix);
 
         // 결과 예시: del_15_1730000000000@x.com (약 26자 -> 50자 제한 안전!)
         user.setUserEmail("del_" + user.getUserNo() + delSuffix + "@x.com");
 
-        // 🌟 3. 나머지 개인정보 마스킹 (법적 의무)
+        // 3. 나머지 개인정보 마스킹 (법적 의무)
         user.setUserName("탈퇴회원");
         user.setUserPhoneNumber("000-0000-0000");
         user.setUserPw(""); // 비밀번호 무효화

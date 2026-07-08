@@ -51,7 +51,7 @@ public class BookingCleanupScheduler {
         // ==============================================================
         // 작전 2: 아예 결제 버튼조차 안 누르고 도망친 '예약(Reservation)' 청소
         // ==============================================================
-        // 💡 주의: 아까 ReservationRepository에 추가했던 쿼리입니다.
+        //주의: 아까 ReservationRepository에 추가했던 쿼리입니다.
         List<Reservation> abandonedReservations = reservationRepository.findExpiredAndUnpaidReservations(thresholdTime);
 
         if (!abandonedReservations.isEmpty()) {
@@ -61,7 +61,7 @@ public class BookingCleanupScheduler {
                     // 예약 장부만 덩그러니 남았으므로, 좌석만 바로 풀어버리면 됩니다.
                     bookingService.releaseUnpaidSeat(reservation.getReservationKey());
                 } catch (Exception e) {
-                    System.err.println("🚨 예약번호 " + reservation.getReservationKey() + " 좌석 회수 중 에러: " + e.getMessage());
+                    System.err.println("예약번호 " + reservation.getReservationKey() + " 좌석 회수 중 에러: " + e.getMessage());
                 }
             }
         }

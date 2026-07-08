@@ -39,9 +39,9 @@ public class ConcertPredictService {
             Resource resource = new ClassPathResource("concert_predict_model.onnx");
             byte[] modelBytes = StreamUtils.copyToByteArray(resource.getInputStream());
             this.session = env.createSession(modelBytes);
-            log.info("🎉 [ONNX 1.17.1] 모델 로드 완료!");
+            log.info("[ONNX 1.17.1] 모델 로드 완료!");
         } catch (Exception e) {
-            log.error("❌ 모델 로딩 실패: {}", e.getMessage(), e);
+            log.error("모델 로딩 실패: {}", e.getMessage(), e);
         }
     }
 

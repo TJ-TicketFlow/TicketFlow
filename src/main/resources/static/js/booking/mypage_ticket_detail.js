@@ -27,7 +27,7 @@ function checkAndCancel(payNo) {
             return response.json();
         })
         .then(data => {
-            // 💡 [핵심] 200 OK 정상 통신이지만, 백엔드에서 cancelable: false를 준 경우!
+            //[핵심] 200 OK 정상 통신이지만, 백엔드에서 cancelable: false를 준 경우!
             if (data.cancelable === false) {
                 // 백엔드가 포장해서 보내준 진짜 한국어 메시지를 꺼내서 보여줍니다.
                 alert(data.message || "현재 예매를 취소할 수 없는 상태이거나, 마감 시간이 지났습니다.");
@@ -44,7 +44,7 @@ function checkAndCancel(payNo) {
             document.getElementById('cancelConfirmModal').style.display = 'flex';
         })
         .catch(error => {
-            console.error("❌ 취소 수수료 조회 중 에러 발생:", error);
+            console.error("취소 수수료 조회 중 에러 발생:", error);
             alert(error.message);
         });
 }
@@ -95,7 +95,7 @@ function executeCancel(payNo) {
         headers[csrfHeader] = csrfToken;
     }
 
-    // 💡 백엔드에 만들어둔 '진짜 취소(cancelTicket)' 컨트롤러로 POST 요청을 보냅니다.
+    //백엔드에 만들어둔 '진짜 취소(cancelTicket)' 컨트롤러로 POST 요청을 보냅니다.
     fetch(`/booking/${payNo}/cancel`, {
         method: "POST",
         headers: headers
@@ -116,7 +116,7 @@ function executeCancel(payNo) {
         })
         .catch(error => {
             if (loadingOverlay) loadingOverlay.style.display = 'none';
-            console.error("❌ 예매 취소 실행 중 에러 발생:", error);
+            console.error("예매 취소 실행 중 에러 발생:", error);
             alert(error.message);
         });
 }

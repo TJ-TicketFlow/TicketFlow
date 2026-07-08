@@ -109,9 +109,9 @@ public class LemonSqueezyRefundService {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            System.out.println("✅ 레몬스퀴즈 구독 재개 성공: " + subId);
+            System.out.println("레몬스퀴즈 구독 재개 성공: " + subId);
         } else {
-            System.err.println("❌ 레몬스퀴즈 구독 재개 실패: " + response.body());
+            System.err.println("레몬스퀴즈 구독 재개 실패: " + response.body());
             throw new RuntimeException("구독 재개 API 호출 실패");
         }
     }

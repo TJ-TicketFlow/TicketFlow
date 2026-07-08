@@ -15,7 +15,7 @@ function initPriceMap(priceInfoStr) {
     defaultSinglePrice = 0;
 
     if (!priceInfoStr) {
-        console.warn("⚠️ 백엔드에서 전달된 가격 정보 문자열이 비어있습니다!");
+        console.warn("백엔드에서 전달된 가격 정보 문자열이 비어있습니다!");
         return;
     }
 
@@ -32,7 +32,7 @@ function initPriceMap(priceInfoStr) {
         if (numericStr) {
             let price = parseInt(numericStr, 10);
 
-            // 🚨 백엔드 만원 단위 오염 방어 (120원 등 방지)
+            // 백엔드 만원 단위 오염 방어 (120원 등 방지)
             if (price > 0 && price < 1000) {
                 price = price * 1000;
             }
@@ -50,7 +50,7 @@ function initPriceMap(priceInfoStr) {
             const numericStr = item.replace(/[^0-9]/g, '');
             let price = parseInt(numericStr, 10);
 
-            // 🚨 백엔드 만원 단위 오염 방어
+            // 백엔드 만원 단위 오염 방어
             if (!isNaN(price) && price > 0 && price < 1000) {
                 price = price * 1000;
             }
@@ -110,7 +110,7 @@ function calculateSelectedSeatsPrice(selectedElements) {
                 });
 
                 if (!matched) {
-                    console.warn(`⚠️ 현재 클릭한 좌석 등급(${seatClass})에 해당하는 가격을 찾지 못했습니다.`);
+                    console.warn(`현재 클릭한 좌석 등급(${seatClass})에 해당하는 가격을 찾지 못했습니다.`);
                 }
             }
         }
@@ -123,7 +123,7 @@ function calculateSelectedSeatsPrice(selectedElements) {
  * 3. [UI 출력 함수] 연산된 금액을 가져와 화면 레이아웃에 맞춰 갱신 및 return
  */
 function calculateAndDisplayTotalPrice(selectedElements) {
-    // 💡 분리된 순수 계산 함수를 호출하여 가격을 가져옵니다.
+    //분리된 순수 계산 함수를 호출하여 가격을 가져옵니다.
     const totalPrice = calculateSelectedSeatsPrice(selectedElements);
 
     // 유연한 엘리먼트 감지 (화면 구조 변화 대응)

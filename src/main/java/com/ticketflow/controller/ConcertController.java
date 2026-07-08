@@ -42,7 +42,7 @@ public class ConcertController {
     private final StatsService statsService;
     private final WishlistRepository wishlistRepository;
 
-    // 💡 1. 방금 만든 ONNX 예측 서비스 추가 주입!
+    //1. 방금 만든 ONNX 예측 서비스 추가 주입!
     private final com.ticketflow.service.ConcertPredictService concertPredictService;
 
     @GetMapping("/")
@@ -77,7 +77,7 @@ public class ConcertController {
                 .map(ConcertResponseDto::new)
                 .toList();
 
-        // 💡 2. [수정 구역] 가짜 mockRate 대신 실제 AI 모델의 예측값을 매칭시킵니다.
+        //2. [수정 구역] 가짜 mockRate 대신 실제 AI 모델의 예측값을 매칭시킵니다.
         for (int i = 0; i < upcomingEntities.size(); i++) {
             Concert entity = upcomingEntities.get(i);
             ConcertResponseDto dto = upcomingConcerts.get(i);
@@ -287,8 +287,8 @@ public class ConcertController {
 
     @GetMapping("/concert/liked")
     @ResponseBody
-    public ResponseEntity<?> getMyWishlist(Principal principal) { // 💡 HttpSession 대신 Principal을 받습니다.
-        // 💡 주입받은 principal이 null이면 로그인되지 않은 상태입니다.
+    public ResponseEntity<?> getMyWishlist(Principal principal) { //HttpSession 대신 Principal을 받습니다.
+        //주입받은 principal이 null이면 로그인되지 않은 상태입니다.
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "로그인이 필요합니다."));
         }
@@ -314,7 +314,7 @@ public class ConcertController {
         // 2. 데이터가 없을 경우 전체 데이터에서 최신순으로 가져오기
         if (list == null || list.isEmpty()) {
             list = concertRepository.findAll().stream()
-                    // 💡 여기에 실제 엔티티의 필드명인 concertStartDate 사용
+                    //여기에 실제 엔티티의 필드명인 concertStartDate 사용
                     .sorted(Comparator.comparing(Concert::getConcertStartDate).reversed())
                     .limit(3)
                     .map(ConcertResponseDto::new)

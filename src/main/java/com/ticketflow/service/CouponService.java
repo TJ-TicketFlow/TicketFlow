@@ -95,6 +95,6 @@ public class CouponService {
         issueCoupon(user, "프리미엄 가입 쿠폰");
         issueCoupon(user, "프리미엄 가입 쿠폰");
         issueCoupon(user, "프리미엄 가입 스페셜 쿠폰");
-        System.out.println("🔄 결제 갱신에 따른 쿠폰 재발급 완료! (user: " + user.getUserEmail() + ")");
+        System.out.println("결제 갱신에 따른 쿠폰 재발급 완료! (user: " + user.getUserEmail() + ")");
     }
 }

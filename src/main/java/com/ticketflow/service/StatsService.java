@@ -32,11 +32,11 @@ public class StatsService {
         int total = completedSeats.size();
         log.info("예매 완료된 좌석 수: {}", total);
 
-        // 💡 [수정] 2. Concert 엔티티를 먼저 확실하게 조회합니다.
+        //[수정] 2. Concert 엔티티를 먼저 확실하게 조회합니다.
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 공연 정보를 찾을 수 없습니다."));
 
-        // 💡 [수정] 3. Concert 객체로 가장 최신 Stats 데이터를 조회 (없으면 새 Stats 생성)
+        //[수정] 3. Concert 객체로 가장 최신 Stats 데이터를 조회 (없으면 새 Stats 생성)
         Stats stats = statsRepository.findTopByConcertOrderByStatsIdDesc(concert)
                 .orElseGet(() -> {
                     log.info("Stats 데이터 없음, 새로 생성합니다.");

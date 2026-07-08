@@ -39,7 +39,7 @@ public class MembershipService {
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없음: " + attrs.getUser_email()));
 
         if (eventName == null) {
-            System.out.println("⚠️ event_name이 없어서 처리를 건너뜁니다.");
+            System.out.println("event_name이 없어서 처리를 건너뜁니다.");
             return;
         }
 
@@ -76,7 +76,7 @@ public class MembershipService {
                 System.out.println("ℹ️ 처리하지 않는 이벤트: " + eventName);
         }
 
-        System.out.println("🎉 웹훅 처리 완료! (event: " + eventName + ")");
+        System.out.println("웹훅 처리 완료! (event: " + eventName + ")");
     }
 
     // ── 구독 상태 변경 이벤트 처리 ──
@@ -102,7 +102,7 @@ public class MembershipService {
         Membership membership = membershipRepository.findByUser(user)
                 .stream().findFirst()
                 .orElseGet(() -> {
-                    System.out.println("⚠️ 멤버십이 없어서 새로 생성합니다.");
+                    System.out.println("멤버십이 없어서 새로 생성합니다.");
                     Membership newMembership = new Membership();
                     newMembership.setUser(user);
                     newMembership.setMembershipStatus("PENDING");
@@ -192,7 +192,7 @@ public class MembershipService {
         try {
             lemonSqueezyRefundService.refundSubscriptionInvoice(invoiceId, null);
         } catch (Exception e) {
-            System.out.println("❌ Lemon Squeezy 환불 API 호출 실패: " + e.getMessage());
+            System.out.println("Lemon Squeezy 환불 API 호출 실패: " + e.getMessage());
             return new RefundEligibilityDto(false, "환불 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
 
@@ -255,7 +255,7 @@ public class MembershipService {
                     .build());
 
         } catch (Exception e) {
-            System.out.println("❌ Lemon Squeezy 구독 취소 API 호출 실패: " + e.getMessage());
+            System.out.println("Lemon Squeezy 구독 취소 API 호출 실패: " + e.getMessage());
             return new RefundEligibilityDto(false, "해지 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
 
@@ -269,7 +269,7 @@ public class MembershipService {
                 .orElse(null);
 
         if (membership == null) {
-            System.out.println("⚠️ 결제 이벤트가 왔지만 연결된 멤버십이 없어서 건너뜁니다. (user: " + user.getUserEmail() + ")");
+            System.out.println("결제 이벤트가 왔지만 연결된 멤버십이 없어서 건너뜁니다. (user: " + user.getUserEmail() + ")");
             return;
         }
 
@@ -314,7 +314,7 @@ public class MembershipService {
         try {
             return Instant.parse(value);
         } catch (Exception e) {
-            System.err.println("⚠️ 날짜 파싱 실패: " + value);
+            System.err.println("날짜 파싱 실패: " + value);
             return null;
         }
     }

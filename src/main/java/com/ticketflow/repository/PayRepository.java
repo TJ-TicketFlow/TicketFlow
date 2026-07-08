@@ -29,7 +29,7 @@ public interface PayRepository extends JpaRepository<Pay, Long> {
                                         @Param("endDate") LocalDateTime endDate,
                                         Pageable pageable);
 
-    // 💡 2. [신규] 30분이 지났는데 아직 결제가 완료되지 않은(진행중인) 결제 건들 찾아내기
+    //2. [신규] 30분이 지났는데 아직 결제가 완료되지 않은(진행중인) 결제 건들 찾아내기
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Pay p WHERE p.payCreatedAt <= :thresholdTime " +
             "AND (p.payStatus IS NULL OR p.payStatus NOT IN ('PAID', 'CANCELLED', 'FAILED'))")

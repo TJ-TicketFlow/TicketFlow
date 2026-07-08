@@ -42,7 +42,7 @@ public class WebhookController {
         try {
             // 1. 보안 검사: 진짜 레몬스퀴즈가 보낸 게 맞는지 확인
             if (!isValidSignature(payload, signature)) {
-                System.out.println("❌ 웹훅 서명 검증 실패! 해커의 공격일 수 있습니다.");
+                System.out.println("웹훅 서명 검증 실패! 해커의 공격일 수 있습니다.");
                 return ResponseEntity.status(403).body("잘못된 접근입니다.");
             }
 
@@ -58,7 +58,7 @@ public class WebhookController {
                 String merchantUid = rootNode.path("meta").path("custom_data").path("merchant_uid").asText();
                 String lsOrderId = rootNode.path("data").path("id").asText();
 
-                // ⭐️ 2. 여기서부터 추가! JSON의 'attributes' (상세 정보) 칸을 엽니다.
+                // 2. 여기서부터 추가! JSON의 'attributes' (상세 정보) 칸을 엽니다.
                 JsonNode attributes = rootNode.path("data").path("attributes");
 
                 String currency = attributes.path("currency").asText(); // "KRW"
@@ -130,12 +130,12 @@ public class WebhookController {
     @PostMapping("/payment/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody WebhookRequestDto dto) {
         try {
-            System.out.println("🔥 웹훅 수신됨, DTO 내용: " + dto);
+            System.out.println("웹훅 수신됨, DTO 내용: " + dto);
 
             membershipService.processPaymentWebhook(dto);
             return ResponseEntity.ok("success");
         } catch (Exception e) {
-            System.err.println("❌ 웹훅 처리 중 치명적 에러 발생!");
+            System.err.println("웹훅 처리 중 치명적 에러 발생!");
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }

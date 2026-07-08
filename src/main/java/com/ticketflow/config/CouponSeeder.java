@@ -28,7 +28,7 @@ public class CouponSeeder implements ApplicationRunner {
                     .couponDiscountRate(discountRate)
                     .couponValidDays(validDays)
                     .build());
-            System.out.println("🎫 쿠폰 마스터 자동 등록: " + name);
+            System.out.println("쿠폰 마스터 자동 등록: " + name);
         }
     }
 }

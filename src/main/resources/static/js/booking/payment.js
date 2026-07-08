@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 preserveSeat = true;
                 sendReleaseRequest();
 
-                // 2️⃣ 🌟 안내창이 화면에 뜬 상태로 유저가 글자를 읽을 수 있게 2초(2000ms) 기다렸다가 이동!
+                // 2️⃣ 안내창이 화면에 뜬 상태로 유저가 글자를 읽을 수 있게 2초(2000ms) 기다렸다가 이동!
                 setTimeout(() => {
                     window.location.href = '/'; // 메인으로 이동
                 }, 2000);

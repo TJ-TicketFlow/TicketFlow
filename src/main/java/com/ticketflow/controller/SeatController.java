@@ -96,7 +96,7 @@ public class SeatController {
             responseData.put("concertRuntime", concert.getConcertRuntime());
             responseData.put("concertPriceInfo", concert.getConcertPriceInfo());
 
-            // 🌟 [추가] 로그인한 사용자가 이 공연에 대해 이미 보유 중인 티켓 매수를 함께 내려줘서
+            // [추가] 로그인한 사용자가 이 공연에 대해 이미 보유 중인 티켓 매수를 함께 내려줘서
             // 프론트엔드(seatmap.js)가 "계정당 최대 4매" 제한을 정확하게 안내할 수 있도록 합니다.
             long myBookedCount = 0;
             if (userDetails != null) {
@@ -122,7 +122,7 @@ public class SeatController {
     public ResponseEntity<List<Seat>> getSeatList(@PathVariable String concertId,
                                                   @RequestParam(required = false) String date,
                                                   @RequestParam(required = false) String sessionId) {
-        System.out.println("====== 💺 [백엔드] 좌석 조회 요청: " + concertId + ", 날짜: " + date + ", 회차: " + sessionId);
+        System.out.println("====== [백엔드] 좌석 조회 요청: " + concertId + ", 날짜: " + date + ", 회차: " + sessionId);
 
         // 서비스에서 날짜와 회차 조건으로 좌석을 필터링하여 가져오도록 구현해야 합니다.
         List<Seat> seats = seatService.getSeatsBySchedule(concertId, date, sessionId);

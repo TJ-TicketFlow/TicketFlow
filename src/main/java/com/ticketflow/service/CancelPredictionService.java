@@ -1,7 +1,7 @@
 package com.ticketflow.service;
 import com.ticketflow.entity.Pay;
 import com.ticketflow.entity.User;
-import com.ticketflow.repository.PayRepository; // 👈 레포지토리 임포트
+import com.ticketflow.repository.PayRepository; // 레포지토리 임포트
 import ai.onnxruntime.*;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ public class CancelPredictionService {
 
     private final OrtEnvironment env;
     private final OrtSession session;
-    private final PayRepository payRepository; // 👈 의존성 주입
+    private final PayRepository payRepository; // 의존성 주입
 
     // 생성자를 통해 의존성 주입과 모델 로딩을 동시에 처리합니다.
     public CancelPredictionService(PayRepository payRepository) throws Exception {
@@ -81,17 +81,17 @@ public class CancelPredictionService {
             // 6. 1장당 가격
             float pricePerTicket = totalPrice / ticketVolume;
 
-            // 💡 1단계: 모델에 넣을 숫자 배열 만들기
+            //1단계: 모델에 넣을 숫자 배열 만들기
             float[][] inputData = new float[][]{{
                     isPromotion, leadTime, ticketVolume, userCancelRate, totalPrice, pricePerTicket
             }};
 
-            // 💡 2단계: 빠져있던 부분! 자바 배열을 ONNX 텐서로 변환하고 inputs 맵 만들기
+            //2단계: 빠져있던 부분! 자바 배열을 ONNX 텐서로 변환하고 inputs 맵 만들기
             try (OnnxTensor tensor = OnnxTensor.createTensor(env, inputData)) {
                 // 파이썬에서 정해준 이름표인 "float_input"을 붙여줍니다.
                 Map<String, OnnxTensor> inputs = Collections.singletonMap("float_input", tensor);
 
-                // 💡 3단계: ONNX 실행 및 결과 추출 (포장지 벗기기 적용됨)
+                //3단계: ONNX 실행 및 결과 추출 (포장지 벗기기 적용됨)
                 try (OrtSession.Result results = session.run(inputs)) {
                     // 결과 바구니에서 리스트를 꺼냅니다.
                     List<?> probList = (List<?>) results.get(1).getValue();

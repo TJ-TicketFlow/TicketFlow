@@ -140,7 +140,7 @@ public class MyPageController {
                 String portalUrl = lemonSqueezyRefundService.getCustomerPortalUrl(membership.getMembershipCustomerId());
                 model.addAttribute("portalUrl", portalUrl);
             } catch (Exception e) {
-                System.out.println("⚠️ Customer Portal URL 조회 실패: " + e.getMessage());
+                System.out.println("Customer Portal URL 조회 실패: " + e.getMessage());
             }
         }
 
@@ -223,10 +223,10 @@ public class MyPageController {
                                 @RequestParam(value = "status", defaultValue = "전체") String status,
                                 @RequestParam(value = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
                                 @RequestParam(value = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
-                                @PageableDefault(size = 5) Pageable pageable, // 💡 한 페이지에 n개씩!
+                                @PageableDefault(size = 5) Pageable pageable, //한 페이지에 n개씩!
                                 Model model) {
 
-        // 💡 날짜 기본값 세팅 (1달 전 ~ 오늘)
+        //날짜 기본값 세팅 (1달 전 ~ 오늘)
         if (endDate == null) endDate = LocalDate.now();
         if (startDate == null) startDate = endDate.minusMonths(1);
 
@@ -255,14 +255,14 @@ public class MyPageController {
         model.addAttribute("user", user);
         Long payNo = Long.valueOf(bookingNo);
         try {
-            // 💡 서비스에 결제 번호와 함께 '내 고유 번호(user.getUserNo())'도 같이 보냅니다!
+            //서비스에 결제 번호와 함께 '내 고유 번호(user.getUserNo())'도 같이 보냅니다!
             Map<String, Object> ticketDetail = bookingService.getTicketDetail(payNo, user.getUserNo());
             model.addAttribute("ticket", ticketDetail);
 
             return "mypage/mypage_ticket_detail";
 
         } catch (IllegalStateException | IllegalArgumentException e) {
-            System.out.println("🚨 잘못된 예매 상세 접근 차단: " + e.getMessage());
+            System.out.println("잘못된 예매 상세 접근 차단: " + e.getMessage());
 
             // 남의 내역을 훔쳐보려고 주소창을 장난쳤다면, 마이페이지 리스트 페이지로 강제 추방합니다.
             return "redirect:/";

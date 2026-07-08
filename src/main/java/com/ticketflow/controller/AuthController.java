@@ -35,7 +35,7 @@ public class AuthController {
     // ─────────────────────────────────────────
     @GetMapping("/login")
     public String loginPage() {
-        // 🌟 [추가] 이미 로그인된 사용자가 /login에 접근하면 로그인 폼을 다시 보여주는 대신 홈으로 보냅니다.
+        // [추가] 이미 로그인된 사용자가 /login에 접근하면 로그인 폼을 다시 보여주는 대신 홈으로 보냅니다.
         org.springframework.security.core.Authentication auth =
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         boolean alreadyLoggedIn = auth != null && auth.isAuthenticated()

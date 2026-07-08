@@ -59,7 +59,7 @@
         }
     }
 
-    // 🌟 [추가] 새 비밀번호 확인란이 실제로는 검증되지 않던 문제 수정 (제출 전 클라이언트 측 확인)
+    // [추가] 새 비밀번호 확인란이 실제로는 검증되지 않던 문제 수정 (제출 전 클라이언트 측 확인)
     // 최종 검증은 서버(UserService.updatePassword)에서도 다시 한 번 수행됩니다.
     document.getElementById('profileForm').addEventListener('submit', function (e) {
         const newPw = document.querySelector('input[name="newPassword"]').value;

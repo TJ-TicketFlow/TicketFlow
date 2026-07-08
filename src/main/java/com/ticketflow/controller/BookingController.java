@@ -25,19 +25,19 @@ public class BookingController {
     @GetMapping("/payment")
     public String showPaymentPage(
             @RequestParam(value = "reservationKey", required = true) Long reservationKey,
-            java.security.Principal principal, // 💡 [핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
+            java.security.Principal principal, //[핵심] 스프링이 로그인한 사람 정보를 여기로 넣어줍니다!
             Model model) {
 
-        // 🚨 1. 로그인 상태 확인 (방어 로직)
+        // 1. 로그인 상태 확인 (방어 로직)
         if (principal == null) {
             // 로그인을 안 하고 결제창 주소를 직접 치고 들어왔다면? 로그인 페이지로 쫓아냅니다!
             return "redirect:/login";
         }
 
-        // 💡 2. 진짜 로그인한 사람의 아이디 가져오기 (예: "hong123"이 진짜로 들어옴)
+        //2. 진짜 로그인한 사람의 아이디 가져오기 (예: "hong123"이 진짜로 들어옴)
         String currentUserId = principal.getName();
 
-        // 💡 3. 문자 아이디를 서비스에 주고, 고유 번호(user_no)를 받아옵니다.
+        //3. 문자 아이디를 서비스에 주고, 고유 번호(user_no)를 받아옵니다.
         Long currentUserNo = bookingService.getUserNoById(currentUserId);
 
         try {
@@ -53,11 +53,11 @@ public class BookingController {
              model.addAttribute("remainingSeconds", remainingSeconds);
 
         } catch (IllegalStateException | IllegalArgumentException e) {
-            System.out.println("🚨 잘못된 결제창 접근 차단 완료: " + e.getMessage());
+            System.out.println("잘못된 결제창 접근 차단 완료: " + e.getMessage());
             return "redirect:/"; // 문제 있으면 즉시 메인으로 쫓아냄
         }
 
-        // 💡 4. 자바스크립트가 fetch 통신할 때 쓸 수 있게 예약 번호도 몰래 넘겨줍니다.
+        //4. 자바스크립트가 fetch 통신할 때 쓸 수 있게 예약 번호도 몰래 넘겨줍니다.
         model.addAttribute("reservationKey", reservationKey);
 
         // 5. 멤버십 확인 (추후 currentUserNo와 맞춰서 userId 조회가 필요할 수 있습니다)
@@ -83,19 +83,19 @@ public class BookingController {
     public ResponseEntity<String> createBooking(@RequestBody BookingRequestDto requestDto, java.security.Principal principal) {
 
         System.out.println("=========================================");
-        System.out.println("✅ 프론트에서 무사히 도착한 금액: " + requestDto.getPayAmount());
+        System.out.println("프론트에서 무사히 도착한 금액: " + requestDto.getPayAmount());
         System.out.println("=========================================");
 
-        // 🚨 1. 로그인 안 한 사람 차단
+        // 1. 로그인 안 한 사람 차단
         if (principal == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
 
         String realUserId = principal.getName();
 
-        // 🚨 2. [핵심 방어막] 이미 결제된 티켓을 자바스크립트로 강제로 결제하려는 해커 차단!
+        // 2. [핵심 방어막] 이미 결제된 티켓을 자바스크립트로 강제로 결제하려는 해커 차단!
         if (bookingService.isAlreadyPaid(requestDto.getReservationKey())) {
-            System.out.println("🚨 API 통신을 통한 이중 결제 시도 차단됨!");
+            System.out.println("API 통신을 통한 이중 결제 시도 차단됨!");
             return ResponseEntity.status(400).body("이미 결제가 완료된 예매건입니다.");
         }
 
@@ -108,7 +108,7 @@ public class BookingController {
             return ResponseEntity.ok(checkoutUrl);
 
         } catch (IllegalArgumentException e) {
-            // 💡 캡차가 틀렸을 때 서비스에서 던진 메시지를 400 에러와 함께 보냅니다.
+            //캡차가 틀렸을 때 서비스에서 던진 메시지를 400 에러와 함께 보냅니다.
             return ResponseEntity.status(400).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("결제 준비 중 서버 오류가 발생했습니다.");
@@ -118,14 +118,14 @@ public class BookingController {
     // 3. 쿠폰 목록 가져오기
     @GetMapping("/checkcoupons")
     @ResponseBody
-    public List<Map<String, Object>> getCoupons(java.security.Principal principal) { // 💡 여기도 Principal 추가!
+    public List<Map<String, Object>> getCoupons(java.security.Principal principal) { //여기도 Principal 추가!
 
-        // 🚨 로그인을 안 했으면 빈 상자(쿠폰 없음)를 던져줍니다.
+        // 로그인을 안 했으면 빈 상자(쿠폰 없음)를 던져줍니다.
         if (principal == null) {
             return List.of();
         }
 
-        // 💡 진짜 로그인한 아이디 추출
+        //진짜 로그인한 아이디 추출
         String currentUserId = principal.getName();
 
         // 진짜 아이디로 쿠폰 검색 후 반환
@@ -161,7 +161,7 @@ public class BookingController {
     }
 
     // ==========================================
-    // 💡 [네이버 캡차 2] 프론트엔드에 열쇠 던져주기
+    //[네이버 캡차 2] 프론트엔드에 열쇠 던져주기
     // ==========================================
     @GetMapping("/captcha-key")
     @ResponseBody
@@ -177,15 +177,15 @@ public class BookingController {
     }
 
     // ==========================================
-    // 💡 11. 결제창 이탈 시 좌석 해제 API
+    //11. 결제창 이탈 시 좌석 해제 API
     // ==========================================
     @PostMapping("/release-seat")
     @ResponseBody
     public ResponseEntity<String> releaseSeat(@RequestBody Map<String, Object> payload, java.security.Principal principal) { // Map<String, Object>로 변경!
-        System.out.println("🚨 [디버그] release-seat API 호출됨!");
+        System.out.println("[디버그] release-seat API 호출됨!");
 
         if (principal == null) {
-            System.out.println("🚨 [디버그] 로그인 정보 없음! 여기서 튕김!");
+            System.out.println("[디버그] 로그인 정보 없음! 여기서 튕김!");
             return ResponseEntity.badRequest().build();
         }
 
@@ -193,13 +193,13 @@ public class BookingController {
         if (keyObj != null) {
             // [핵심 수정] Object로 받아서 문자로 바꾼 뒤, Long으로 아주 안전하게 변환합니다!
             Long reservationKey = Long.valueOf(keyObj.toString());
-            System.out.println("🚨 [디버그] 안전하게 변환된 예약 번호: " + reservationKey);
+            System.out.println("[디버그] 안전하게 변환된 예약 번호: " + reservationKey);
 
             // 서비스 로직 실행
             bookingService.releaseUnpaidSeat(reservationKey);
-            System.out.println("🚨 [디버그] 서비스 해제 로직 호출 완료!");
+            System.out.println("[디버그] 서비스 해제 로직 호출 완료!");
         } else {
-            System.out.println("🚨 [디버그] 프론트에서 넘어온 예약 번호가 없습니다!");
+            System.out.println("[디버그] 프론트에서 넘어온 예약 번호가 없습니다!");
         }
 
         return ResponseEntity.ok("Seat released");

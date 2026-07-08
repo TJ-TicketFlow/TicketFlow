@@ -40,7 +40,7 @@ public class BookingService {
     private final StatsService statsService;
 
 
-    private final ConcertService concertService; // 👈 1. ConcertService 주입받기
+    private final ConcertService concertService; // 1. ConcertService 주입받기
 
     // 1. 회원 정보를 찾기 위해 UserRepository를 추가합니다!
     private final UserRepository userRepository;
@@ -266,7 +266,7 @@ public class BookingService {
     // ==========================================
     // 5. 레몬스퀴지 웹훅
     // ==========================================
-    // ⚠️ [필수 확인] 이 메서드가 포함된 클래스(예: PaymentService) 상단에
+    // [필수 확인] 이 메서드가 포함된 클래스(예: PaymentService) 상단에
 // private final ConcertService concertService; 가 의존성 주입(DI)되어 있어야 합니다.
 
     @Transactional
@@ -279,7 +279,7 @@ public class BookingService {
         Pay payment = payRepository.findByMerchantUid(merchantUid)
                 .orElseThrow(() -> new IllegalArgumentException("주문 내역 없음"));
 
-        // 🌟 [추가된 0단계 방어막] 이미 처리된 결제라면 가차없이 무시합니다! (웹훅 중복 수신 방어)
+        // [추가된 0단계 방어막] 이미 처리된 결제라면 가차없이 무시합니다! (웹훅 중복 수신 방어)
         if ("PAID".equals(payment.getPayStatus()) || "CANCELLED".equals(payment.getPayStatus())) {
             System.out.println("이미 처리 완료된 주문입니다. 중복 웹훅을 무시합니다. (주문번호: " + merchantUid + ")");
             return;
@@ -308,14 +308,14 @@ public class BookingService {
             return;
         }
 
-        // 🌟 2. 좌석 상태 확정 (검증을 최우선으로 먼저 실행합니다!)
+        // 2. 좌석 상태 확정 (검증을 최우선으로 먼저 실행합니다!)
         try {
             Reservation reservation = payment.getReservation();
             var selectedSeat = reservation.getSelectedSeat();
 
             // [3차 방어선] 상태를 2(완료)로 바꾸기 직전에, 내 자리가 무사한지 검사!
             if (selectedSeat.getSeatState() != 1) {
-                System.err.println("🚨 10분 초과 지각 결제 감지! 자동 환불을 진행합니다.");
+                System.err.println("10분 초과 지각 결제 감지! 자동 환불을 진행합니다.");
 
                 payment.setPayStatus("CANCELLED");
                 payment.setPayFailReason("10분 결제 시간 초과로 인한 자동 환불");
@@ -336,7 +336,7 @@ public class BookingService {
             System.err.println("좌석 확정 로직 처리 중 오류: " + e.getMessage());
         }
 
-        // 🌟 3. 결제 상태 업데이트 (모든 검문이 끝난 뒤에 비로소 도장을 찍습니다!)
+        // 3. 결제 상태 업데이트 (모든 검문이 끝난 뒤에 비로소 도장을 찍습니다!)
         payment.setPayStatus("PAID");
         payment.setLsOrderId(lsOrderId);
         payment.setCurrency(currency);
@@ -367,10 +367,10 @@ public class BookingService {
         if (concertId != null) {
             try {
                 concertService.refreshMainPageCache(concertId);
-                System.out.println("➔ 🔄 [성공] 결제 완료 시점에 메인 페이지 실시간 예매율 갱신 및 캐시 초기화 명령을 실행했습니다.");
+                System.out.println("➔ [성공] 결제 완료 시점에 메인 페이지 실시간 예매율 갱신 및 캐시 초기화 명령을 실행했습니다.");
             } catch (Exception e) {
                 // 예매율 연산이나 캐시 도중 에러가 나더라도 사용자의 소중한 결제가 롤백되지 않도록 try-catch 방어막을 씌웁니다.
-                System.err.println("🚨 [경고] 예매율 캐시 갱신 중 오류 발생 (결제 완료 및 좌석 확정은 무사히 유지됨): " + e.getMessage());
+                System.err.println("[경고] 예매율 캐시 갱신 중 오류 발생 (결제 완료 및 좌석 확정은 무사히 유지됨): " + e.getMessage());
             }
         }
 
@@ -381,7 +381,7 @@ public class BookingService {
             sendBookingCompleteEmail(payment);
             System.out.println("결제 완료 이메일 발송 성공!");
         } catch (Exception e) {
-            System.err.println("🚨 이메일 발송 실패 (운영에 영향 없음, 결제는 정상 처리됨): " + e.getMessage());
+            System.err.println("이메일 발송 실패 (운영에 영향 없음, 결제는 정상 처리됨): " + e.getMessage());
         }
     }
 
@@ -1029,7 +1029,7 @@ public class BookingService {
             }
             System.out.println("결제창 이탈! 좌석(" + idsStr + ") 다시 예매 가능 상태로 풀림.");
         }
-        // ⚠️ 참고: 이 메서드는 결제 실패 웹훅(completePayment)에서도 재사용되는데,
+        // 참고: 이 메서드는 결제 실패 웹훅(completePayment)에서도 재사용되는데,
         // 그 경로에서는 Pay 엔티티가 이미 이 Reservation을 FK로 참조하고 있으므로
         // 여기서 Reservation/SelectedSeat를 삭제하면 안 됩니다(FK 무결성 오류 위험).
         // 그래서 상태값만 되돌리고 레코드 자체는 남겨둡니다(기존 동작 유지).
@@ -1059,7 +1059,7 @@ public class BookingService {
                         + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
             }
             // HTML 문법을 사용해서 내용을 작성합니다.
-            String htmlContent = "<h3>🎉 예매가 완료되었습니다!</h3>"
+            String htmlContent = "<h3>예매가 완료되었습니다!</h3>"
                     + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
                     + "<p><b>예매번호:</b> TF-0000" + payment.getPayNo() + "</p>"
                     + "<p><b>공연명:</b> " + showName + "</p>"
@@ -1101,12 +1101,12 @@ public class BookingService {
                         + payment.getReservation().getSelectedSeat().getSeat().getSeatCol() + "번";
             }
             // HTML 문법을 사용해서 내용을 작성합니다.
-            String htmlContent = "<h3>😢 예매가 정상적으로 취소되었습니다.</h3>"
+            String htmlContent = "<h3>예매가 정상적으로 취소되었습니다.</h3>"
                     + "<p><b>구매자명:</b> " + payment.getBuyerName() + "</p>"
                     + "<p><b>예매번호:</b> TF-0000" + payment.getPayNo() + "</p>"
                     + "<p><b>공연명:</b> " + showName + "</p>"
                     + "<p><b>취소된 좌석:</b> " + seatInfo + "</p>"
-                    // 💡 취소 메일이므로, 추후에 환불 수수료를 뺀 '최종 환불 금액'을 넘겨주면 더 좋습니다!
+                    //취소 메일이므로, 추후에 환불 수수료를 뺀 '최종 환불 금액'을 넘겨주면 더 좋습니다!
                     + "<p><b>결제 취소 금액:</b> " + payment.getPayAmount() + "원</p>"
                     + "<br><p>결제하신 수단으로 환불 처리가 진행될 예정입니다.<br>"
                     + "<a href='https://encouraged-leader-goes-jerry.trycloudflare.com/mypage/benefits' style='color: #ef4444; text-decoration: underline; font-weight: bold;'>마이페이지</a>에서 상세 내역을 확인하실 수 있습니다. 감사합니다!</p>";
@@ -1151,7 +1151,7 @@ public class BookingService {
             }
 
             // 4. 이메일 내용 (HTML로 더 깔끔하고 안심되게 작성)
-            String htmlContent = "<h3>💸 결제가 취소되어 자동 환불 처리되었습니다.</h3>"
+            String htmlContent = "<h3>결제가 취소되어 자동 환불 처리되었습니다.</h3>"
                     + "<p>안녕하세요, <b>" + payment.getBuyerName() + "</b>님.</p>"
                     + "<p>고객님의 결제건이 <b>결제 대기시간(10분) 초과</b>로 인해 안전하게 결제 취소(환불) 처리되었음을 안내해 드립니다.</p>"
                     + "<hr style='border: 1px solid #eee; margin: 15px 0;'>"
@@ -1169,10 +1169,10 @@ public class BookingService {
 
             // 5. 전송!
             javaMailSender.send(mimeMessage);
-            System.out.println("✅ 결제 취소(환불) 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
+            System.out.println("결제 취소(환불) 이메일 발송 성공! (수신자: " + payment.getBuyerEmail() + ")");
 
         } catch (Exception e) {
-            System.err.println("🚨 환불 이메일 발송 실패: " + e.getMessage());
+            System.err.println("환불 이메일 발송 실패: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -22,7 +22,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        // 1️⃣ [핵심] CSRF 보호 조치에서 좌석 예매 API 주소들을 제외시킵니다.
+        // [핵심] CSRF 보호 조치에서 좌석 예매 API 주소들을 제외시킵니다.
         // POST 요청 시 토큰 검사를 하지 않도록 열어주는 설정입니다.
 
         http
@@ -52,7 +52,7 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("user_id")
                         .passwordParameter("password")
-                        // 🌟 [수정] 기존에는 defaultSuccessUrl("/", true) 와, "/"로만 무조건
+                        // [수정] 기존에는 defaultSuccessUrl("/", true) 와, "/"로만 무조건
                         // 리다이렉트하는 커스텀 successHandler가 동시에 설정되어 있었습니다.
                         // successHandler가 등록되면 defaultSuccessUrl은 완전히 무시되므로
                         // (죽은 설정), 실제 동작은 successHandler가 전부 결정하고 있었는데
