@@ -21,6 +21,12 @@ public class EmailVerificationService {
     // 인증번호 저장 (email → {code, expiry})
     private final Map<String, VerificationEntry> store = new ConcurrentHashMap<>();
 
+
+    private final Map<String, LocalDateTime> verifiedEmails = new ConcurrentHashMap<>();
+
+    // 인증 성공 후 회원가입을 완료할 때까지 유효 시간 (이 시간 안에 가입을 마쳐야 함)
+    private static final long VERIFIED_VALID_MINUTES = 30;
+
     /**
      * 6자리 인증번호 생성 후 이메일 발송
      */
@@ -53,7 +59,29 @@ public class EmailVerificationService {
         }
         if (!entry.code().equals(code)) return false;
         store.remove(email); // 사용 후 삭제
+
+        verifiedEmails.put(email, LocalDateTime.now().plusMinutes(VERIFIED_VALID_MINUTES));
         return true;
+    }
+
+    /**
+     * 이 이메일이 최근에 인증번호 검증을 통과했는지 서버 기준으로 확인합니다.
+     */
+    public boolean isVerified(String email) {
+        LocalDateTime expiry = verifiedEmails.get(email);
+        if (expiry == null) return false;
+        if (LocalDateTime.now().isAfter(expiry)) {
+            verifiedEmails.remove(email);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 회원가입이 완료된 뒤에는 인증 상태를 다시 쓸 수 없도록 소모(삭제)합니다.
+     */
+    public void consumeVerification(String email) {
+        verifiedEmails.remove(email);
     }
 
     private String generateCode() {
@@ -61,5 +89,6 @@ public class EmailVerificationService {
         return String.format("%06d", rnd.nextInt(1_000_000));
     }
 
-    private record VerificationEntry(String code, LocalDateTime expiry) {}
+    private record VerificationEntry(String code, LocalDateTime expiry) {
+    }
 }
