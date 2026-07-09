@@ -82,9 +82,13 @@ public class ConcertController {
             Concert entity = upcomingEntities.get(i);
             ConcertResponseDto dto = upcomingConcerts.get(i);
 
-            // 실제 데이터베이스 내부의 공연 데이터를 기반으로 AI 스코어 계산
             double realAiRate = concertPredictService.predictSoldOutRate(entity.getConcertId());
             dto.setPredictSoldOutRate(realAiRate);
+
+            // 🔍 디버그용 - 원인 확인 후 지워도 됩니다
+            System.out.println("★★★ [예매율 디버그] concertId=" + entity.getConcertId()
+                    + " / realAiRate=" + realAiRate
+                    + " / dto.getPredictSoldOutRate()=" + dto.getPredictSoldOutRate());
         }
 
         for (ConcertResponseDto dto : pastConcerts) {
