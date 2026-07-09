@@ -224,6 +224,9 @@ public class BookingService {
         checkoutData.put("billing_address", billingAddress);
 
         attributes.put("checkout_data", checkoutData);
+        Map<String, Object> checkoutOptions = new HashMap<>();
+        checkoutOptions.put("embed", true);
+        attributes.put("checkout_options", checkoutOptions);
         long finalPriceForLemonSqueezy = payment.getPayAmount() * 100;
         attributes.put("custom_price", finalPriceForLemonSqueezy);
 
