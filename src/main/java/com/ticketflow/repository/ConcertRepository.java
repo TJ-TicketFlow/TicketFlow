@@ -46,6 +46,12 @@ public interface ConcertRepository extends JpaRepository<Concert, String> {
             "GROUP BY c.concertId ORDER BY COUNT(w) DESC")
     List<Concert> findTopPopular(Pageable pageable);
 
+    //위시리스트 개수가 많은 순으로 정렬
+    @Query("SELECT c FROM Concert c LEFT JOIN c.wishlists w " +
+            "WHERE c.concertStartDate >= CURRENT_DATE " +
+            "GROUP BY c.id ORDER BY COUNT(w) DESC")
+    List<Concert> findTop3ByWishlistCountDesc(Pageable pageable);
+
     // 2. 선호 장르 공연 조회
     @Query("SELECT c FROM Concert c WHERE c.concertGenre IN :genres ORDER BY c.concertStartDate ASC")
     List<Concert> findByGenreInOrderByStartDateAsc(@Param("genres") List<String> genres, Pageable pageable);

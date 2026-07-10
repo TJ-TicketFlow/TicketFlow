@@ -14,6 +14,8 @@ import com.ticketflow.service.StatsService;
 import com.ticketflow.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -315,12 +317,12 @@ public class ConcertController {
             }
         }
 
-        // 2. 데이터가 없을 경우 전체 데이터에서 최신순으로 가져오기
+        // 2. 데이터가 없을 경우 위시리스트가 많은 순(인기순)으로 가져오기
         if (list == null || list.isEmpty()) {
-            list = concertRepository.findAll().stream()
-                    //여기에 실제 엔티티의 필드명인 concertStartDate 사용
-                    .sorted(Comparator.comparing(Concert::getConcertStartDate).reversed())
-                    .limit(3)
+            // Pageable을 사용해 상위 3개만 조회
+            Pageable top3 = PageRequest.of(0, 3);
+            list = concertRepository.findTop3ByWishlistCountDesc(top3)
+                    .stream()
                     .map(ConcertResponseDto::new)
                     .collect(Collectors.toList());
         }
